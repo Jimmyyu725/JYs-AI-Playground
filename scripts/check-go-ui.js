@@ -1,6 +1,50 @@
+import { spawn } from "node:child_process";
+import { fileURLToPath } from "node:url";
+import net from "node:net";
 import { chromium } from "playwright-core";
 
-const baseURL = process.env.PLAYGROUND_URL || "http://127.0.0.1:4173";
+function availablePort() {
+  return new Promise((resolve, reject) => {
+    const listener = net.createServer();
+    listener.once("error", reject);
+    listener.listen(0, "127.0.0.1", () => {
+      const { port } = listener.address();
+      listener.close((error) => error ? reject(error) : resolve(port));
+    });
+  });
+}
+
+async function waitForServer(baseURL, processHandle) {
+  for (let attempt = 0; attempt < 80; attempt += 1) {
+    if (processHandle.exitCode !== null) throw new Error("The isolated Go UI test server exited early");
+    try {
+      const response = await fetch(`${baseURL}/api/health`);
+      if (response.ok) return;
+    } catch {
+      // The isolated server is still starting.
+    }
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  throw new Error("The isolated Go UI test server did not become ready");
+}
+
+const explicitBaseURL = process.env.PLAYGROUND_URL;
+const testPort = explicitBaseURL ? null : await availablePort();
+const baseURL = explicitBaseURL || `http://127.0.0.1:${testPort}`;
+const serverProcess = explicitBaseURL
+  ? null
+  : spawn(process.execPath, ["server.js"], {
+      cwd: fileURLToPath(new URL("..", import.meta.url)),
+      env: { ...process.env, PORT: String(testPort) },
+      stdio: "ignore",
+    });
+
+const stopServer = () => {
+  if (serverProcess && serverProcess.exitCode === null) serverProcess.kill("SIGTERM");
+};
+process.once("exit", stopServer);
+if (serverProcess) await waitForServer(baseURL, serverProcess);
+
 const created = await fetch(`${baseURL}/api/go/game`, {
   method: "POST",
   headers: { "Content-Type": "application/json" },
@@ -54,6 +98,7 @@ const mobile = await mobilePage.evaluate(() => ({
 await mobilePage.screenshot({ path: "tmp/browser/go-mobile.png", fullPage: true });
 
 await browser.close();
+stopServer();
 if (errors.length) throw new Error(`Go browser errors: ${errors.join(" | ")}`);
 if (desktop.intersections !== 81 || desktop.enabledIntersections !== 81 || desktop.players !== 2 || !desktop.setupHidden || !desktop.passEnabled || desktop.bodyFontSize < 15) {
   throw new Error(`Go desktop smoke failed: ${JSON.stringify(desktop)}`);
