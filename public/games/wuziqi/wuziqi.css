@@ -1,0 +1,14 @@
+@import url("/games/go/go.css");
+
+:root { --wood: #a86b55; --wood-light: #d5a17c; }
+.room-backdrop { background: linear-gradient(180deg,rgba(12,4,7,.46),#080607 82%), radial-gradient(circle at 50% 18%,rgba(134,33,50,.2),transparent 34%), url("/assets/casino-ambient.png") center / cover; filter: hue-rotate(322deg) saturate(.82); }
+.five-mark { display: grid; place-items: center; background: radial-gradient(circle,#6d2231,#220a10); color: var(--gold-bright); font: 600 23px/1 var(--display); }
+.five-board-frame { border-color: #512416; background: linear-gradient(135deg,#d8a57f,#a66a52); }
+.five-board-frame::after { border-color: rgba(84,28,23,.4); }
+.five-board-frame .intersection::before, .five-board-frame .intersection::after { background: rgba(66,25,25,.72); }
+.five-board-frame .intersection.star .star-dot { background: #632d2a; }
+.intersection.winning .stone { box-shadow: 0 0 0 3px var(--gold-bright), 0 0 22px var(--gold), 0 4px 8px rgba(0,0,0,.55); }
+.five-score-dock .komi-mark { width: 30px; border-radius: 50%; font-size: 8px; }
+.five-score-dock .score-cell:last-of-type strong { font-size: 15px; }
+.board-size-field { grid-column: 1 / -1; }
+@media (max-width: 700px) { .board-size-field { grid-column: auto; } }

@@ -4,6 +4,8 @@ import dotenv from "dotenv";
 import express from "express";
 import { requestGoDecision } from "./src/games/go-ai.js";
 import { GoGame } from "./src/games/go-game.js";
+import { requestWuziqiDecision } from "./src/games/wuziqi-ai.js";
+import { WuziqiGame } from "./src/games/wuziqi-game.js";
 import { PokerGame } from "./src/poker-game.js";
 import { AIDecisionError, requestHoldemDecision } from "./src/openai-player.js";
 import { apiKeyForGame, publicModelRegistry } from "./src/platform/model-registry.js";
@@ -20,6 +22,10 @@ const goSSEClients = new Set();
 const activeGoAIVersions = new Set();
 let goGame = null;
 let goGameVersion = 0;
+const wuziqiSSEClients = new Set();
+const activeWuziqiAIVersions = new Set();
+let wuziqiGame = null;
+let wuziqiGameVersion = 0;
 const bettingPhases = new Set(["preflop", "flop", "turn", "river"]);
 
 app.disable("x-powered-by");
@@ -58,6 +64,20 @@ function broadcastGoState() {
   if (goGame) broadcastGo("state", goGame.publicState());
 }
 
+function broadcastWuziqi(type, payload) {
+  for (const response of [...wuziqiSSEClients]) {
+    try {
+      sendSSE(response, type, payload);
+    } catch {
+      wuziqiSSEClients.delete(response);
+    }
+  }
+}
+
+function broadcastWuziqiState() {
+  if (wuziqiGame) broadcastWuziqi("state", wuziqiGame.publicState());
+}
+
 function requireGame() {
   if (!game) {
     const error = new Error("Start a table first");
@@ -76,6 +96,15 @@ function requireGoGame() {
   return goGame;
 }
 
+function requireWuziqiGame() {
+  if (!wuziqiGame) {
+    const error = new Error("Start a Wuziqi game first");
+    error.status = 409;
+    throw error;
+  }
+  return wuziqiGame;
+}
+
 function publicError(error) {
   if (error instanceof AIDecisionError) return error.message;
   return String(error?.message || "Unexpected server error").slice(0, 400);
@@ -89,6 +118,11 @@ function scheduleAITurn(version = gameVersion) {
 function scheduleGoAITurn(version = goGameVersion) {
   if (!goGame || activeGoAIVersions.has(version)) return;
   setImmediate(() => runGoAIChain(version));
+}
+
+function scheduleWuziqiAITurn(version = wuziqiGameVersion) {
+  if (!wuziqiGame || activeWuziqiAIVersions.has(version)) return;
+  setImmediate(() => runWuziqiAIChain(version));
 }
 
 function shouldRunAutomation(table) {
@@ -252,6 +286,75 @@ async function runGoAIChain(version) {
   }
 }
 
+async function runWuziqiAIChain(version) {
+  if (activeWuziqiAIVersions.has(version)) return;
+  activeWuziqiAIVersions.add(version);
+  try {
+    while (wuziqiGame && version === wuziqiGameVersion) {
+      const table = wuziqiGame;
+      if (table.phase !== "active" || table.aiError || (table.isArenaMode && table.arenaPaused)) break;
+      const actor = table.currentPlayer;
+      if (!actor || actor.isHuman) break;
+
+      const color = actor.color;
+      const startedAt = performance.now();
+      table.aiThinking = { color, playerName: actor.name, status: `Connecting to ${actor.aiConfig.model}…`, startedAt: Date.now() };
+      broadcastWuziqi("ai_stream", { phase: "started", color, playerName: actor.name, summary: "" });
+      broadcastWuziqiState();
+
+      try {
+        const snapshot = table.aiSnapshot();
+        const decision = await requestWuziqiDecision(snapshot, actor.aiConfig, {
+          onStatus(status) {
+            if (wuziqiGame !== table || version !== wuziqiGameVersion) return;
+            table.aiThinking = { ...table.aiThinking, status };
+            broadcastWuziqi("ai_stream", { phase: "status", color, playerName: actor.name, status });
+            broadcastWuziqiState();
+          },
+          onSummaryDelta(delta) {
+            if (wuziqiGame !== table || version !== wuziqiGameVersion) return;
+            broadcastWuziqi("ai_stream", { phase: "summary_delta", color, playerName: actor.name, delta });
+          },
+        });
+
+        if (wuziqiGame !== table || version !== wuziqiGameVersion) return;
+        const latencyMs = performance.now() - startedAt;
+        const visibleSummary = decision.reasoningSummary || decision.explanation;
+        table.recordAIInsight(color, {
+          summary: visibleSummary,
+          summarySource: decision.reasoningSummary ? "openai_reasoning_summary" : "public_decision_rationale",
+          explanation: decision.explanation,
+          latencyMs,
+          action: decision.action,
+        });
+        table.aiThinking = null;
+        broadcastWuziqi("ai_stream", {
+          phase: "completed",
+          color,
+          playerName: actor.name,
+          summary: visibleSummary,
+          explanation: decision.explanation,
+          latencyMs: Math.round(latencyMs),
+        });
+        table.applyAction(color, decision.action, decision.row, decision.column);
+        broadcastWuziqiState();
+      } catch (error) {
+        if (wuziqiGame !== table || version !== wuziqiGameVersion) return;
+        const message = publicError(error);
+        table.setAIError(color, message);
+        broadcastWuziqi("ai_stream", { phase: "error", color, playerName: actor.name, message });
+        broadcastWuziqiState();
+        break;
+      }
+    }
+  } finally {
+    activeWuziqiAIVersions.delete(version);
+    if (wuziqiGame && version === wuziqiGameVersion && wuziqiGame.phase === "active" && !wuziqiGame.aiError && !wuziqiGame.currentPlayer?.isHuman && !(wuziqiGame.isArenaMode && wuziqiGame.arenaPaused)) {
+      scheduleWuziqiAITurn(version);
+    }
+  }
+}
+
 app.get("/api/health", (_request, response) => {
   response.json({
     ok: true,
@@ -261,7 +364,7 @@ app.get("/api/health", (_request, response) => {
       wuziqi: Boolean(apiKeyForGame("wuziqi").value),
     },
     models: publicModelRegistry(),
-    games: { holdem: true, go: true, wuziqi: false },
+    games: { holdem: true, go: true, wuziqi: true },
     noLocalFallback: true,
   });
 });
@@ -458,6 +561,98 @@ app.post("/api/go/arena/resume", (_request, response, next) => {
     response.json(table.publicState());
     broadcastGoState();
     scheduleGoAITurn(goGameVersion);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/wuziqi/state", (_request, response) => {
+  response.json(wuziqiGame ? wuziqiGame.publicState() : null);
+});
+
+app.get("/api/wuziqi/events", (request, response) => {
+  response.set({
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache, no-transform",
+    Connection: "keep-alive",
+    "X-Accel-Buffering": "no",
+  });
+  response.flushHeaders();
+  wuziqiSSEClients.add(response);
+  sendSSE(response, "connected", { at: Date.now() });
+  if (wuziqiGame) sendSSE(response, "state", wuziqiGame.publicState());
+  const heartbeat = setInterval(() => response.write(": heartbeat\n\n"), 15_000);
+  request.on("close", () => {
+    clearInterval(heartbeat);
+    wuziqiSSEClients.delete(response);
+  });
+});
+
+app.post("/api/wuziqi/game", (request, response, next) => {
+  try {
+    wuziqiGameVersion += 1;
+    wuziqiGame = new WuziqiGame(request.body ?? {});
+    response.status(201).json(wuziqiGame.publicState());
+    broadcastWuziqiState();
+    scheduleWuziqiAITurn(wuziqiGameVersion);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/wuziqi/action", (request, response, next) => {
+  try {
+    const table = requireWuziqiGame();
+    const actor = table.currentPlayer;
+    if (!actor?.isHuman) {
+      const error = new Error("It is not the human player's turn");
+      error.status = 409;
+      throw error;
+    }
+    table.applyAction(actor.color, request.body?.action, request.body?.row ?? null, request.body?.column ?? null);
+    response.json(table.publicState());
+    broadcastWuziqiState();
+    scheduleWuziqiAITurn(wuziqiGameVersion);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/wuziqi/retry-ai", (_request, response, next) => {
+  try {
+    const table = requireWuziqiGame();
+    if (!table.aiError) {
+      const error = new Error("There is no paused AI request to retry");
+      error.status = 409;
+      throw error;
+    }
+    table.clearAIError();
+    response.json(table.publicState());
+    broadcastWuziqiState();
+    scheduleWuziqiAITurn(wuziqiGameVersion);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/wuziqi/arena/pause", (_request, response, next) => {
+  try {
+    const table = requireWuziqiGame();
+    table.pauseArena();
+    response.json(table.publicState());
+    broadcastWuziqiState();
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/wuziqi/arena/resume", (_request, response, next) => {
+  try {
+    const table = requireWuziqiGame();
+    table.resumeArena();
+    response.json(table.publicState());
+    broadcastWuziqiState();
+    scheduleWuziqiAITurn(wuziqiGameVersion);
   } catch (error) {
     next(error);
   }
