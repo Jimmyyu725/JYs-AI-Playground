@@ -1,49 +1,9 @@
 import { createDeck, shuffleDeck } from "./cards.js";
 import { resolveSidePots } from "./hand-evaluator.js";
+import { AI_CHARACTERS } from "./platform/characters.js";
 import { normalizeModelConfig } from "./platform/model-registry.js";
 
-export const BOT_CHARACTERS = [
-  {
-    name: "Vesper Vale",
-    shortName: "Vesper",
-    title: "The Velvet Knife",
-    personality: "Patient, theatrical, and deceptive. Protects a poised table image, then attacks capped ranges with elegant pressure.",
-    color: "#d96f9f",
-    initials: "VV",
-  },
-  {
-    name: "Rook Mercer",
-    shortName: "Rook",
-    title: "The Enforcer",
-    personality: "Direct, fearless, and relentlessly aggressive. Values initiative, leverage, and forcing difficult stack decisions.",
-    color: "#e89a44",
-    initials: "RM",
-  },
-  {
-    name: "Selene Park",
-    shortName: "Selene",
-    title: "The Oracle",
-    personality: "Analytical and observant. Builds careful ranges, tracks action patterns, and prefers disciplined value over spectacle.",
-    color: "#75c8d8",
-    initials: "SP",
-  },
-  {
-    name: "Moss Calder",
-    shortName: "Moss",
-    title: "The Anchor",
-    personality: "Unhurried, conservative, and hard to move. Avoids thin spots but extracts maximum value when the board favors patience.",
-    color: "#79b989",
-    initials: "MC",
-  },
-  {
-    name: "Iris Knox",
-    shortName: "Iris",
-    title: "The Wildcard",
-    personality: "Creative, curious, and selectively chaotic. Mixes unusual lines while respecting stack depth and legal sizing.",
-    color: "#9f87e8",
-    initials: "IK",
-  },
-];
+export const BOT_CHARACTERS = AI_CHARACTERS;
 
 function clampInteger(value, minimum, maximum, fallback) {
   const parsed = Number.parseInt(value, 10);

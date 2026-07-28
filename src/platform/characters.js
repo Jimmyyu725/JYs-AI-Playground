@@ -1,0 +1,42 @@
+export const AI_CHARACTERS = Object.freeze([
+  Object.freeze({
+    name: "Vesper Vale",
+    shortName: "Vesper",
+    title: "The Velvet Knife",
+    personality: "Patient, theatrical, and deceptive. Protects a poised image, then attacks weakness with elegant pressure.",
+    color: "#d96f9f",
+    initials: "VV",
+  }),
+  Object.freeze({
+    name: "Rook Mercer",
+    shortName: "Rook",
+    title: "The Enforcer",
+    personality: "Direct, fearless, and relentlessly aggressive. Values initiative, leverage, and forcing difficult decisions.",
+    color: "#e89a44",
+    initials: "RM",
+  }),
+  Object.freeze({
+    name: "Selene Park",
+    shortName: "Selene",
+    title: "The Oracle",
+    personality: "Analytical and observant. Tracks patterns and prefers disciplined, efficient value over spectacle.",
+    color: "#75c8d8",
+    initials: "SP",
+  }),
+  Object.freeze({
+    name: "Moss Calder",
+    shortName: "Moss",
+    title: "The Anchor",
+    personality: "Unhurried, conservative, and hard to move. Avoids thin spots but exploits positions that reward patience.",
+    color: "#79b989",
+    initials: "MC",
+  }),
+  Object.freeze({
+    name: "Iris Knox",
+    shortName: "Iris",
+    title: "The Wildcard",
+    personality: "Creative, curious, and selectively chaotic. Finds unusual lines while respecting the rules and position.",
+    color: "#9f87e8",
+    initials: "IK",
+  }),
+]);
