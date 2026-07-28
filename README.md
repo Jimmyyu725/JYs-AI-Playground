@@ -1,16 +1,35 @@
-# The Luna Room
+# JYs AI Playground
 
-A new browser-based no-limit Texas Hold'em game with a casino-salon interface and multiple AI characters. Every AI seat uses the OpenAI Responses API with one locked model:
+A private, casino-inspired browser playground with three authoritative games and distinct OpenAI-powered characters:
 
-- model: `gpt-5.6-luna`
-- reasoning effort: `medium`
-- reasoning summary: `auto`
-- structured action output: strict JSON Schema
-- local poker-policy fallback: **none**
+- **Texas Hold’em** — human vs AI or a 2–5 seat AI Arena
+- **Go / 围棋** — human vs AI or AI vs AI on 9×9, 13×13, and 19×19 boards
+- **Wuziqi / 五子棋** — human vs AI or AI vs AI on 13×13, 15×15, and 19×19 boards
 
-The server owns the cards, chips, turn order, legal actions, hand ranking, and side-pot settlement. Luna only chooses from the legal actions supplied by that server.
+Open [http://127.0.0.1:4173](http://127.0.0.1:4173) to enter the central casino lobby.
 
-## Play
+## OpenAI configuration
+
+Every AI seat can independently select one of the real GPT-5.6 model variants:
+
+- `gpt-5.6-sol`
+- `gpt-5.6-terra`
+- `gpt-5.6-luna`
+
+Available reasoning efforts are `none`, `low`, `medium`, `high`, `xhigh`, and `max`. The server validates both fields against an allowlist.
+
+Create an ignored `.env.local` from `.env.example` and keep the three game credentials separate:
+
+```dotenv
+OPENAI_API_KEY=your_holdem_key
+OPENAI_GO_API_KEY=your_go_key
+OPENAI_WUZIQI_API_KEY=your_wuziqi_key
+PORT=4173
+```
+
+Keys are read only by the local Express server. They are never returned by `/api/health`, included in browser JavaScript, or committed to Git.
+
+## Run
 
 Requires Node.js 22 or newer.
 
@@ -19,72 +38,79 @@ npm install
 npm start
 ```
 
-Then open [http://127.0.0.1:4173](http://127.0.0.1:4173).
+Game routes:
 
-The API key stays in `.env.local` as `OPENAI_API_KEY`; that file is ignored by Git. Never move the key into browser JavaScript.
+- [Lobby](http://127.0.0.1:4173/)
+- [Texas Hold’em](http://127.0.0.1:4173/games/holdem/)
+- [Go / 围棋](http://127.0.0.1:4173/games/go/)
+- [Wuziqi / 五子棋](http://127.0.0.1:4173/games/wuziqi/)
 
-## Table modes
+## House guarantees
 
-- **Play vs AI:** one human against 2–5 Luna characters
-- **AI vs AI Arena:** 2–5 Luna characters play automatically for 5, 10, 25, or unlimited hands
-- pause and resume an Arena without replacing an in-flight or future decision with a local policy
-- every AI hole card is face-up to the Arena spectator, while each model receives only its own cards and public information
-- automatic hand-to-hand dealing until the selected target or a table champion
+- The server owns all rules, legal actions, cards, boards, scoring, captures, wins, and turn order.
+- OpenAI receives only the acting character’s private information plus public game state. Hold’em opponents never receive one another’s hole cards.
+- AI characters do receive their opponents’ public character profiles and visible move/action history, making the displayed personas strategically relevant.
+- Responses API requests stream without an application turn timer.
+- API failures, malformed output, and illegal model actions pause the game for retry.
+- There is no local LLM, heuristic player, or silent model fallback.
+- The UI retains public rationales and supported OpenAI reasoning summaries in a persistent transcript. It does not expose or claim to expose private chain-of-thought.
 
-## The table
+## Rules
 
-- distinct AI characters, names, colors, and poker styles
-- configurable starting stacks and blinds
-- full pre-flop, flop, turn, river, showdown, and next-hand flow
-- folds, checks, calls, bets, raises, and all-ins
-- hand evaluation and independent main/side-pot settlement
-- hidden opponent cards until showdown
-- live hand history and per-character decision latency
-- larger table typography and a persistent, scrollable Luna decision transcript that keeps completed summaries on screen
-- reused card artwork from the earlier desktop game
-- original `gpt-image-2` casino-room backdrop
+### Texas Hold’em
 
-## AI behavior
+No-limit Hold’em with configurable stacks and blinds, full betting streets, all-ins, hand evaluation, and independent main/side-pot settlement. Every hole card is visible to the spectator in AI Arena mode, but not to the other AI players.
 
-AI requests use streamed Responses API events without an application turn timer. The server and browser wait for the request rather than replacing it with a local decision.
+### Go
 
-If OpenAI returns an API failure, malformed result, or illegal poker action, the hand pauses and displays a **Retry Luna** control. No local heuristic acts on the AI's behalf.
+Chinese area scoring with configurable komi (7.5 default), capture, suicide prohibition, positional superko, pass, resignation, and two-pass game completion. Territory and stones are scored by the server.
 
-The right rail shows OpenAI's supported reasoning summary when returned. When a request does not include a summary, it shows Luna's explicit public decision-rationale field instead. The application does not expose or claim to expose private chain-of-thought.
+### Wuziqi
+
+Freestyle Gomoku: five or more contiguous stones horizontally, vertically, or diagonally win. Overlines count as wins. Renju forbidden-move rules are intentionally not enabled in this version.
 
 ## Verification
 
 ```bash
-npm run check       # syntax, hand evaluator, side pots, rules, full checked-down hand
-npm run ui:check    # desktop and mobile browser rendering, assets, controls, overflow
-npm run api:check   # one live Luna structured decision
-npm run flow:check  # live multi-character turn chain through the running server
-npm run arena:check # one complete live all-Luna Arena hand and target stop
+npm run check             # syntax plus every deterministic game/rules test
+npm run ui:check          # lobby and Hold’em desktop/mobile browser checks
+npm run go:ui:check       # Go desktop/mobile board and setup checks
+npm run wuziqi:ui:check   # Wuziqi desktop/mobile board and setup checks
+npm run api:check         # one live Hold’em structured decision
+npm run go:api:check      # one live Go decision using the Go key
+npm run wuziqi:api:check  # one live Wuziqi decision using the Wuziqi key
+npm run flow:check        # live multi-character Hold’em turn chain
+npm run arena:check       # one complete live Hold’em AI Arena hand
 ```
 
-`npm run ui:check`, `npm run flow:check`, and `npm run arena:check` expect the local server to be running.
+Browser and flow checks expect the local server to be running. Live API checks consume API usage.
 
 ## Structure
 
 ```text
-public/                   Browser UI and bundled image/card assets
-src/poker-game.js         Authoritative Hold'em state machine
-src/hand-evaluator.js     Five-to-seven-card evaluation and side pots
-src/openai-player.js      Luna Responses API stream and validation
-server.js                 Local web server, SSE updates, AI turn orchestration
-test/                     Deterministic rules tests
-scripts/                  Live API and browser smoke checks
+public/                         Casino lobby and all browser interfaces
+public/games/holdem/            Hold’em entry page
+public/games/go/                Go interface
+public/games/wuziqi/            Wuziqi interface
+src/poker-game.js               Authoritative Hold’em state machine
+src/games/go-game.js            Authoritative Go engine and scoring
+src/games/wuziqi-game.js        Authoritative Wuziqi engine
+src/platform/model-registry.js  Model, reasoning, and credential allowlists
+src/platform/openai-gateway.js  Shared Responses API streaming and schemas
+src/platform/characters.js      Public AI character registry
+server.js                       APIs, SSE streams, and AI turn orchestration
+test/                           Deterministic rules and privacy tests
+scripts/                        Browser, live API, and flow checks
 ```
 
-## Generated visual
+## Visual asset
 
-The final casino backdrop is saved at `public/assets/casino-ambient.png`. It was generated through the Image API using `gpt-image-2` with this production prompt:
-
-> A luxurious midnight casino interior with deep burgundy velvet walls, emerald shadow tones, brushed brass trim, crystal chandeliers, subtle haze and warm pools of light. Premium cinematic Art Deco realism; extra-wide symmetrical room; low-contrast empty center for an HTML poker table; detail concentrated around the edges. No people, cards, chips, gaming tables, roulette, text, logos, watermark, or interface elements.
+The shared casino backdrop at `public/assets/casino-ambient.png` was generated with `gpt-image-2`. All table, board, stone, chip, and lobby components are original HTML/CSS interfaces; the Hold’em room reuses the card artwork from the earlier desktop game.
 
 ## OpenAI references
 
-- [GPT-5.6 Luna model](https://developers.openai.com/api/docs/models/gpt-5.6-luna)
-- [Reasoning models and summaries](https://developers.openai.com/api/docs/guides/reasoning#reasoning-summaries)
+- [Using GPT-5.6](https://developers.openai.com/api/docs/guides/model-guidance?model=gpt-5.6)
+- [GPT-5.6 models](https://developers.openai.com/api/docs/models)
+- [Reasoning summaries](https://developers.openai.com/api/docs/guides/reasoning#reasoning-summaries)
 - [Streaming Responses](https://developers.openai.com/api/docs/guides/streaming-responses)
 - [Structured Outputs](https://developers.openai.com/api/docs/guides/structured-outputs)

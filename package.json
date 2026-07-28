@@ -1,18 +1,20 @@
 {
-  "name": "luna-holdem",
+  "name": "jys-ai-playground",
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Browser Texas Hold'em with OpenAI GPT-5.6 Luna opponents.",
+  "description": "Casino-inspired Texas Hold'em, Go, and Wuziqi with selectable OpenAI GPT-5.6 opponents.",
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
     "test": "node --test",
-    "check": "node --check server.js && node --check public/app.js && node --test",
+    "check": "node --check server.js && node --check public/app.js && node --check public/lobby.js && node --check public/games/go/go.js && node --check public/games/wuziqi/wuziqi.js && node --test",
     "api:check": "node scripts/check-openai.js",
     "ui:check": "node scripts/check-ui.js",
     "go:ui:check": "node scripts/check-go-ui.js",
+    "go:api:check": "node scripts/check-board-openai.js go",
     "wuziqi:ui:check": "node scripts/check-wuziqi-ui.js",
+    "wuziqi:api:check": "node scripts/check-board-openai.js wuziqi",
     "flow:check": "node scripts/check-game-flow.js",
     "arena:check": "node scripts/check-arena-flow.js"
   },

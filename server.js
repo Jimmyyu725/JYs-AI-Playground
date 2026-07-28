@@ -665,7 +665,7 @@ app.use((error, _request, response, _next) => {
 
 const port = Number.parseInt(process.env.PORT, 10) || 4173;
 const server = app.listen(port, "127.0.0.1", () => {
-  console.log(`Luna Hold'em is ready at http://127.0.0.1:${port}`);
+  console.log(`JYs AI Playground is ready at http://127.0.0.1:${port}`);
 });
 
 server.requestTimeout = 0;
