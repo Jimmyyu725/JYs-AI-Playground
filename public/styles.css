@@ -407,6 +407,15 @@ button { color: inherit; }
 .raise-bounds { display: flex; justify-content: space-between; color: var(--dim); font: 400 8px/1 var(--mono); }
 .raise-console .compact { grid-column: 2; grid-row: 1 / span 3; min-width: 82px; height: 47px; }
 
+.action-dock.arena-mode { grid-template-columns: minmax(220px, .72fr) minmax(450px, 1.6fr); }
+.arena-controls { display: grid; grid-template-columns: minmax(190px, 1fr) auto auto; align-items: center; gap: 12px; }
+.arena-meter { display: grid; gap: 5px; }
+.arena-meter strong { color: var(--ink); font: 600 17px/1 var(--display); }
+.arena-track { height: 4px; overflow: hidden; border-radius: 99px; background: rgba(255,255,255,.08); }
+.arena-track i { width: 0; height: 100%; display: block; border-radius: inherit; background: linear-gradient(90deg, var(--gold-dark), var(--gold-bright)); box-shadow: 0 0 12px rgba(240,210,138,.3); transition: width 280ms ease; }
+.arena-toggle, .arena-new { min-width: 116px; }
+.arena-new { justify-content: center; }
+
 .gold-button {
   min-height: 44px;
   padding: 0 20px;
@@ -479,9 +488,18 @@ button { color: inherit; }
 .setup-card h1 { margin: 5px 0 7px; font: 600 44px/.95 var(--display); }
 .setup-lede { width: min(420px, 100%); margin: 0 auto 24px; color: var(--muted); font-size: 10px; line-height: 1.6; }
 .field { display: grid; gap: 7px; text-align: left; }
-.field > span, .opponent-field legend { color: #c2c8c3; font-size: 8px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+.field > span, .opponent-field legend, .mode-field legend { color: #c2c8c3; font-size: 8px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
 .field input, .field select { width: 100%; height: 43px; padding: 0 12px; border: 1px solid rgba(255,255,255,.1); border-radius: 7px; outline: none; background: #08120f; color: var(--ink); font-size: 11px; }
 .field input:focus, .field select:focus { border-color: var(--gold); }
+.mode-field { margin: 0 0 18px; padding: 0; border: 0; text-align: left; }
+.mode-field legend { margin-bottom: 8px; }
+.mode-options { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+.mode-options input { position: absolute; opacity: 0; }
+.mode-options label > span { min-height: 76px; display: grid; grid-template-columns: 37px 1fr; grid-template-rows: auto auto; align-content: center; gap: 3px 10px; padding: 12px; border: 1px solid rgba(255,255,255,.09); border-radius: 8px; background: rgba(0,0,0,.15); cursor: pointer; }
+.mode-options b { grid-row: 1 / span 2; align-self: center; color: var(--gold); font: 500 25px/1 var(--display); text-align: center; }
+.mode-options strong { align-self: end; color: var(--ink); font: 600 15px/1 var(--display); }
+.mode-options small { align-self: start; color: var(--dim); font-size: 8px; }
+.mode-options input:checked + span { border-color: var(--gold); background: linear-gradient(135deg, rgba(215,182,106,.13), rgba(0,0,0,.12)); box-shadow: inset 0 0 18px rgba(215,182,106,.04); }
 .opponent-field { margin: 18px 0; padding: 0; border: 0; text-align: left; }
 .opponent-field legend { margin-bottom: 8px; }
 .opponent-options { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; }
@@ -491,6 +509,7 @@ button { color: inherit; }
 .opponent-options small { color: var(--dim); font-size: 7px; text-transform: uppercase; }
 .opponent-options input:checked + span { border-color: var(--gold); background: rgba(215,182,106,.09); color: var(--gold-bright); }
 .setup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.setup-grid.arena-configured { grid-template-columns: repeat(3, 1fr); }
 .character-preview { display: flex; justify-content: center; margin: 21px 0 18px; }
 .preview-character { position: relative; width: 42px; height: 42px; display: grid; place-items: center; margin-left: -5px; border: 2px solid #0d1c17; border-radius: 50%; background: var(--character-color); color: #fff; font: 600 10px/1 var(--display); box-shadow: 0 3px 9px #000; }
 .preview-character:first-child { margin-left: 0; }
@@ -531,11 +550,17 @@ button { color: inherit; }
   .community-cards { gap: 4px; }
   .playing-card { width: 49px; }
   .action-dock { grid-template-columns: 1fr; gap: 10px; }
+  .action-dock.arena-mode { grid-template-columns: 1fr; }
   .action-context { display: none; }
+  .arena-controls { grid-template-columns: 1fr 1fr; }
+  .arena-meter { grid-column: 1 / -1; }
   .raise-console { grid-template-columns: 1fr auto; }
   .insight-rail { grid-template-columns: 1fr; }
   .promise-panel { grid-column: auto; }
   .opponent-options { grid-template-columns: repeat(2, 1fr); }
+  .mode-options { grid-template-columns: 1fr; }
+  .setup-grid, .setup-grid.arena-configured { grid-template-columns: 1fr 1fr; }
+  .arena-target-field { grid-column: 1 / -1; }
   .setup-card { padding: 24px 18px; }
   .setup-card h1 { font-size: 37px; }
 }

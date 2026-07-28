@@ -13,6 +13,7 @@ const sseClients = new Set();
 const activeAIVersions = new Set();
 let game = null;
 let gameVersion = 0;
+const bettingPhases = new Set(["preflop", "flop", "turn", "river"]);
 
 app.disable("x-powered-by");
 app.use(express.json({ limit: "32kb" }));
@@ -55,14 +56,36 @@ function scheduleAITurn(version = gameVersion) {
   setImmediate(() => runAIChain(version));
 }
 
+function shouldRunAutomation(table) {
+  if (!table || table.aiError) return false;
+  if (table.isArenaMode) {
+    if (table.arenaPaused || table.arenaFinished) return false;
+    if (table.phase === "hand_over") return true;
+  }
+  return Boolean(table.currentActor && !table.currentActor.isHuman && bettingPhases.has(table.phase));
+}
+
+function arenaIntermission() {
+  return new Promise((resolve) => setTimeout(resolve, 700));
+}
+
 async function runAIChain(version) {
   if (activeAIVersions.has(version)) return;
   activeAIVersions.add(version);
   try {
     while (game && version === gameVersion) {
       const table = game;
+      if (table.isArenaMode && (table.arenaPaused || table.arenaFinished)) break;
+      if (table.isArenaMode && table.phase === "hand_over") {
+        await arenaIntermission();
+        if (game !== table || version !== gameVersion || table.arenaPaused || table.arenaFinished) break;
+        table.startNewHand();
+        broadcastState();
+        continue;
+      }
+
       const actor = table.currentActor;
-      if (!actor || actor.isHuman || table.aiError || !["preflop", "flop", "turn", "river"].includes(table.phase)) break;
+      if (!actor || actor.isHuman || table.aiError || !bettingPhases.has(table.phase)) break;
 
       const seat = actor.seat;
       const startedAt = performance.now();
@@ -118,7 +141,7 @@ async function runAIChain(version) {
     }
   } finally {
     activeAIVersions.delete(version);
-    if (game && version === gameVersion && game.currentActor && !game.currentActor.isHuman && !game.aiError) {
+    if (game && version === gameVersion && shouldRunAutomation(game)) {
       scheduleAITurn(version);
     }
   }
@@ -208,6 +231,29 @@ app.post("/api/retry-ai", (_request, response, next) => {
       throw error;
     }
     table.clearAIError();
+    response.json(table.publicState());
+    broadcastState();
+    scheduleAITurn(gameVersion);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/arena/pause", (_request, response, next) => {
+  try {
+    const table = requireGame();
+    table.pauseArena();
+    response.json(table.publicState());
+    broadcastState();
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/arena/resume", (_request, response, next) => {
+  try {
+    const table = requireGame();
+    table.resumeArena();
     response.json(table.publicState());
     broadcastState();
     scheduleAITurn(gameVersion);

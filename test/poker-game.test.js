@@ -47,3 +47,39 @@ test("completes a checked-down hand and conserves every chip", () => {
   assert.ok(safety < 30);
 });
 
+test("starts an all-Luna arena and reveals every card to the spectator", () => {
+  const game = new PokerGame({ gameMode: "arena", opponentCount: 3, arenaHandTarget: 10 });
+  const state = game.publicState();
+  assert.equal(state.gameMode, "arena");
+  assert.equal(state.players.length, 3);
+  assert.ok(state.players.every((player) => !player.isHuman));
+  assert.ok(state.players.every((player) => player.holeCards.length === 2 && !player.holeCards.includes("BACK")));
+  assert.equal(state.legalActions, null);
+  assert.deepEqual(state.arena, { paused: false, finished: false, handTarget: 10, handsPlayed: 0 });
+  assert.equal(game.currentActor.isHuman, false);
+});
+
+test("pauses an arena when its completed-hand target is reached", () => {
+  const game = new PokerGame({ gameMode: "arena", opponentCount: 2, arenaHandTarget: 1 });
+  let safety = 0;
+  while (["preflop", "flop", "turn", "river"].includes(game.phase) && safety < 30) {
+    const actor = game.currentActor;
+    const legal = game.legalActionsFor(actor);
+    game.applyAction(actor.seat, legal.toCall > 0 ? "call" : "check");
+    safety += 1;
+  }
+  const state = game.publicState();
+  assert.equal(state.phase, "hand_over");
+  assert.equal(state.arena.handsPlayed, 1);
+  assert.equal(state.arena.finished, true);
+  assert.equal(state.arena.paused, true);
+  assert.throws(() => game.resumeArena(), /session is complete/i);
+});
+
+test("supports pausing and resuming an active arena", () => {
+  const game = new PokerGame({ gameMode: "arena", opponentCount: 2, arenaHandTarget: 5 });
+  game.pauseArena();
+  assert.equal(game.publicState().arena.paused, true);
+  game.resumeArena();
+  assert.equal(game.publicState().arena.paused, false);
+});

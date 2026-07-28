@@ -10,10 +10,12 @@ const elements = Object.fromEntries(
   [
     "hand-number", "blind-label", "phase-label", "turn-label", "pot-value", "community-cards", "seat-layer",
     "table-overlay", "overlay-eyebrow", "overlay-title", "overlay-copy", "overlay-action", "action-context-title",
-    "action-context-copy", "fold-button", "check-call-button", "check-call-label", "all-in-button", "raise-kind",
+    "action-context-eyebrow", "action-context-copy", "action-dock", "primary-actions", "raise-console", "fold-button", "check-call-button", "check-call-label", "all-in-button", "raise-kind",
     "raise-value", "raise-slider", "raise-min", "raise-max", "raise-button", "live-indicator", "thinker-profile",
     "reasoning-status", "reasoning-text", "thinking-cursor", "decision-explanation", "history-list", "scroll-latest",
-    "setup-modal", "setup-form", "opponent-options", "character-preview", "cancel-setup", "new-table-button", "toast",
+    "arena-controls", "arena-progress", "arena-track-fill", "arena-toggle", "arena-new-table", "setup-modal", "setup-form",
+    "setup-lede", "mode-options", "human-name-field", "player-count-legend", "opponent-options", "setup-grid",
+    "arena-target-field", "arena-hand-target", "setup-submit", "character-preview", "cancel-setup", "new-table-button", "toast",
   ].map((id) => [id.replace(/-([a-z])/g, (_match, letter) => letter.toUpperCase()), document.getElementById(id)]),
 );
 
@@ -83,6 +85,7 @@ function renderBoard() {
 
 function seatPositions(count) {
   const maps = {
+    2: [[50, 91], [50, 7]],
     3: [[50, 91], [12, 24], [88, 24]],
     4: [[50, 91], [8, 54], [50, 7], [92, 54]],
     5: [[50, 91], [9, 64], [24, 8], [76, 8], [91, 64]],
@@ -170,6 +173,47 @@ function renderSeats() {
 }
 
 function renderControls() {
+  const isArena = state.gameMode === "arena";
+  elements.actionDock.classList.toggle("arena-mode", isArena);
+  elements.primaryActions.classList.toggle("hidden", isArena);
+  elements.raiseConsole.classList.toggle("hidden", isArena);
+  elements.arenaControls.classList.toggle("hidden", !isArena);
+  elements.actionContextEyebrow.textContent = isArena ? "AI Arena director" : "Your decision";
+
+  if (isArena) {
+    elements.foldButton.disabled = true;
+    elements.checkCallButton.disabled = true;
+    elements.allInButton.disabled = true;
+    elements.raiseSlider.disabled = true;
+    elements.raiseButton.disabled = true;
+    const target = state.arena.handTarget;
+    const completed = state.arena.handsPlayed;
+    elements.arenaProgress.textContent = target === null
+      ? `${completed} hand${completed === 1 ? "" : "s"} · unlimited`
+      : `${completed} / ${target} hands`;
+    elements.arenaTrackFill.style.width = target === null ? "100%" : `${Math.min(100, (completed / target) * 100)}%`;
+    elements.arenaToggle.textContent = state.arena.paused ? "Resume arena" : "Pause arena";
+    elements.arenaToggle.disabled = state.arena.finished;
+
+    if (state.aiError) {
+      elements.actionContextTitle.textContent = "Model request paused";
+      elements.actionContextCopy.textContent = "Retry Luna to continue. No local action will be substituted.";
+    } else if (state.arena.finished) {
+      elements.actionContextTitle.textContent = "Arena session complete";
+      elements.actionContextCopy.textContent = `${completed} hand${completed === 1 ? "" : "s"} played with every decision made by Luna.`;
+    } else if (state.arena.paused) {
+      elements.actionContextTitle.textContent = state.aiThinking ? "Pausing after this decision" : "Arena paused";
+      elements.actionContextCopy.textContent = "Resume when you are ready for the next Luna decision.";
+    } else if (state.aiThinking) {
+      elements.actionContextTitle.textContent = `${state.aiThinking.playerName} is considering the room`;
+      elements.actionContextCopy.textContent = "Every seat uses GPT-5.6 Luna with medium reasoning.";
+    } else {
+      elements.actionContextTitle.textContent = state.phase === "hand_over" ? "Preparing the next hand" : "AI Arena is live";
+      elements.actionContextCopy.textContent = "All hole cards are visible to you; each AI sees only its own cards.";
+    }
+    return;
+  }
+
   const legal = state.legalActions;
   const active = Boolean(legal) && !actionBusy && !state.aiError;
   const has = (action) => active && legal.actions.includes(action);
@@ -218,7 +262,28 @@ function renderOverlay() {
     elements.overlayAction.textContent = "Retry Luna";
     elements.overlayAction.dataset.action = "retry";
     elements.tableOverlay.classList.remove("hidden");
-  } else if (state.phase === "hand_over") {
+  } else if (state.gameMode === "arena" && state.phase === "game_over") {
+    elements.overlayEyebrow.textContent = "Arena complete";
+    elements.overlayTitle.textContent = "The Luna Room has a champion";
+    elements.overlayCopy.textContent = state.logs.find((entry) => entry.kind === "result")?.text ?? "Open a new arena to watch another battle.";
+    elements.overlayAction.textContent = "Open new table";
+    elements.overlayAction.dataset.action = "new";
+    elements.tableOverlay.classList.remove("hidden");
+  } else if (state.gameMode === "arena" && state.arena.finished) {
+    elements.overlayEyebrow.textContent = "Session target reached";
+    elements.overlayTitle.textContent = `${state.arena.handsPlayed} hands complete`;
+    elements.overlayCopy.textContent = state.logs.find((entry) => entry.kind === "result")?.text ?? "The AI Arena session is complete.";
+    elements.overlayAction.textContent = "Open new table";
+    elements.overlayAction.dataset.action = "new";
+    elements.tableOverlay.classList.remove("hidden");
+  } else if (state.gameMode === "arena" && state.phase === "hand_over" && state.arena.paused) {
+    elements.overlayEyebrow.textContent = "Arena paused";
+    elements.overlayTitle.textContent = "The pot is settled";
+    elements.overlayCopy.textContent = state.logs.find((entry) => entry.kind === "result")?.text ?? "Resume when you are ready for another hand.";
+    elements.overlayAction.textContent = "Resume arena";
+    elements.overlayAction.dataset.action = "resume";
+    elements.tableOverlay.classList.remove("hidden");
+  } else if (state.gameMode !== "arena" && state.phase === "hand_over") {
     elements.overlayEyebrow.textContent = "Hand complete";
     elements.overlayTitle.textContent = "The pot is settled";
     const lastResult = state.logs.find((entry) => entry.kind === "result");
@@ -226,7 +291,7 @@ function renderOverlay() {
     elements.overlayAction.textContent = "Deal next hand";
     elements.overlayAction.dataset.action = "next";
     elements.tableOverlay.classList.remove("hidden");
-  } else if (state.phase === "game_over") {
+  } else if (state.gameMode !== "arena" && state.phase === "game_over") {
     elements.overlayEyebrow.textContent = "Table complete";
     elements.overlayTitle.textContent = "The Luna Room has a winner";
     elements.overlayCopy.textContent = state.logs.find((entry) => entry.kind === "result")?.text ?? "Open a new table to play again.";
@@ -293,7 +358,9 @@ function render() {
   elements.phaseLabel.textContent = phaseName(state.phase);
   elements.potValue.textContent = chips(state.pot);
   const actor = state.players.find((player) => player.seat === state.currentActorSeat);
-  elements.turnLabel.textContent = actor ? `${actor.name} to act` : state.phase === "hand_over" ? "Pot settled" : "Dealer resolving the hand";
+  elements.turnLabel.textContent = state.gameMode === "arena" && state.arena.paused
+    ? state.aiThinking ? "Pausing after the current decision" : "Arena paused"
+    : actor ? `${actor.name} to act` : state.phase === "hand_over" ? "Pot settled" : "Dealer resolving the hand";
   renderBoard();
   renderSeats();
   renderControls();
@@ -331,16 +398,40 @@ function updateCharacterPreview() {
   }
 }
 
+function selectedSetupMode() {
+  return new FormData(elements.setupForm).get("gameMode") === "arena" ? "arena" : "human";
+}
+
+function updateSetupMode() {
+  const isArena = selectedSetupMode() === "arena";
+  elements.humanNameField.classList.toggle("hidden", isArena);
+  elements.arenaTargetField.classList.toggle("hidden", !isArena);
+  elements.setupGrid.classList.toggle("arena-configured", isArena);
+  elements.playerCountLegend.textContent = isArena ? "Choose AI seats" : "Choose your opponents";
+  elements.setupLede.textContent = isArena
+    ? "An all-Luna table. See every card, follow every decision, and pause the action whenever you like."
+    : "One human. Distinct characters. Every opponent powered only by GPT-5.6 Luna.";
+  elements.setupSubmit.textContent = isArena ? "Start AI Arena" : "Take your seat";
+  for (const label of elements.opponentOptions.querySelectorAll("small")) {
+    label.textContent = isArena ? label.dataset.arena : label.dataset.human;
+  }
+  updateCharacterPreview();
+}
+
 elements.setupForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const data = new FormData(elements.setupForm);
+  const gameMode = data.get("gameMode") === "arena" ? "arena" : "human";
   const [smallBlind, bigBlind] = String(data.get("blinds")).split(",").map(Number);
+  const targetValue = data.get("arenaHandTarget");
   const payload = {
+    gameMode,
     humanName: data.get("humanName"),
     opponentCount: Number(data.get("opponentCount")),
     startingStack: Number(data.get("startingStack")),
     smallBlind,
     bigBlind,
+    arenaHandTarget: targetValue === "unlimited" ? null : Number(targetValue),
   };
   const submit = elements.setupForm.querySelector('button[type="submit"]');
   submit.disabled = true;
@@ -357,13 +448,43 @@ elements.setupForm.addEventListener("submit", async (event) => {
     showToast(error.message);
   } finally {
     submit.disabled = false;
-    submit.textContent = "Take your seat";
+    submit.textContent = selectedSetupMode() === "arena" ? "Start AI Arena" : "Take your seat";
   }
 });
 
 elements.opponentOptions.addEventListener("change", updateCharacterPreview);
-elements.newTableButton.addEventListener("click", () => elements.setupModal.classList.remove("hidden"));
+elements.modeOptions.addEventListener("change", updateSetupMode);
+
+async function openSetup() {
+  try {
+    if (state?.gameMode === "arena" && !state.arena.paused && !state.arena.finished) {
+      state = await request("/api/arena/pause", { method: "POST", body: "{}" });
+      render();
+    }
+  } catch (error) {
+    showToast(error.message);
+  }
+  elements.setupModal.classList.remove("hidden");
+}
+
+async function toggleArena() {
+  if (!state?.arena || state.arena.finished) return;
+  elements.arenaToggle.disabled = true;
+  try {
+    const endpoint = state.arena.paused ? "/api/arena/resume" : "/api/arena/pause";
+    state = await request(endpoint, { method: "POST", body: "{}" });
+    render();
+  } catch (error) {
+    showToast(error.message);
+  } finally {
+    elements.arenaToggle.disabled = Boolean(state?.arena?.finished);
+  }
+}
+
+elements.newTableButton.addEventListener("click", openSetup);
 elements.cancelSetup.addEventListener("click", () => elements.setupModal.classList.add("hidden"));
+elements.arenaToggle.addEventListener("click", toggleArena);
+elements.arenaNewTable.addEventListener("click", openSetup);
 elements.foldButton.addEventListener("click", () => performAction("fold"));
 elements.checkCallButton.addEventListener("click", () => performAction(state.legalActions?.actions.includes("call") ? "call" : "check"));
 elements.allInButton.addEventListener("click", () => performAction("all_in"));
@@ -375,10 +496,10 @@ elements.overlayAction.addEventListener("click", async () => {
   const action = elements.overlayAction.dataset.action;
   try {
     if (action === "new") {
-      elements.setupModal.classList.remove("hidden");
+      await openSetup();
       return;
     }
-    const endpoint = action === "retry" ? "/api/retry-ai" : "/api/next-hand";
+    const endpoint = action === "retry" ? "/api/retry-ai" : action === "resume" ? "/api/arena/resume" : "/api/next-hand";
     elements.overlayAction.disabled = true;
     state = await request(endpoint, { method: "POST", body: "{}" });
     liveSummary = "";
@@ -424,7 +545,7 @@ events.onmessage = (event) => {
 events.onerror = () => showToast("Live table updates disconnected. Reconnecting…");
 
 async function bootstrap() {
-  updateCharacterPreview();
+  updateSetupMode();
   try {
     state = await request("/api/state");
     if (state) {

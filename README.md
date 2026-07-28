@@ -23,9 +23,16 @@ Then open [http://127.0.0.1:4173](http://127.0.0.1:4173).
 
 The API key stays in `.env.local` as `OPENAI_API_KEY`; that file is ignored by Git. Never move the key into browser JavaScript.
 
+## Table modes
+
+- **Play vs AI:** one human against 2–5 Luna characters
+- **AI vs AI Arena:** 2–5 Luna characters play automatically for 5, 10, 25, or unlimited hands
+- pause and resume an Arena without replacing an in-flight or future decision with a local policy
+- every AI hole card is face-up to the Arena spectator, while each model receives only its own cards and public information
+- automatic hand-to-hand dealing until the selected target or a table champion
+
 ## The table
 
-- 1 human against 2–5 AI opponents
 - distinct AI characters, names, colors, and poker styles
 - configurable starting stacks and blinds
 - full pre-flop, flop, turn, river, showdown, and next-hand flow
@@ -51,9 +58,10 @@ npm run check       # syntax, hand evaluator, side pots, rules, full checked-dow
 npm run ui:check    # desktop and mobile browser rendering, assets, controls, overflow
 npm run api:check   # one live Luna structured decision
 npm run flow:check  # live multi-character turn chain through the running server
+npm run arena:check # one complete live all-Luna Arena hand and target stop
 ```
 
-`npm run ui:check` and `npm run flow:check` expect the local server to be running.
+`npm run ui:check`, `npm run flow:check`, and `npm run arena:check` expect the local server to be running.
 
 ## Structure
 
@@ -79,4 +87,3 @@ The final casino backdrop is saved at `public/assets/casino-ambient.png`. It was
 - [Reasoning models and summaries](https://developers.openai.com/api/docs/guides/reasoning#reasoning-summaries)
 - [Streaming Responses](https://developers.openai.com/api/docs/guides/streaming-responses)
 - [Structured Outputs](https://developers.openai.com/api/docs/guides/structured-outputs)
-

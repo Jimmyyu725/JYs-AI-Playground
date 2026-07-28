@@ -52,21 +52,37 @@ function clampInteger(value, minimum, maximum, fallback) {
   return Number.isFinite(parsed) ? Math.min(maximum, Math.max(minimum, parsed)) : fallback;
 }
 
+function normalizeArenaHandTarget(value) {
+  if (value === null || value === 0 || String(value).toLowerCase() === "unlimited") return null;
+  return clampInteger(value, 1, 100, 10);
+}
+
 export class PokerGame {
   constructor(config = {}) {
     const opponentCount = clampInteger(config.opponentCount, 2, 5, 3);
+    this.gameMode = config.gameMode === "arena" ? "arena" : "human";
+    this.arenaHandTarget = this.gameMode === "arena" ? normalizeArenaHandTarget(config.arenaHandTarget) : null;
+    this.arenaPaused = this.gameMode === "arena" && Boolean(config.arenaPaused);
+    this.arenaFinished = false;
+    this.completedHands = 0;
     this.startingStack = clampInteger(config.startingStack, 200, 100_000, 1_000);
     this.smallBlind = clampInteger(config.smallBlind, 1, 10_000, 10);
     this.bigBlind = clampInteger(config.bigBlind, this.smallBlind * 2, 20_000, 20);
     if (this.smallBlind >= this.bigBlind) this.smallBlind = Math.max(1, Math.floor(this.bigBlind / 2));
 
-    const humanName = String(config.humanName ?? "You").trim().slice(0, 18) || "You";
-    this.players = [
-      this._makePlayer(0, humanName, true, null),
-      ...BOT_CHARACTERS.slice(0, opponentCount).map((character, index) =>
-        this._makePlayer(index + 1, character.name, false, character),
-      ),
-    ];
+    if (this.gameMode === "arena") {
+      this.players = BOT_CHARACTERS.slice(0, opponentCount).map((character, index) =>
+        this._makePlayer(index, character.name, false, character),
+      );
+    } else {
+      const humanName = String(config.humanName ?? "You").trim().slice(0, 18) || "You";
+      this.players = [
+        this._makePlayer(0, humanName, true, null),
+        ...BOT_CHARACTERS.slice(0, opponentCount).map((character, index) =>
+          this._makePlayer(index + 1, character.name, false, character),
+        ),
+      ];
+    }
 
     this.handNumber = 0;
     this.dealerSeat = -1;
@@ -83,7 +99,12 @@ export class PokerGame {
     this.aiError = null;
     this.aiThinking = null;
     this.lastShowdown = null;
-    this._log("system", `Welcome to the Luna Room. ${opponentCount} distinct personalities have taken their seats.`);
+    this._log(
+      "system",
+      this.gameMode === "arena"
+        ? `AI Arena opens with ${opponentCount} Luna personalities at the table.`
+        : `Welcome to the Luna Room. ${opponentCount} distinct personalities have taken their seats.`,
+    );
     this.startNewHand();
   }
 
@@ -129,6 +150,10 @@ export class PokerGame {
     return this.currentActorSeat === null ? null : this.players[this.currentActorSeat];
   }
 
+  get isArenaMode() {
+    return this.gameMode === "arena";
+  }
+
   livePlayers() {
     return this.players.filter((player) => player.stack > 0);
   }
@@ -162,9 +187,14 @@ export class PokerGame {
 
   startNewHand() {
     if (!["waiting", "hand_over"].includes(this.phase)) throw new Error("The current hand is still in progress");
+    if (this.isArenaMode && this.arenaFinished) throw new Error("This AI Arena session is complete");
     if (this.livePlayers().length < 2) {
       this.phase = "game_over";
       this.currentActorSeat = null;
+      if (this.isArenaMode) {
+        this.arenaPaused = true;
+        this.arenaFinished = true;
+      }
       return;
     }
 
@@ -469,6 +499,7 @@ export class PokerGame {
       player.allIn = false;
       if (player.stack <= 0) player.inHand = false;
     }
+    this.completedHands += 1;
     if (this.livePlayers().length < 2) {
       this.phase = "game_over";
       const winner = this.players.reduce((best, player) => (player.stack > best.stack ? player : best), this.players[0]);
@@ -476,6 +507,24 @@ export class PokerGame {
     } else {
       this.phase = "hand_over";
     }
+    if (this.isArenaMode && (this.phase === "game_over" || (this.arenaHandTarget !== null && this.completedHands >= this.arenaHandTarget))) {
+      this.arenaPaused = true;
+      this.arenaFinished = true;
+      if (this.phase !== "game_over") {
+        this._log("system", `AI Arena target reached after ${this.completedHands} hand${this.completedHands === 1 ? "" : "s"}.`);
+      }
+    }
+  }
+
+  pauseArena() {
+    if (!this.isArenaMode) throw new Error("This table is not running in AI Arena mode");
+    this.arenaPaused = true;
+  }
+
+  resumeArena() {
+    if (!this.isArenaMode) throw new Error("This table is not running in AI Arena mode");
+    if (this.arenaFinished) throw new Error("This AI Arena session is complete");
+    this.arenaPaused = false;
   }
 
   recordAIInsight(seat, { summary, summarySource, explanation, latencyMs }) {
@@ -544,6 +593,15 @@ export class PokerGame {
       model: MODEL_ID,
       reasoningEffort: REASONING_EFFORT,
       noLocalFallback: true,
+      gameMode: this.gameMode,
+      arena: this.isArenaMode
+        ? {
+            paused: this.arenaPaused,
+            finished: this.arenaFinished,
+            handTarget: this.arenaHandTarget,
+            handsPlayed: this.completedHands,
+          }
+        : null,
       handNumber: this.handNumber,
       phase: this.phase,
       pot: this.potTotal,
@@ -560,7 +618,7 @@ export class PokerGame {
       aiThinking: this.aiThinking,
       canStartNextHand: this.phase === "hand_over",
       players: this.players.map((player) => {
-        const revealCards = player.isHuman || player.hasShown;
+        const revealCards = this.isArenaMode || player.isHuman || player.hasShown;
         return {
           seat: player.seat,
           name: player.name,
