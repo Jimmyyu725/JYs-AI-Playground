@@ -11,6 +11,7 @@
     "check": "node --check server.js && node --check public/app.js && node --test",
     "api:check": "node scripts/check-openai.js",
     "ui:check": "node scripts/check-ui.js",
+    "go:ui:check": "node scripts/check-go-ui.js",
     "flow:check": "node scripts/check-game-flow.js",
     "arena:check": "node scripts/check-arena-flow.js"
   },

@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#171006" />
+    <title>Go 围棋 — JYs AI Playground</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="/games/go/go.css" />
+  </head>
+  <body>
+    <div class="room-backdrop" aria-hidden="true"></div>
+    <div class="noise" aria-hidden="true"></div>
+
+    <header class="topbar">
+      <div class="room-branding">
+        <a class="lobby-return" href="/">← Playground</a>
+        <button class="brand" id="new-game-button" type="button" aria-label="Open Go setup">
+          <span class="brand-mark"><i></i><i></i></span>
+          <span><strong>The Go Salon</strong><small>围棋 · House of territory</small></span>
+        </button>
+      </div>
+      <div class="table-status">
+        <span class="status-pill model" id="model-pill"><i></i> GPT-5.6 Terra</span>
+        <span class="status-pill" id="reasoning-pill">Reasoning · Medium</span>
+        <span class="status-pill rules">Chinese area · Superko</span>
+      </div>
+      <div class="move-meta"><span>Move</span><strong id="move-number">0</strong></div>
+    </header>
+
+    <main class="go-shell">
+      <section class="board-column" aria-label="Go board and controls">
+        <div class="turn-ribbon">
+          <span class="turn-stone black" id="turn-stone"></span>
+          <strong id="turn-label">Black to play</strong>
+          <span id="turn-detail">Open a game to begin</span>
+        </div>
+
+        <div class="board-stage">
+          <div class="player-card black-player" id="black-player"></div>
+          <div class="board-frame">
+            <div class="go-board" id="go-board" role="grid" aria-label="Go board"></div>
+            <div class="board-shine" aria-hidden="true"></div>
+          </div>
+          <div class="player-card white-player" id="white-player"></div>
+
+          <div class="game-overlay hidden" id="game-overlay">
+            <div class="overlay-card">
+              <span class="eyebrow" id="overlay-eyebrow">Game complete</span>
+              <h2 id="overlay-title">Territory settled</h2>
+              <p id="overlay-copy"></p>
+              <button class="gold-button" id="overlay-action" type="button">New game</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="score-dock">
+          <div class="score-cell"><span class="mini-stone black"></span><small>Black captures</small><strong id="black-captures">0</strong></div>
+          <div class="score-cell"><span class="mini-stone white"></span><small>White captures</small><strong id="white-captures">0</strong></div>
+          <div class="score-cell"><span class="komi-mark">K</span><small>White komi</small><strong id="komi-value">7.5</strong></div>
+          <div class="game-actions">
+            <button class="quiet-button" id="pass-button" type="button" disabled>Pass</button>
+            <button class="quiet-button danger" id="resign-button" type="button" disabled>Resign</button>
+            <button class="gold-button hidden" id="arena-toggle" type="button">Pause arena</button>
+          </div>
+        </div>
+      </section>
+
+      <aside class="insight-rail">
+        <section class="rail-panel decision-panel">
+          <div class="panel-heading">
+            <div><span class="eyebrow">OpenAI lens</span><h2>Reading the board</h2></div>
+            <span class="live-indicator" id="live-indicator"><i></i> Idle</span>
+          </div>
+          <div class="thinker-profile" id="thinker-profile">
+            <span class="profile-stone black"></span>
+            <div><strong>No active player</strong><span>Public rationale and supported summaries</span></div>
+          </div>
+          <div class="reasoning-terminal" aria-live="polite">
+            <div class="terminal-line"><span>MODEL /</span><span id="reasoning-status">No model request is active.</span></div>
+            <p class="live-summary" id="reasoning-text">Completed summaries remain in the transcript below.</p>
+            <div class="transcript-heading"><span>Persistent decision log</span><strong id="reasoning-count">0 entries</strong></div>
+            <ol class="reasoning-feed" id="reasoning-feed"></ol>
+          </div>
+        </section>
+
+        <section class="rail-panel history-panel">
+          <div class="panel-heading compact"><div><span class="eyebrow">Game record</span><h2>Move history</h2></div></div>
+          <ol class="history-list" id="history-list"></ol>
+        </section>
+
+        <section class="rail-panel house-note">
+          <span>∞</span><div><strong>No artificial turn timer</strong><p>The room waits for the selected OpenAI model. Illegal moves or API errors pause play for an explicit retry.</p></div>
+        </section>
+      </aside>
+    </main>
+
+    <div class="modal-backdrop" id="setup-modal">
+      <form class="setup-card" id="setup-form">
+        <div class="setup-ornament"><i></i><span>囲</span><i></i></div>
+        <span class="eyebrow">The house of territory</span>
+        <h1>Open a Go board</h1>
+        <p class="setup-lede" id="setup-lede">Play under Chinese area scoring with authoritative captures and positional superko.</p>
+
+        <fieldset class="mode-field">
+          <legend>Game mode</legend>
+          <div class="mode-options" id="mode-options">
+            <label><input type="radio" name="gameMode" value="human" checked /><span><b>●</b><strong>Play vs AI</strong><small>Take one color</small></span></label>
+            <label><input type="radio" name="gameMode" value="arena" /><span><b>∞</b><strong>AI vs AI</strong><small>Watch both minds</small></span></label>
+          </div>
+        </fieldset>
+
+        <div class="setup-grid">
+          <label class="field" id="human-name-field"><span>Your name</span><input name="humanName" maxlength="18" value="Player" autocomplete="nickname" /></label>
+          <label class="field" id="human-color-field"><span>Your color</span><select name="humanColor"><option value="black" selected>Black · first move</option><option value="white">White · receives komi</option></select></label>
+          <label class="field"><span>Board size</span><select name="boardSize"><option value="9" selected>9 × 9 · quick</option><option value="13">13 × 13 · medium</option><option value="19">19 × 19 · full</option></select></label>
+          <label class="field"><span>Komi</span><select name="komi"><option value="5.5">5.5</option><option value="6.5">6.5</option><option value="7.5" selected>7.5</option></select></label>
+        </div>
+
+        <section class="ai-roster-section">
+          <div class="roster-heading"><div><span>AI roster</span><small>Every seat can use a different model and depth</small></div><button class="text-button" id="apply-roster" type="button">Apply first to all</button></div>
+          <div class="ai-roster" id="ai-roster"></div>
+        </section>
+
+        <button class="gold-button enter-button" id="setup-submit" type="submit">Begin as Black</button>
+        <button class="text-button cancel-button hidden" id="cancel-setup" type="button">Return to current game</button>
+      </form>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script type="module" src="/games/go/go.js"></script>
+  </body>
+</html>

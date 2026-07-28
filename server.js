@@ -2,6 +2,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
 import express from "express";
+import { requestGoDecision } from "./src/games/go-ai.js";
+import { GoGame } from "./src/games/go-game.js";
 import { PokerGame } from "./src/poker-game.js";
 import { AIDecisionError, requestHoldemDecision } from "./src/openai-player.js";
 import { apiKeyForGame, publicModelRegistry } from "./src/platform/model-registry.js";
@@ -14,6 +16,10 @@ const sseClients = new Set();
 const activeAIVersions = new Set();
 let game = null;
 let gameVersion = 0;
+const goSSEClients = new Set();
+const activeGoAIVersions = new Set();
+let goGame = null;
+let goGameVersion = 0;
 const bettingPhases = new Set(["preflop", "flop", "turn", "river"]);
 
 app.disable("x-powered-by");
@@ -38,6 +44,20 @@ function broadcastState() {
   if (game) broadcast("state", game.publicState());
 }
 
+function broadcastGo(type, payload) {
+  for (const response of [...goSSEClients]) {
+    try {
+      sendSSE(response, type, payload);
+    } catch {
+      goSSEClients.delete(response);
+    }
+  }
+}
+
+function broadcastGoState() {
+  if (goGame) broadcastGo("state", goGame.publicState());
+}
+
 function requireGame() {
   if (!game) {
     const error = new Error("Start a table first");
@@ -45,6 +65,15 @@ function requireGame() {
     throw error;
   }
   return game;
+}
+
+function requireGoGame() {
+  if (!goGame) {
+    const error = new Error("Start a Go game first");
+    error.status = 409;
+    throw error;
+  }
+  return goGame;
 }
 
 function publicError(error) {
@@ -55,6 +84,11 @@ function publicError(error) {
 function scheduleAITurn(version = gameVersion) {
   if (!game || activeAIVersions.has(version)) return;
   setImmediate(() => runAIChain(version));
+}
+
+function scheduleGoAITurn(version = goGameVersion) {
+  if (!goGame || activeGoAIVersions.has(version)) return;
+  setImmediate(() => runGoAIChain(version));
 }
 
 function shouldRunAutomation(table) {
@@ -149,6 +183,75 @@ async function runAIChain(version) {
   }
 }
 
+async function runGoAIChain(version) {
+  if (activeGoAIVersions.has(version)) return;
+  activeGoAIVersions.add(version);
+  try {
+    while (goGame && version === goGameVersion) {
+      const table = goGame;
+      if (table.phase !== "active" || table.aiError || (table.isArenaMode && table.arenaPaused)) break;
+      const actor = table.currentPlayer;
+      if (!actor || actor.isHuman) break;
+
+      const color = actor.color;
+      const startedAt = performance.now();
+      table.aiThinking = { color, playerName: actor.name, status: `Connecting to ${actor.aiConfig.model}…`, startedAt: Date.now() };
+      broadcastGo("ai_stream", { phase: "started", color, playerName: actor.name, summary: "" });
+      broadcastGoState();
+
+      try {
+        const snapshot = table.aiSnapshot();
+        const decision = await requestGoDecision(snapshot, actor.aiConfig, {
+          onStatus(status) {
+            if (goGame !== table || version !== goGameVersion) return;
+            table.aiThinking = { ...table.aiThinking, status };
+            broadcastGo("ai_stream", { phase: "status", color, playerName: actor.name, status });
+            broadcastGoState();
+          },
+          onSummaryDelta(delta) {
+            if (goGame !== table || version !== goGameVersion) return;
+            broadcastGo("ai_stream", { phase: "summary_delta", color, playerName: actor.name, delta });
+          },
+        });
+
+        if (goGame !== table || version !== goGameVersion) return;
+        const latencyMs = performance.now() - startedAt;
+        const visibleSummary = decision.reasoningSummary || decision.explanation;
+        table.recordAIInsight(color, {
+          summary: visibleSummary,
+          summarySource: decision.reasoningSummary ? "openai_reasoning_summary" : "public_decision_rationale",
+          explanation: decision.explanation,
+          latencyMs,
+          action: decision.action,
+        });
+        table.aiThinking = null;
+        broadcastGo("ai_stream", {
+          phase: "completed",
+          color,
+          playerName: actor.name,
+          summary: visibleSummary,
+          explanation: decision.explanation,
+          latencyMs: Math.round(latencyMs),
+        });
+        table.applyAction(color, decision.action, decision.row, decision.column);
+        broadcastGoState();
+      } catch (error) {
+        if (goGame !== table || version !== goGameVersion) return;
+        const message = publicError(error);
+        table.setAIError(color, message);
+        broadcastGo("ai_stream", { phase: "error", color, playerName: actor.name, message });
+        broadcastGoState();
+        break;
+      }
+    }
+  } finally {
+    activeGoAIVersions.delete(version);
+    if (goGame && version === goGameVersion && goGame.phase === "active" && !goGame.aiError && !goGame.currentPlayer?.isHuman && !(goGame.isArenaMode && goGame.arenaPaused)) {
+      scheduleGoAITurn(version);
+    }
+  }
+}
+
 app.get("/api/health", (_request, response) => {
   response.json({
     ok: true,
@@ -158,7 +261,7 @@ app.get("/api/health", (_request, response) => {
       wuziqi: Boolean(apiKeyForGame("wuziqi").value),
     },
     models: publicModelRegistry(),
-    games: { holdem: true, go: false, wuziqi: false },
+    games: { holdem: true, go: true, wuziqi: false },
     noLocalFallback: true,
   });
 });
@@ -263,6 +366,98 @@ app.post("/api/arena/resume", (_request, response, next) => {
     response.json(table.publicState());
     broadcastState();
     scheduleAITurn(gameVersion);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/go/state", (_request, response) => {
+  response.json(goGame ? goGame.publicState() : null);
+});
+
+app.get("/api/go/events", (request, response) => {
+  response.set({
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache, no-transform",
+    Connection: "keep-alive",
+    "X-Accel-Buffering": "no",
+  });
+  response.flushHeaders();
+  goSSEClients.add(response);
+  sendSSE(response, "connected", { at: Date.now() });
+  if (goGame) sendSSE(response, "state", goGame.publicState());
+  const heartbeat = setInterval(() => response.write(": heartbeat\n\n"), 15_000);
+  request.on("close", () => {
+    clearInterval(heartbeat);
+    goSSEClients.delete(response);
+  });
+});
+
+app.post("/api/go/game", (request, response, next) => {
+  try {
+    goGameVersion += 1;
+    goGame = new GoGame(request.body ?? {});
+    response.status(201).json(goGame.publicState());
+    broadcastGoState();
+    scheduleGoAITurn(goGameVersion);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/go/action", (request, response, next) => {
+  try {
+    const table = requireGoGame();
+    const actor = table.currentPlayer;
+    if (!actor?.isHuman) {
+      const error = new Error("It is not the human player's turn");
+      error.status = 409;
+      throw error;
+    }
+    table.applyAction(actor.color, request.body?.action, request.body?.row ?? null, request.body?.column ?? null);
+    response.json(table.publicState());
+    broadcastGoState();
+    scheduleGoAITurn(goGameVersion);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/go/retry-ai", (_request, response, next) => {
+  try {
+    const table = requireGoGame();
+    if (!table.aiError) {
+      const error = new Error("There is no paused AI request to retry");
+      error.status = 409;
+      throw error;
+    }
+    table.clearAIError();
+    response.json(table.publicState());
+    broadcastGoState();
+    scheduleGoAITurn(goGameVersion);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/go/arena/pause", (_request, response, next) => {
+  try {
+    const table = requireGoGame();
+    table.pauseArena();
+    response.json(table.publicState());
+    broadcastGoState();
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/go/arena/resume", (_request, response, next) => {
+  try {
+    const table = requireGoGame();
+    table.resumeArena();
+    response.json(table.publicState());
+    broadcastGoState();
+    scheduleGoAITurn(goGameVersion);
   } catch (error) {
     next(error);
   }
