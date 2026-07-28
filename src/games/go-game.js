@@ -277,6 +277,15 @@ export class GoGame {
     });
   }
 
+  recordAIRetry(color, message, retryNumber, maxRetries) {
+    const player = this.players.find((candidate) => candidate.color === color);
+    this._log(
+      "system",
+      `${player.name}'s rejected model move was not played. Retrying automatically (${retryNumber}/${maxRetries}): ${message}`,
+      { color, retryNumber, maxRetries },
+    );
+  }
+
   setAIError(color, message) {
     this.aiThinking = null;
     const player = this.players.find((candidate) => candidate.color === color);

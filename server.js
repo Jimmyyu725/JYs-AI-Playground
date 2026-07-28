@@ -2,7 +2,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
 import express from "express";
-import { requestGoDecision } from "./src/games/go-ai.js";
+import { requestGoDecisionWithRetry } from "./src/games/go-ai.js";
 import { GoGame } from "./src/games/go-game.js";
 import { requestWuziqiDecision } from "./src/games/wuziqi-ai.js";
 import { WuziqiGame } from "./src/games/wuziqi-game.js";
@@ -234,17 +234,38 @@ async function runGoAIChain(version) {
       broadcastGoState();
 
       try {
-        const snapshot = table.aiSnapshot();
-        const decision = await requestGoDecision(snapshot, actor.aiConfig, {
-          onStatus(status) {
-            if (goGame !== table || version !== goGameVersion) return;
-            table.aiThinking = { ...table.aiThinking, status };
-            broadcastGo("ai_stream", { phase: "status", color, playerName: actor.name, status });
-            broadcastGoState();
+        const { decision } = await requestGoDecisionWithRetry({
+          snapshotFactory: () => table.aiSnapshot(),
+          modelConfig: actor.aiConfig,
+          callbacks: {
+            onStatus(status) {
+              if (goGame !== table || version !== goGameVersion) return;
+              table.aiThinking = { ...table.aiThinking, status };
+              broadcastGo("ai_stream", { phase: "status", color, playerName: actor.name, status });
+              broadcastGoState();
+            },
+            onSummaryDelta(delta) {
+              if (goGame !== table || version !== goGameVersion) return;
+              broadcastGo("ai_stream", { phase: "summary_delta", color, playerName: actor.name, delta });
+            },
           },
-          onSummaryDelta(delta) {
+          shouldContinue: () => goGame === table && version === goGameVersion,
+          onRetry({ error, retryNumber, maxRetries }) {
             if (goGame !== table || version !== goGameVersion) return;
-            broadcastGo("ai_stream", { phase: "summary_delta", color, playerName: actor.name, delta });
+            const message = publicError(error);
+            const status = `${message}. Retrying automatically (${retryNumber}/${maxRetries})…`;
+            table.recordAIRetry(color, message, retryNumber, maxRetries);
+            table.aiThinking = { ...table.aiThinking, status };
+            broadcastGo("ai_stream", {
+              phase: "started",
+              color,
+              playerName: actor.name,
+              summary: "",
+              automaticRetry: true,
+              retryNumber,
+              maxRetries,
+            });
+            broadcastGoState();
           },
         });
 
