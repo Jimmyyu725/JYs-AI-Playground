@@ -72,6 +72,18 @@ button { color: inherit; }
   backdrop-filter: blur(18px);
 }
 
+.room-branding { display: flex; align-items: center; gap: 20px; }
+.lobby-return {
+  color: var(--gold);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-decoration: none;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.lobby-return:hover { color: var(--gold-bright); }
+
 .brand {
   display: inline-flex;
   align-items: center;

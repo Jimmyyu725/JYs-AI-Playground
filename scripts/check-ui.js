@@ -18,7 +18,7 @@ page.on("console", (message) => {
   if (message.type() === "error") pageErrors.push(message.text());
 });
 
-await page.goto(baseURL, { waitUntil: "domcontentloaded" });
+await page.goto(`${baseURL}/games/holdem/`, { waitUntil: "domcontentloaded" });
 await page.waitForFunction(() => document.querySelectorAll(".player-seat").length === 3, null, { timeout: 8_000 });
 await page.waitForFunction(() => document.querySelectorAll(".playing-card img").length >= 4, null, { timeout: 8_000 });
 await page.screenshot({ path: "tmp/browser/table-desktop.png", fullPage: true });
@@ -47,7 +47,7 @@ mobilePage.on("pageerror", (error) => pageErrors.push(error.message));
 mobilePage.on("console", (message) => {
   if (message.type() === "error") pageErrors.push(message.text());
 });
-await mobilePage.goto(baseURL, { waitUntil: "domcontentloaded" });
+await mobilePage.goto(`${baseURL}/games/holdem/`, { waitUntil: "domcontentloaded" });
 await mobilePage.waitForFunction(() => document.querySelectorAll(".player-seat").length === 3, null, { timeout: 8_000 });
 const mobileResult = await mobilePage.evaluate(() => ({
   viewportWidth: window.innerWidth,
@@ -74,7 +74,7 @@ arenaPage.on("pageerror", (error) => pageErrors.push(error.message));
 arenaPage.on("console", (message) => {
   if (message.type() === "error") pageErrors.push(message.text());
 });
-await arenaPage.goto(baseURL, { waitUntil: "domcontentloaded" });
+await arenaPage.goto(`${baseURL}/games/holdem/`, { waitUntil: "domcontentloaded" });
 await arenaPage.waitForFunction(() => document.querySelectorAll(".player-seat").length === 3, null, { timeout: 8_000 });
 await arenaPage.screenshot({ path: "tmp/browser/table-arena.png", fullPage: true });
 const arenaResult = await arenaPage.evaluate(() => ({
@@ -88,6 +88,19 @@ const arenaResult = await arenaPage.evaluate(() => ({
   reasoningFontSize: Number.parseFloat(getComputedStyle(document.getElementById("reasoning-text")).fontSize),
   historyFontSize: Number.parseFloat(getComputedStyle(document.querySelector(".history-entry")).fontSize),
   truncatedNames: [...document.querySelectorAll(".seat-copy strong")].filter((name) => name.scrollWidth > name.clientWidth + 1).map((name) => name.textContent),
+  brokenImages: [...document.images].filter((image) => image.complete && image.naturalWidth === 0).map((image) => image.src),
+}));
+
+const lobbyPage = await browser.newPage({ viewport: { width: 1440, height: 1050 }, deviceScaleFactor: 1 });
+lobbyPage.on("pageerror", (error) => pageErrors.push(error.message));
+lobbyPage.on("console", (message) => {
+  if (message.type() === "error") pageErrors.push(message.text());
+});
+await lobbyPage.goto(baseURL, { waitUntil: "networkidle" });
+const lobbyResult = await lobbyPage.evaluate(() => ({
+  title: document.querySelector("h1")?.textContent.trim(),
+  rooms: document.querySelectorAll(".game-card").length,
+  holdemPath: document.querySelector(".game-card.holdem")?.getAttribute("href"),
   brokenImages: [...document.images].filter((image) => image.complete && image.naturalWidth === 0).map((image) => image.src),
 }));
 
@@ -105,4 +118,7 @@ if (mobileResult.documentWidth > mobileResult.viewportWidth + 1 || mobileResult.
 if (arenaResult.seats !== 3 || arenaResult.faceUpHoleCards !== 6 || !arenaResult.arenaControlsVisible || !arenaResult.humanActionsHidden || arenaResult.toggleLabel !== "Resume arena" || !arenaResult.transcriptVisible || arenaResult.bodyFontSize < 15 || arenaResult.reasoningFontSize < 12 || arenaResult.historyFontSize < 11 || arenaResult.truncatedNames.length || arenaResult.brokenImages.length) {
   throw new Error(`Arena UI smoke check failed: ${JSON.stringify(arenaResult)}`);
 }
-console.log(JSON.stringify({ ok: true, desktop: result, setup: setupResult, mobile: mobileResult, arena: arenaResult }));
+if (!lobbyResult.title?.includes("Choose your game") || lobbyResult.rooms !== 3 || lobbyResult.holdemPath !== "/games/holdem/" || lobbyResult.brokenImages.length) {
+  throw new Error(`Lobby UI smoke check failed: ${JSON.stringify(lobbyResult)}`);
+}
+console.log(JSON.stringify({ ok: true, lobby: lobbyResult, desktop: result, setup: setupResult, mobile: mobileResult, arena: arenaResult }));

@@ -3,257 +3,119 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#07120f" />
-    <title>The Luna Room — OpenAI Hold'em</title>
+    <meta name="theme-color" content="#080b0a" />
+    <meta name="description" content="JYs AI Playground — a private collection of casino-inspired games powered by OpenAI." />
+    <title>JYs AI Playground</title>
     <link rel="icon" href="data:," />
-    <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="/lobby.css" />
   </head>
   <body>
-    <div class="room-backdrop" aria-hidden="true"></div>
-    <div class="noise" aria-hidden="true"></div>
+    <div class="lobby-backdrop" aria-hidden="true"></div>
+    <div class="lobby-noise" aria-hidden="true"></div>
 
-    <header class="topbar">
-      <button class="brand" id="new-table-button" type="button" aria-label="Open table setup">
-        <span class="brand-mark">L</span>
-        <span class="brand-copy">
-          <strong>The Luna Room</strong>
-          <small>Private Hold'em Salon</small>
+    <header class="lobby-header">
+      <a class="brand" href="/" aria-label="JYs AI Playground home">
+        <span class="brand-seal">JY</span>
+        <span>
+          <strong>JYs AI Playground</strong>
+          <small>Private rooms · Intelligent rivals</small>
         </span>
-      </button>
-
-      <div class="table-status">
-        <span class="status-pill model"><i></i> GPT-5.6 Luna</span>
-        <span class="status-pill">Reasoning · Medium</span>
-        <span class="status-pill no-fallback">No local fallback</span>
-      </div>
-
-      <div class="hand-meta">
-        <span>Hand</span>
-        <strong id="hand-number">—</strong>
-        <span class="meta-divider"></span>
-        <span id="blind-label">10 / 20</span>
+      </a>
+      <div class="house-status">
+        <span class="live-dot"></span>
+        <span>OpenAI house online</span>
+        <span class="divider"></span>
+        <span>No local fallback</span>
       </div>
     </header>
 
-    <main class="game-shell">
-      <section class="table-column" aria-label="Poker table">
-        <div class="phase-ribbon">
-          <span class="phase-dot"></span>
-          <strong id="phase-label">Waiting for players</strong>
-          <span id="turn-label">Open the room to begin</span>
-        </div>
-
-        <div class="table-stage" id="table-stage">
-          <div class="table-rail outer"></div>
-          <div class="table-rail inner"></div>
-          <div class="poker-table">
-            <div class="felt-pattern" aria-hidden="true"></div>
-            <div class="table-monogram" aria-hidden="true">
-              <span>THE</span>
-              <strong>L</strong>
-              <span>LUNA ROOM</span>
-            </div>
-
-            <div class="community-zone">
-              <div class="pot-display">
-                <span class="chip-stack" aria-hidden="true"><i></i><i></i><i></i></span>
-                <span>Pot</span>
-                <strong id="pot-value">0</strong>
-              </div>
-              <div class="community-cards" id="community-cards" aria-label="Community cards"></div>
-            </div>
-
-            <div class="seat-layer" id="seat-layer"></div>
-          </div>
-
-          <div class="table-overlay hidden" id="table-overlay">
-            <div class="overlay-card">
-              <span class="eyebrow" id="overlay-eyebrow">Hand complete</span>
-              <h2 id="overlay-title">The pot is settled</h2>
-              <p id="overlay-copy">The room is ready for another hand.</p>
-              <button class="gold-button" id="overlay-action" type="button">Deal next hand</button>
-            </div>
-          </div>
-        </div>
-
-        <section class="action-dock" id="action-dock" aria-label="Table controls">
-          <div class="action-context">
-            <span class="eyebrow" id="action-context-eyebrow">Your decision</span>
-            <strong id="action-context-title">Waiting for the action</strong>
-            <small id="action-context-copy">Luna opponents may take as long as needed.</small>
-          </div>
-
-          <div class="primary-actions" id="primary-actions">
-            <button class="action-button danger" id="fold-button" type="button" disabled>
-              <span>Fold</span><kbd>F</kbd>
-            </button>
-            <button class="action-button" id="check-call-button" type="button" disabled>
-              <span id="check-call-label">Check</span><kbd>C</kbd>
-            </button>
-            <button class="action-button all-in" id="all-in-button" type="button" disabled>
-              <span>All in</span><kbd>A</kbd>
-            </button>
-          </div>
-
-          <div class="raise-console" id="raise-console">
-            <div class="raise-heading">
-              <span id="raise-kind">Raise to</span>
-              <strong id="raise-value">—</strong>
-            </div>
-            <input id="raise-slider" type="range" min="0" max="100" value="50" disabled aria-label="Bet or raise total" />
-            <div class="raise-bounds">
-              <span id="raise-min">Min —</span>
-              <span id="raise-max">Max —</span>
-            </div>
-            <button class="gold-button compact" id="raise-button" type="button" disabled>Set chips</button>
-          </div>
-
-          <div class="arena-controls hidden" id="arena-controls">
-            <div class="arena-meter">
-              <span class="eyebrow">AI vs AI session</span>
-              <strong id="arena-progress">0 / 10 hands</strong>
-              <span class="arena-track"><i id="arena-track-fill"></i></span>
-            </div>
-            <button class="gold-button arena-toggle" id="arena-toggle" type="button">Pause arena</button>
-            <button class="action-button arena-new" id="arena-new-table" type="button">New table</button>
-          </div>
-        </section>
+    <main>
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero-ornament" aria-hidden="true"><i></i><span>EST. 2026</span><i></i></div>
+        <p class="eyebrow">Three tables · One private house</p>
+        <h1 id="hero-title">Choose your game.<br /><em>Meet your mind.</em></h1>
+        <p class="hero-copy">Play against distinct AI characters or take the spectator's chair and watch them challenge one another—without turn timers or hidden local substitutes.</p>
+        <a class="primary-cta" href="#game-floor">Enter the game floor <span aria-hidden="true">↓</span></a>
       </section>
 
-      <aside class="insight-rail" aria-label="AI and game information">
-        <section class="rail-panel ai-panel">
-          <div class="panel-heading">
-            <div>
-              <span class="eyebrow">Luna lens</span>
-              <h2>Decision lens</h2>
-            </div>
-            <span class="live-indicator" id="live-indicator"><i></i> Idle</span>
-          </div>
-
-          <div class="thinker-profile" id="thinker-profile">
-            <div class="profile-avatar">L</div>
-            <div>
-              <strong>Select an opponent</strong>
-              <span>API summary or public rationale</span>
-            </div>
-          </div>
-
-          <div class="reasoning-terminal" aria-live="polite">
-            <div class="terminal-line">
-              <span class="terminal-prompt">LUNA /</span>
-              <span id="reasoning-status">No model request is active.</span>
-            </div>
-            <div class="live-reasoning">
-              <p id="reasoning-text">When available, OpenAI's supported reasoning summary streams here. Otherwise Luna's public decision rationale appears after the action. Hidden chain-of-thought is never exposed.</p>
-              <span class="thinking-cursor hidden" id="thinking-cursor"></span>
-            </div>
-            <div class="reasoning-feed-heading">
-              <span>Persistent decision log</span>
-              <strong id="reasoning-count">0 entries</strong>
-            </div>
-            <ol class="reasoning-feed" id="reasoning-feed"></ol>
-          </div>
-
-          <div class="decision-note">
-            <span>Table note</span>
-            <p id="decision-explanation">A concise player-facing explanation will appear after the decision.</p>
-          </div>
-        </section>
-
-        <section class="rail-panel history-panel">
-          <div class="panel-heading compact-heading">
-            <div>
-              <span class="eyebrow">Dealer's ledger</span>
-              <h2>Hand history</h2>
-            </div>
-            <button class="text-button" id="scroll-latest" type="button">Latest</button>
-          </div>
-          <ol class="history-list" id="history-list"></ol>
-        </section>
-
-        <section class="rail-panel promise-panel">
-          <span class="promise-icon">∞</span>
+      <section class="floor" id="game-floor" aria-labelledby="floor-title">
+        <div class="section-heading">
           <div>
-            <strong>No artificial turn timer</strong>
-            <p>The table waits for Luna. API errors pause the hand and require retry; no local policy takes over.</p>
+            <p class="eyebrow">The game floor</p>
+            <h2 id="floor-title">Select a room</h2>
           </div>
-        </section>
-      </aside>
-    </main>
-
-    <div class="modal-backdrop" id="setup-modal">
-      <form class="setup-card" id="setup-form">
-        <div class="setup-ornament" aria-hidden="true"><i></i><span>LR</span><i></i></div>
-        <span class="eyebrow">Tonight's private table</span>
-        <h1>Enter the Luna Room</h1>
-        <p class="setup-lede" id="setup-lede">One human. Distinct characters. Every opponent powered only by GPT-5.6 Luna.</p>
-
-        <fieldset class="mode-field">
-          <legend>Choose a table mode</legend>
-          <div class="mode-options" id="mode-options">
-            <label>
-              <input type="radio" name="gameMode" value="human" checked />
-              <span><b>♠</b><strong>Play vs AI</strong><small>Take a seat against Luna</small></span>
-            </label>
-            <label>
-              <input type="radio" name="gameMode" value="arena" />
-              <span><b>∞</b><strong>AI vs AI Arena</strong><small>Watch Luna characters battle</small></span>
-            </label>
-          </div>
-        </fieldset>
-
-        <label class="field" id="human-name-field">
-          <span>Your table name</span>
-          <input id="human-name" name="humanName" maxlength="18" value="Player" autocomplete="nickname" />
-        </label>
-
-        <fieldset class="opponent-field">
-          <legend id="player-count-legend">Choose your opponents</legend>
-          <div class="opponent-options" id="opponent-options">
-            <label><input type="radio" name="opponentCount" value="2" /><span><strong>2</strong><small data-human="Heads up+" data-arena="Duel">Heads up+</small></span></label>
-            <label><input type="radio" name="opponentCount" value="3" checked /><span><strong>3</strong><small data-human="Classic" data-arena="Trio">Classic</small></span></label>
-            <label><input type="radio" name="opponentCount" value="4" /><span><strong>4</strong><small data-human="Deep table" data-arena="Four-way">Deep table</small></span></label>
-            <label><input type="radio" name="opponentCount" value="5" /><span><strong>5</strong><small data-human="Full room" data-arena="Full arena">Full room</small></span></label>
-          </div>
-        </fieldset>
-
-        <div class="setup-grid" id="setup-grid">
-          <label class="field">
-            <span>Starting chips</span>
-            <select id="starting-stack" name="startingStack">
-              <option value="500">500</option>
-              <option value="1000" selected>1,000</option>
-              <option value="2000">2,000</option>
-              <option value="5000">5,000</option>
-            </select>
-          </label>
-          <label class="field">
-            <span>Blinds</span>
-            <select id="blinds" name="blinds">
-              <option value="5,10">5 / 10</option>
-              <option value="10,20" selected>10 / 20</option>
-              <option value="25,50">25 / 50</option>
-              <option value="50,100">50 / 100</option>
-            </select>
-          </label>
-          <label class="field arena-target-field hidden" id="arena-target-field">
-            <span>Session length</span>
-            <select id="arena-hand-target" name="arenaHandTarget">
-              <option value="5">5 hands</option>
-              <option value="10" selected>10 hands</option>
-              <option value="25">25 hands</option>
-              <option value="unlimited">Unlimited</option>
-            </select>
-          </label>
+          <p>Human vs AI · AI vs AI</p>
         </div>
 
-        <div class="character-preview" id="character-preview"></div>
-        <button class="gold-button enter-button" id="setup-submit" type="submit">Take your seat</button>
-        <button class="text-button cancel-setup hidden" id="cancel-setup" type="button">Return to current hand</button>
-      </form>
-    </div>
+        <div class="game-grid">
+          <a class="game-card holdem" href="/games/holdem/">
+            <div class="card-art" aria-hidden="true">
+              <span class="suit suit-one">♠</span>
+              <span class="suit suit-two">♥</span>
+              <span class="table-ring"></span>
+              <span class="game-glyph">A</span>
+            </div>
+            <div class="game-copy">
+              <span class="room-status live"><i></i> Live table</span>
+              <p class="game-number">Room 01</p>
+              <h3>Texas Hold’em</h3>
+              <p>Read the table, manage the pot, and face a cast of AI personalities—or watch the entire room play itself.</p>
+              <span class="enter-link">Enter the Luna Room <b aria-hidden="true">↗</b></span>
+            </div>
+          </a>
 
-    <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script type="module" src="/app.js"></script>
+          <a class="game-card go" href="/games/go/">
+            <div class="card-art" aria-hidden="true">
+              <span class="go-grid"></span>
+              <span class="stone black"></span>
+              <span class="stone white"></span>
+              <span class="game-glyph">囲</span>
+            </div>
+            <div class="game-copy">
+              <span class="room-status soon" id="go-status"><i></i> Opening soon</span>
+              <p class="game-number">Room 02</p>
+              <h3>Go <small>围棋</small></h3>
+              <p>Fight for influence and territory across a living board, with every capture and ko judged by the house.</p>
+              <span class="enter-link">Preview the Go room <b aria-hidden="true">↗</b></span>
+            </div>
+          </a>
+
+          <a class="game-card wuziqi" href="/games/wuziqi/">
+            <div class="card-art" aria-hidden="true">
+              <span class="gomoku-grid"></span>
+              <span class="win-line"></span>
+              <span class="game-glyph">五</span>
+            </div>
+            <div class="game-copy">
+              <span class="room-status soon" id="wuziqi-status"><i></i> Opening soon</span>
+              <p class="game-number">Room 03</p>
+              <h3>Wuziqi <small>五子棋</small></h3>
+              <p>Build pressure one intersection at a time in a fast, tactical contest of five connected stones.</p>
+              <span class="enter-link">Preview the Wuziqi room <b aria-hidden="true">↗</b></span>
+            </div>
+          </a>
+        </div>
+      </section>
+
+      <section class="house-rules" aria-labelledby="rules-title">
+        <div class="rules-intro">
+          <p class="eyebrow">The house promise</p>
+          <h2 id="rules-title">Every move belongs to the model you choose.</h2>
+        </div>
+        <div class="rule-list">
+          <article><span>01</span><div><strong>Your model, your depth</strong><p>Select GPT-5.6 Sol, Terra, or Luna and the reasoning effort for every AI seat.</p></div></article>
+          <article><span>02</span><div><strong>Visible decisions</strong><p>Public rationales and supported reasoning summaries stay in a persistent transcript.</p></div></article>
+          <article><span>03</span><div><strong>No substitute player</strong><p>API failures pause the room for retry. A local heuristic never takes the model's turn.</p></div></article>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <span>JYs AI Playground</span>
+      <span>Powered only by the OpenAI API</span>
+      <span id="key-summary">Checking private room access…</span>
+    </footer>
+
+    <script type="module" src="/lobby.js"></script>
   </body>
 </html>
