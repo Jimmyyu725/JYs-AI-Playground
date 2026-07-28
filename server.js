@@ -117,6 +117,7 @@ async function runAIChain(version) {
           summarySource,
           explanation: decision.explanation,
           latencyMs,
+          action: decision.action,
         });
         table.aiThinking = null;
         broadcast("ai_stream", {

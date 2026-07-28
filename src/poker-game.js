@@ -96,6 +96,7 @@ export class PokerGame {
     this.deck = [];
     this.phase = "waiting";
     this.logs = [];
+    this.aiInsights = [];
     this.aiError = null;
     this.aiThinking = null;
     this.lastShowdown = null;
@@ -527,12 +528,26 @@ export class PokerGame {
     this.arenaPaused = false;
   }
 
-  recordAIInsight(seat, { summary, summarySource, explanation, latencyMs }) {
+  recordAIInsight(seat, { summary, summarySource, explanation, latencyMs, action = "" }) {
     const player = this.players[seat];
     player.lastReasoningSummary = String(summary ?? "").trim();
     player.lastSummarySource = String(summarySource ?? "");
     player.lastExplanation = String(explanation ?? "").trim();
     player.lastLatencyMs = Math.round(latencyMs);
+    this.aiInsights.push({
+      id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      handNumber: this.handNumber,
+      phase: this.phase,
+      seat,
+      playerName: player.name,
+      characterColor: player.character?.color ?? "#d7b66a",
+      action: String(action ?? ""),
+      summary: player.lastReasoningSummary,
+      summarySource: player.lastSummarySource,
+      explanation: player.lastExplanation,
+      latencyMs: player.lastLatencyMs,
+      at: new Date().toISOString(),
+    });
   }
 
   setAIError(seat, message) {
@@ -616,6 +631,7 @@ export class PokerGame {
       legalActions: humanLegal,
       aiError: this.aiError,
       aiThinking: this.aiThinking,
+      aiInsights: [...this.aiInsights].reverse(),
       canStartNextHand: this.phase === "hand_over",
       players: this.players.map((player) => {
         const revealCards = this.isArenaMode || player.isHuman || player.hasShown;

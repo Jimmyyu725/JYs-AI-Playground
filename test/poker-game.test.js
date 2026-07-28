@@ -83,3 +83,26 @@ test("supports pausing and resuming an active arena", () => {
   game.resumeArena();
   assert.equal(game.publicState().arena.paused, false);
 });
+
+test("keeps a persistent transcript of completed AI summaries", () => {
+  const game = new PokerGame({ gameMode: "arena", opponentCount: 2, arenaPaused: true });
+  game.recordAIInsight(0, {
+    summary: "Pressure the capped blind with a compact raise.",
+    summarySource: "openai_reasoning_summary",
+    explanation: "Position and stack depth favor initiative.",
+    latencyMs: 2_450,
+    action: "raise",
+  });
+  game.recordAIInsight(1, {
+    summary: "The price supports a disciplined call.",
+    summarySource: "public_decision_rationale",
+    explanation: "The pot odds are sufficient.",
+    latencyMs: 1_820,
+    action: "call",
+  });
+  const state = game.publicState();
+  assert.equal(state.aiInsights.length, 2);
+  assert.equal(state.aiInsights[0].playerName, game.players[1].name);
+  assert.equal(state.aiInsights[0].summary, "The price supports a disciplined call.");
+  assert.equal(state.aiInsights[1].summary, "Pressure the capped blind with a compact raise.");
+});

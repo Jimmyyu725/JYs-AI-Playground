@@ -143,8 +143,15 @@
               <span class="terminal-prompt">LUNA /</span>
               <span id="reasoning-status">No model request is active.</span>
             </div>
-            <p id="reasoning-text">When available, OpenAI's supported reasoning summary streams here. Otherwise Luna's public decision rationale appears after the action. Hidden chain-of-thought is never exposed.</p>
-            <span class="thinking-cursor hidden" id="thinking-cursor"></span>
+            <div class="live-reasoning">
+              <p id="reasoning-text">When available, OpenAI's supported reasoning summary streams here. Otherwise Luna's public decision rationale appears after the action. Hidden chain-of-thought is never exposed.</p>
+              <span class="thinking-cursor hidden" id="thinking-cursor"></span>
+            </div>
+            <div class="reasoning-feed-heading">
+              <span>Persistent decision log</span>
+              <strong id="reasoning-count">0 entries</strong>
+            </div>
+            <ol class="reasoning-feed" id="reasoning-feed"></ol>
           </div>
 
           <div class="decision-note">

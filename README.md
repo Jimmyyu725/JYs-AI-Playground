@@ -40,6 +40,7 @@ The API key stays in `.env.local` as `OPENAI_API_KEY`; that file is ignored by G
 - hand evaluation and independent main/side-pot settlement
 - hidden opponent cards until showdown
 - live hand history and per-character decision latency
+- larger table typography and a persistent, scrollable Luna decision transcript that keeps completed summaries on screen
 - reused card artwork from the earlier desktop game
 - original `gpt-image-2` casino-room backdrop
 

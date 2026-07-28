@@ -33,6 +33,9 @@ if (state.players.some((player) => player.holeCards.includes("BACK"))) {
 }
 const modelActions = state.logs.filter((entry) => entry.kind === "action" && entry.action).length;
 if (modelActions < 1) throw new Error("No Luna decision was applied during the arena hand");
+if (!state.aiInsights?.length || !state.aiInsights[0].summary) {
+  throw new Error("The completed Luna summary was not retained in the persistent transcript");
+}
 
 console.log(JSON.stringify({
   ok: true,
@@ -40,5 +43,6 @@ console.log(JSON.stringify({
   reasoningEffort: state.reasoningEffort,
   handsPlayed: state.arena.handsPlayed,
   modelActions,
+  retainedInsights: state.aiInsights.length,
   finalPhase: state.phase,
 }));

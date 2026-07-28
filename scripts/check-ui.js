@@ -83,6 +83,11 @@ const arenaResult = await arenaPage.evaluate(() => ({
   arenaControlsVisible: !document.getElementById("arena-controls").classList.contains("hidden"),
   humanActionsHidden: document.getElementById("primary-actions").classList.contains("hidden"),
   toggleLabel: document.getElementById("arena-toggle").textContent.trim(),
+  transcriptVisible: getComputedStyle(document.getElementById("reasoning-feed")).display !== "none",
+  bodyFontSize: Number.parseFloat(getComputedStyle(document.body).fontSize),
+  reasoningFontSize: Number.parseFloat(getComputedStyle(document.getElementById("reasoning-text")).fontSize),
+  historyFontSize: Number.parseFloat(getComputedStyle(document.querySelector(".history-entry")).fontSize),
+  truncatedNames: [...document.querySelectorAll(".seat-copy strong")].filter((name) => name.scrollWidth > name.clientWidth + 1).map((name) => name.textContent),
   brokenImages: [...document.images].filter((image) => image.complete && image.naturalWidth === 0).map((image) => image.src),
 }));
 
@@ -97,7 +102,7 @@ if (!setupResult.humanNameHidden || !setupResult.targetVisible || setupResult.pl
 if (mobileResult.documentWidth > mobileResult.viewportWidth + 1 || mobileResult.seats !== 3) {
   throw new Error(`Mobile UI smoke check failed: ${JSON.stringify(mobileResult)}`);
 }
-if (arenaResult.seats !== 3 || arenaResult.faceUpHoleCards !== 6 || !arenaResult.arenaControlsVisible || !arenaResult.humanActionsHidden || arenaResult.toggleLabel !== "Resume arena" || arenaResult.brokenImages.length) {
+if (arenaResult.seats !== 3 || arenaResult.faceUpHoleCards !== 6 || !arenaResult.arenaControlsVisible || !arenaResult.humanActionsHidden || arenaResult.toggleLabel !== "Resume arena" || !arenaResult.transcriptVisible || arenaResult.bodyFontSize < 15 || arenaResult.reasoningFontSize < 12 || arenaResult.historyFontSize < 11 || arenaResult.truncatedNames.length || arenaResult.brokenImages.length) {
   throw new Error(`Arena UI smoke check failed: ${JSON.stringify(arenaResult)}`);
 }
 console.log(JSON.stringify({ ok: true, desktop: result, setup: setupResult, mobile: mobileResult, arena: arenaResult }));

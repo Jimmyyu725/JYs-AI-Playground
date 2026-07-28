@@ -12,7 +12,7 @@ const elements = Object.fromEntries(
     "table-overlay", "overlay-eyebrow", "overlay-title", "overlay-copy", "overlay-action", "action-context-title",
     "action-context-eyebrow", "action-context-copy", "action-dock", "primary-actions", "raise-console", "fold-button", "check-call-button", "check-call-label", "all-in-button", "raise-kind",
     "raise-value", "raise-slider", "raise-min", "raise-max", "raise-button", "live-indicator", "thinker-profile",
-    "reasoning-status", "reasoning-text", "thinking-cursor", "decision-explanation", "history-list", "scroll-latest",
+    "reasoning-status", "reasoning-text", "thinking-cursor", "reasoning-count", "reasoning-feed", "decision-explanation", "history-list", "scroll-latest",
     "arena-controls", "arena-progress", "arena-track-fill", "arena-toggle", "arena-new-table", "setup-modal", "setup-form",
     "setup-lede", "mode-options", "human-name-field", "player-count-legend", "opponent-options", "setup-grid",
     "arena-target-field", "arena-hand-target", "setup-submit", "character-preview", "cancel-setup", "new-table-button", "toast",
@@ -26,9 +26,14 @@ let liveSummary = "";
 let liveSeat = null;
 let toastTimer = null;
 let raiseTurnKey = "";
+let renderedInsightIds = "";
 
 function chips(value) {
   return Number(value ?? 0).toLocaleString("en-US");
+}
+
+function plainSummary(value) {
+  return String(value ?? "").replace(/\*\*/g, "").replace(/^#{1,6}\s+/gm, "").trim();
 }
 
 function phaseName(phase) {
@@ -327,11 +332,40 @@ function renderInsight() {
     elements.reasoningStatus.textContent = state.aiThinking.status || "Luna is reasoning…";
     elements.reasoningText.textContent = liveSummary || "Waiting for the API-provided reasoning summary…";
   } else {
-    const sourceLabel = player.lastSummarySource === "openai_reasoning_summary" ? "API reasoning summary" : "Public decision rationale";
-    elements.reasoningStatus.textContent = player.lastLatencyMs ? `${sourceLabel} · ${(player.lastLatencyMs / 1000).toFixed(1)}s` : "No completed model decision selected.";
-    elements.reasoningText.textContent = player.lastReasoningSummary || (player.isHuman ? "Your decisions stay yours." : "Select an opponent after they act to review their supported reasoning summary.");
+    elements.reasoningStatus.textContent = "No model request is active.";
+    elements.reasoningText.textContent = (state.aiInsights?.length ?? 0) > 0
+      ? "Completed summaries stay in the decision log below. Select a player to review their latest table note."
+      : player.isHuman ? "Your decisions stay yours." : "Completed Luna summaries will remain in the decision log below.";
   }
   elements.decisionExplanation.textContent = player.lastExplanation || "A concise player-facing explanation will appear after the decision.";
+  renderReasoningFeed();
+}
+
+function renderReasoningFeed() {
+  const insights = state.aiInsights ?? [];
+  elements.reasoningCount.textContent = `${insights.length} ${insights.length === 1 ? "entry" : "entries"}`;
+  const insightIds = insights.map((insight) => insight.id).join("|");
+  if (insightIds === renderedInsightIds) return;
+  renderedInsightIds = insightIds;
+  elements.reasoningFeed.replaceChildren();
+  for (const insight of insights) {
+    const item = document.createElement("li");
+    item.className = "reasoning-entry";
+    item.style.setProperty("--entry-color", insight.characterColor);
+
+    const heading = document.createElement("div");
+    const name = document.createElement("strong");
+    name.textContent = insight.playerName;
+    const meta = document.createElement("span");
+    const action = insight.action ? ` · ${insight.action.replace("_", " ")}` : "";
+    meta.textContent = `Hand ${insight.handNumber} · ${phaseName(insight.phase)}${action} · ${(insight.latencyMs / 1000).toFixed(1)}s`;
+    heading.append(name, meta);
+
+    const summary = document.createElement("p");
+    summary.textContent = plainSummary(insight.summary || insight.explanation) || "Decision completed without a visible summary.";
+    item.append(heading, summary);
+    elements.reasoningFeed.append(item);
+  }
 }
 
 function renderHistory() {
