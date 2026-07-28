@@ -59,6 +59,7 @@
           <div class="score-cell"><span class="mini-stone white"></span><small>White captures</small><strong id="white-captures">0</strong></div>
           <div class="score-cell"><span class="komi-mark">K</span><small>White komi</small><strong id="komi-value">7.5</strong></div>
           <div class="game-actions">
+            <button class="quiet-button save-button" id="save-button" type="button">Save game</button>
             <button class="quiet-button" id="pass-button" type="button" disabled>Pass</button>
             <button class="quiet-button danger" id="resign-button" type="button" disabled>Resign</button>
             <button class="gold-button hidden" id="arena-toggle" type="button">Pause arena</button>
@@ -90,7 +91,7 @@
         </section>
 
         <section class="rail-panel house-note">
-          <span>∞</span><div><strong>No artificial turn timer</strong><p>The room waits for the selected OpenAI model. Illegal moves or API errors pause play for an explicit retry.</p></div>
+          <span>∞</span><div><strong>Durable game record</strong><p>The current Go round auto-saves after every move and restores after a server restart. Invalid model moves retry automatically before play pauses.</p></div>
         </section>
       </aside>
     </main>

@@ -78,3 +78,46 @@ test("AI vs AI exposes both model configurations and public personas", () => {
   assert.match(snapshot.players[1].personality, /Analytical/i);
   assert.equal(snapshot.legalPlacements.length, 81);
 });
+
+test("serializes and restores a complete authoritative Go game", () => {
+  const game = new GoGame({
+    gameMode: "arena",
+    arenaPaused: true,
+    boardSize: 9,
+    aiPlayers: [
+      { model: "gpt-5.6-luna", reasoningEffort: "low" },
+      { model: "gpt-5.6-terra", reasoningEffort: "medium" },
+    ],
+  });
+  play(game, "black", 0, 0);
+  play(game, "white", 1, 0);
+  game.recordAIInsight("black", {
+    summary: "A public summary",
+    summarySource: "openai_reasoning_summary",
+    explanation: "A public explanation",
+    latencyMs: 1234,
+    action: "place",
+  });
+  game.aiThinking = { color: "black", status: "In flight" };
+
+  const savedAt = "2026-07-28T22:00:00.000Z";
+  const restored = GoGame.fromSave(game.toSave(savedAt));
+  const state = restored.publicState();
+  assert.equal(state.moveNumber, 2);
+  assert.deepEqual(state.board, game.publicState().board);
+  assert.deepEqual(state.captures, game.captures);
+  assert.equal(state.players[0].aiConfig.model, "gpt-5.6-luna");
+  assert.equal(state.players[1].aiConfig.reasoningEffort, "medium");
+  assert.equal(state.aiInsights.length, 1);
+  assert.equal(state.aiThinking, null);
+  assert.deepEqual(state.save, { savedAt, error: null, restored: true });
+  assert.equal(restored.positionHistory.size, game.positionHistory.size);
+});
+
+test("rejects a Go save whose current board is missing from superko history", () => {
+  const game = new GoGame({ boardSize: 9 });
+  play(game, "black", 0, 0);
+  const payload = game.toSave();
+  payload.state.positionHistory = [".".repeat(81)];
+  assert.throws(() => GoGame.fromSave(payload), /current board is absent/);
+});

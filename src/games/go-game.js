@@ -4,6 +4,7 @@ import { normalizeModelConfig } from "../platform/model-registry.js";
 const COLORS = Object.freeze(["black", "white"]);
 const BOARD_SIZES = new Set([9, 13, 19]);
 const COLUMN_LABELS = "ABCDEFGHJKLMNOPQRST";
+const GO_SAVE_VERSION = 1;
 
 function opposite(color) {
   return color === "black" ? "white" : "black";
@@ -16,6 +17,15 @@ function clampNumber(value, minimum, maximum, fallback) {
 
 function boardHash(board) {
   return board.map((cell) => (cell === "black" ? "B" : cell === "white" ? "W" : ".")).join("");
+}
+
+function requireSaved(condition, message) {
+  if (!condition) throw new Error(`Invalid Go save: ${message}`);
+}
+
+function savedArray(value, name) {
+  requireSaved(Array.isArray(value), `${name} must be an array`);
+  return structuredClone(value);
 }
 
 export function goCoordinate(row, column, size) {
@@ -43,6 +53,7 @@ export class GoGame {
     this.aiThinking = null;
     this.aiError = null;
     this.positionHistory = new Set([boardHash(this.board)]);
+    this.saveStatus = { savedAt: null, error: null, restored: false };
 
     const requestedAI = Array.isArray(config.aiPlayers) ? config.aiPlayers : [];
     let aiIndex = 0;
@@ -72,6 +83,72 @@ export class GoGame {
     });
 
     this._log("system", `${this.boardSize}×${this.boardSize} Go begins under Chinese area scoring with ${this.komi} komi.`);
+  }
+
+  static fromSave(payload) {
+    requireSaved(payload && typeof payload === "object", "payload is missing");
+    requireSaved(payload.gameId === "go", "game identifier is not Go");
+    requireSaved(payload.version === GO_SAVE_VERSION, `unsupported version ${payload.version}`);
+    requireSaved(typeof payload.savedAt === "string" && Number.isFinite(Date.parse(payload.savedAt)), "savedAt is invalid");
+    const state = payload.state;
+    requireSaved(state && typeof state === "object", "state is missing");
+    requireSaved(BOARD_SIZES.has(state.boardSize), "board size is unsupported");
+    requireSaved(Number.isFinite(state.komi) && state.komi >= 0 && state.komi <= 20, "komi is invalid");
+    requireSaved(state.gameMode === "human" || state.gameMode === "arena", "game mode is invalid");
+    requireSaved(typeof state.arenaPaused === "boolean", "arena pause state is invalid");
+    requireSaved(COLORS.includes(state.currentColor), "current color is invalid");
+    requireSaved(state.phase === "active" || state.phase === "complete", "phase is invalid");
+    requireSaved(Number.isInteger(state.moveNumber) && state.moveNumber >= 0, "move number is invalid");
+    requireSaved(Array.isArray(state.players) && state.players.length === 2, "two players are required");
+    requireSaved(state.players.every((player) => COLORS.includes(player?.color)), "player colors are invalid");
+    requireSaved(new Set(state.players.map((player) => player.color)).size === 2, "player colors must be unique");
+
+    const board = savedArray(state.board, "board");
+    requireSaved(board.length === state.boardSize ** 2, "board length does not match board size");
+    requireSaved(board.every((cell) => cell === null || COLORS.includes(cell)), "board contains an invalid stone");
+    requireSaved(state.captures && COLORS.every((color) => Number.isInteger(state.captures[color]) && state.captures[color] >= 0), "capture counts are invalid");
+    requireSaved(Number.isInteger(state.consecutivePasses) && state.consecutivePasses >= 0 && state.consecutivePasses <= 2, "pass count is invalid");
+
+    const positionHistory = savedArray(state.positionHistory, "position history");
+    const expectedHashLength = state.boardSize ** 2;
+    requireSaved(positionHistory.length > 0, "position history is empty");
+    requireSaved(positionHistory.every((hash) => typeof hash === "string" && hash.length === expectedHashLength && /^[BW.]+$/.test(hash)), "position history contains an invalid board");
+    requireSaved(positionHistory.includes(boardHash(board)), "current board is absent from position history");
+
+    const humanPlayers = state.players.filter((player) => player.isHuman === true);
+    const human = humanPlayers[0];
+    requireSaved(state.gameMode === "human" ? humanPlayers.length === 1 : humanPlayers.length === 0, "human player does not match game mode");
+    const aiPlayers = state.players.filter((player) => !player.isHuman).map((player) => player.aiConfig);
+    const game = new GoGame({
+      boardSize: state.boardSize,
+      komi: state.komi,
+      gameMode: state.gameMode,
+      humanColor: human?.color,
+      humanName: human?.name,
+      arenaPaused: state.arenaPaused,
+      aiPlayers,
+    });
+
+    game.phase = state.phase;
+    game.currentColor = state.currentColor;
+    game.moveNumber = state.moveNumber;
+    game.board = board;
+    game.captures = { black: state.captures.black, white: state.captures.white };
+    game.consecutivePasses = state.consecutivePasses;
+    game.lastMove = state.lastMove == null ? null : structuredClone(state.lastMove);
+    game.result = state.result == null ? null : structuredClone(state.result);
+    game.logs = savedArray(state.logs, "logs").slice(-220);
+    game.aiInsights = savedArray(state.aiInsights, "AI insights");
+    game.aiError = state.aiError == null ? null : structuredClone(state.aiError);
+    game.aiThinking = null;
+    game.positionHistory = new Set(positionHistory);
+    game.players.forEach((player) => {
+      const savedPlayer = state.players.find((candidate) => candidate.color === player.color);
+      player.lastAction = String(savedPlayer.lastAction ?? "").slice(0, 120);
+      if (player.isHuman) player.name = String(savedPlayer.name ?? "Player").trim().slice(0, 18) || "Player";
+    });
+    game.saveStatus = { savedAt: payload.savedAt, error: null, restored: true };
+    return game;
   }
 
   get isArenaMode() {
@@ -297,6 +374,48 @@ export class GoGame {
     this.aiError = null;
   }
 
+  toSave(savedAt = new Date().toISOString()) {
+    return {
+      gameId: "go",
+      version: GO_SAVE_VERSION,
+      savedAt,
+      state: {
+        boardSize: this.boardSize,
+        komi: this.komi,
+        gameMode: this.gameMode,
+        humanColor: this.humanColor,
+        arenaPaused: this.arenaPaused,
+        phase: this.phase,
+        currentColor: this.currentColor,
+        moveNumber: this.moveNumber,
+        board: [...this.board],
+        captures: { ...this.captures },
+        consecutivePasses: this.consecutivePasses,
+        lastMove: this.lastMove == null ? null : structuredClone(this.lastMove),
+        result: this.result == null ? null : structuredClone(this.result),
+        logs: structuredClone(this.logs),
+        aiInsights: structuredClone(this.aiInsights),
+        aiError: this.aiError == null ? null : structuredClone(this.aiError),
+        positionHistory: [...this.positionHistory],
+        players: this.players.map((player) => ({
+          color: player.color,
+          name: player.name,
+          isHuman: player.isHuman,
+          aiConfig: player.aiConfig ? { ...player.aiConfig } : null,
+          lastAction: player.lastAction,
+        })),
+      },
+    };
+  }
+
+  markSaved(savedAt, restored = this.saveStatus.restored) {
+    this.saveStatus = { savedAt, error: null, restored };
+  }
+
+  markSaveError() {
+    this.saveStatus = { ...this.saveStatus, error: "The latest automatic save failed." };
+  }
+
   _log(kind, text, extra = {}) {
     this.logs.push({
       id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
@@ -362,6 +481,7 @@ export class GoGame {
       model: models.size === 1 ? aiConfigs[0].model : "mixed",
       reasoningEffort: efforts.size === 1 ? aiConfigs[0].reasoningEffort : "mixed",
       noLocalFallback: true,
+      save: { ...this.saveStatus },
       aiThinking: this.aiThinking,
       aiError: this.aiError,
       aiInsights: [...this.aiInsights].reverse(),

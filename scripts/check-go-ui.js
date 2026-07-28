@@ -1,6 +1,10 @@
 import { spawn } from "node:child_process";
+import { once } from "node:events";
+import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import net from "node:net";
+import os from "node:os";
+import path from "node:path";
 import { chromium } from "playwright-core";
 
 function availablePort() {
@@ -30,19 +34,26 @@ async function waitForServer(baseURL, processHandle) {
 
 const explicitBaseURL = process.env.PLAYGROUND_URL;
 const testPort = explicitBaseURL ? null : await availablePort();
+const testDataDirectory = explicitBaseURL ? null : fs.mkdtempSync(path.join(os.tmpdir(), "jys-go-ui-"));
 const baseURL = explicitBaseURL || `http://127.0.0.1:${testPort}`;
 const serverProcess = explicitBaseURL
   ? null
   : spawn(process.execPath, ["server.js"], {
       cwd: fileURLToPath(new URL("..", import.meta.url)),
-      env: { ...process.env, PORT: String(testPort) },
+      env: { ...process.env, PLAYGROUND_DATA_DIR: testDataDirectory, PORT: String(testPort) },
       stdio: "ignore",
     });
 
 const stopServer = () => {
   if (serverProcess && serverProcess.exitCode === null) serverProcess.kill("SIGTERM");
 };
-process.once("exit", stopServer);
+const cleanTestData = () => {
+  if (testDataDirectory) fs.rmSync(testDataDirectory, { recursive: true, force: true });
+};
+process.once("exit", () => {
+  stopServer();
+  cleanTestData();
+});
 if (serverProcess) await waitForServer(baseURL, serverProcess);
 
 const created = await fetch(`${baseURL}/api/go/game`, {
@@ -73,6 +84,7 @@ const desktop = await page.evaluate(() => ({
   players: document.querySelectorAll(".player-card .player-avatar").length,
   setupHidden: document.getElementById("setup-modal").classList.contains("hidden"),
   passEnabled: !document.getElementById("pass-button").disabled,
+  saveEnabled: !document.getElementById("save-button").disabled,
   bodyFontSize: Number.parseFloat(getComputedStyle(document.body).fontSize),
 }));
 
@@ -99,8 +111,10 @@ await mobilePage.screenshot({ path: "tmp/browser/go-mobile.png", fullPage: true 
 
 await browser.close();
 stopServer();
+if (serverProcess?.exitCode === null) await once(serverProcess, "exit");
+cleanTestData();
 if (errors.length) throw new Error(`Go browser errors: ${errors.join(" | ")}`);
-if (desktop.intersections !== 81 || desktop.enabledIntersections !== 81 || desktop.players !== 2 || !desktop.setupHidden || !desktop.passEnabled || desktop.bodyFontSize < 15) {
+if (desktop.intersections !== 81 || desktop.enabledIntersections !== 81 || desktop.players !== 2 || !desktop.setupHidden || !desktop.passEnabled || !desktop.saveEnabled || desktop.bodyFontSize < 15) {
   throw new Error(`Go desktop smoke failed: ${JSON.stringify(desktop)}`);
 }
 if (setup.rosterRows !== 2 || setup.modelOptions !== 3 || setup.reasoningOptions !== 6 || !setup.humanFieldsHidden || setup.submitText !== "Start AI Arena") {

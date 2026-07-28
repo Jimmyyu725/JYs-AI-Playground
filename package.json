@@ -12,6 +12,7 @@
     "api:check": "node scripts/check-openai.js",
     "ui:check": "node scripts/check-ui.js",
     "go:ui:check": "node scripts/check-go-ui.js",
+    "go:save:check": "node scripts/check-go-save.js",
     "go:api:check": "node scripts/check-board-openai.js go",
     "wuziqi:ui:check": "node scripts/check-wuziqi-ui.js",
     "wuziqi:api:check": "node scripts/check-board-openai.js wuziqi",

@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import express from "express";
 import { requestGoDecisionWithRetry } from "./src/games/go-ai.js";
 import { GoGame } from "./src/games/go-game.js";
+import { GoSaveStore } from "./src/games/go-save-store.js";
 import { requestWuziqiDecision } from "./src/games/wuziqi-ai.js";
 import { WuziqiGame } from "./src/games/wuziqi-game.js";
 import { PokerGame } from "./src/poker-game.js";
@@ -12,6 +13,7 @@ import { apiKeyForGame, publicModelRegistry } from "./src/platform/model-registr
 
 const rootDir = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(rootDir, ".env.local") });
+const goSaveStore = new GoSaveStore(path.resolve(rootDir, process.env.PLAYGROUND_DATA_DIR || ".playground-data"));
 
 const app = express();
 const sseClients = new Set();
@@ -20,8 +22,8 @@ let game = null;
 let gameVersion = 0;
 const goSSEClients = new Set();
 const activeGoAIVersions = new Set();
-let goGame = null;
-let goGameVersion = 0;
+let goGame = restoreGoGame();
+let goGameVersion = goGame ? 1 : 0;
 const wuziqiSSEClients = new Set();
 const activeWuziqiAIVersions = new Set();
 let wuziqiGame = null;
@@ -108,6 +110,35 @@ function requireWuziqiGame() {
 function publicError(error) {
   if (error instanceof AIDecisionError) return error.message;
   return String(error?.message || "Unexpected server error").slice(0, 400);
+}
+
+function restoreGoGame() {
+  try {
+    const payload = goSaveStore.load();
+    return payload ? GoGame.fromSave(payload) : null;
+  } catch (error) {
+    console.error(`Go save restore skipped: ${String(error?.message || error)}`);
+    return null;
+  }
+}
+
+function persistGoGame({ required = false } = {}) {
+  if (!goGame) return null;
+  try {
+    const savedAt = new Date().toISOString();
+    goSaveStore.save(goGame.toSave(savedAt));
+    goGame.markSaved(savedAt);
+    return savedAt;
+  } catch (error) {
+    goGame.markSaveError();
+    console.error(`Go automatic save failed: ${String(error?.message || error)}`);
+    if (required) {
+      const saveError = new Error("The Go game could not be saved to disk");
+      saveError.status = 500;
+      throw saveError;
+    }
+    return null;
+  }
 }
 
 function scheduleAITurn(version = gameVersion) {
@@ -256,6 +287,7 @@ async function runGoAIChain(version) {
             const status = `${message}. Retrying automatically (${retryNumber}/${maxRetries})…`;
             table.recordAIRetry(color, message, retryNumber, maxRetries);
             table.aiThinking = { ...table.aiThinking, status };
+            persistGoGame();
             broadcastGo("ai_stream", {
               phase: "started",
               color,
@@ -289,11 +321,13 @@ async function runGoAIChain(version) {
           latencyMs: Math.round(latencyMs),
         });
         table.applyAction(color, decision.action, decision.row, decision.column);
+        persistGoGame();
         broadcastGoState();
       } catch (error) {
         if (goGame !== table || version !== goGameVersion) return;
         const message = publicError(error);
         table.setAIError(color, message);
+        persistGoGame();
         broadcastGo("ai_stream", { phase: "error", color, playerName: actor.name, message });
         broadcastGoState();
         break;
@@ -521,6 +555,7 @@ app.post("/api/go/game", (request, response, next) => {
   try {
     goGameVersion += 1;
     goGame = new GoGame(request.body ?? {});
+    persistGoGame();
     response.status(201).json(goGame.publicState());
     broadcastGoState();
     scheduleGoAITurn(goGameVersion);
@@ -539,6 +574,7 @@ app.post("/api/go/action", (request, response, next) => {
       throw error;
     }
     table.applyAction(actor.color, request.body?.action, request.body?.row ?? null, request.body?.column ?? null);
+    persistGoGame();
     response.json(table.publicState());
     broadcastGoState();
     scheduleGoAITurn(goGameVersion);
@@ -556,9 +592,21 @@ app.post("/api/go/retry-ai", (_request, response, next) => {
       throw error;
     }
     table.clearAIError();
+    persistGoGame();
     response.json(table.publicState());
     broadcastGoState();
     scheduleGoAITurn(goGameVersion);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/go/save", (_request, response, next) => {
+  try {
+    const table = requireGoGame();
+    persistGoGame({ required: true });
+    response.json(table.publicState());
+    broadcastGoState();
   } catch (error) {
     next(error);
   }
@@ -568,6 +616,7 @@ app.post("/api/go/arena/pause", (_request, response, next) => {
   try {
     const table = requireGoGame();
     table.pauseArena();
+    persistGoGame();
     response.json(table.publicState());
     broadcastGoState();
   } catch (error) {
@@ -579,6 +628,7 @@ app.post("/api/go/arena/resume", (_request, response, next) => {
   try {
     const table = requireGoGame();
     table.resumeArena();
+    persistGoGame();
     response.json(table.publicState());
     broadcastGoState();
     scheduleGoAITurn(goGameVersion);
@@ -687,6 +737,10 @@ app.use((error, _request, response, _next) => {
 const port = Number.parseInt(process.env.PORT, 10) || 4173;
 const server = app.listen(port, "127.0.0.1", () => {
   console.log(`JYs AI Playground is ready at http://127.0.0.1:${port}`);
+  if (goGame) {
+    console.log(`Restored Go move ${goGame.moveNumber} from the local save slot`);
+    scheduleGoAITurn(goGameVersion);
+  }
 });
 
 server.requestTimeout = 0;

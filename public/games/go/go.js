@@ -12,7 +12,7 @@ const CHARACTERS = [
 const ids = [
   "new-game-button", "model-pill", "reasoning-pill", "move-number", "turn-stone", "turn-label", "turn-detail",
   "black-player", "white-player", "go-board", "game-overlay", "overlay-eyebrow", "overlay-title", "overlay-copy",
-  "overlay-action", "black-captures", "white-captures", "komi-value", "pass-button", "resign-button", "arena-toggle",
+  "overlay-action", "black-captures", "white-captures", "komi-value", "save-button", "pass-button", "resign-button", "arena-toggle",
   "live-indicator", "thinker-profile", "reasoning-status", "reasoning-text", "reasoning-count", "reasoning-feed",
   "history-list", "setup-modal", "setup-form", "setup-lede", "mode-options", "human-name-field", "human-color-field",
   "ai-roster", "apply-roster", "setup-submit", "cancel-setup", "toast",
@@ -28,9 +28,10 @@ function modelLabel(id) {
   return MODEL_OPTIONS.find(([value]) => value === id)?.[1] ?? id;
 }
 
-function showToast(message) {
+function showToast(message, tone = "error") {
   clearTimeout(toastTimer);
   elements.toast.textContent = message;
+  elements.toast.classList.toggle("success", tone === "success");
   elements.toast.classList.add("visible");
   toastTimer = setTimeout(() => elements.toast.classList.remove("visible"), 5000);
 }
@@ -217,6 +218,11 @@ function render() {
   elements.turnLabel.textContent = state.phase === "complete" ? "Game complete" : `${state.currentColor[0].toUpperCase()}${state.currentColor.slice(1)} to play`;
   const actor = state.players.find((player) => player.color === state.currentColor);
   elements.turnDetail.textContent = state.aiError ? "Waiting for retry" : state.arena?.paused ? "AI Arena paused" : actor ? `${actor.name}${state.aiThinking ? " is considering the board" : " has the move"}` : "Territory settled";
+  elements.saveButton.disabled = false;
+  elements.saveButton.title = state.save?.savedAt
+    ? `Last saved ${new Date(state.save.savedAt).toLocaleString()}${state.save.restored ? " · restored after restart" : ""}`
+    : "Save the current Go game to this Mac";
+  elements.saveButton.classList.toggle("save-error", Boolean(state.save?.error));
   elements.passButton.disabled = !state.humanCanAct;
   elements.resignButton.disabled = !state.humanCanAct;
   elements.arenaToggle.classList.toggle("hidden", state.gameMode !== "arena" || state.phase === "complete");
@@ -293,6 +299,15 @@ elements.goBoard.addEventListener("click", (event) => {
 });
 elements.passButton.addEventListener("click", () => performAction("pass"));
 elements.resignButton.addEventListener("click", () => performAction("resign"));
+elements.saveButton.addEventListener("click", async () => {
+  try {
+    state = await request("/api/go/save", { method: "POST", body: "{}" });
+    render();
+    showToast(`Game saved at ${new Date(state.save.savedAt).toLocaleTimeString()}.`, "success");
+  } catch (error) {
+    showToast(error.message);
+  }
+});
 elements.modeOptions.addEventListener("change", updateSetup);
 elements.setupForm.querySelector('[name="humanColor"]').addEventListener("change", updateSetup);
 elements.applyRoster.addEventListener("click", () => {
