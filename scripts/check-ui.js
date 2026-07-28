@@ -39,6 +39,9 @@ const setupResult = await page.evaluate(() => ({
   targetVisible: !document.getElementById("arena-target-field").classList.contains("hidden"),
   playerLegend: document.getElementById("player-count-legend").textContent.trim(),
   submitLabel: document.getElementById("setup-submit").textContent.trim(),
+  rosterRows: document.querySelectorAll(".ai-roster-row").length,
+  modelOptions: document.querySelector(".seat-model")?.options.length,
+  reasoningOptions: document.querySelector(".seat-reasoning")?.options.length,
 }));
 await page.click("#cancel-setup");
 
@@ -109,7 +112,7 @@ if (pageErrors.length) throw new Error(`Browser console errors: ${pageErrors.joi
 if (!result.setupHidden || result.seats !== 3 || result.communitySlots !== 5 || result.brokenImages.length) {
   throw new Error(`UI smoke check failed: ${JSON.stringify(result)}`);
 }
-if (!setupResult.humanNameHidden || !setupResult.targetVisible || setupResult.playerLegend !== "Choose AI seats" || setupResult.submitLabel !== "Start AI Arena") {
+if (!setupResult.humanNameHidden || !setupResult.targetVisible || setupResult.playerLegend !== "Choose AI seats" || setupResult.submitLabel !== "Start AI Arena" || setupResult.rosterRows !== 3 || setupResult.modelOptions !== 3 || setupResult.reasoningOptions !== 6) {
   throw new Error(`Arena setup smoke check failed: ${JSON.stringify(setupResult)}`);
 }
 if (mobileResult.documentWidth > mobileResult.viewportWidth + 1 || mobileResult.seats !== 3) {

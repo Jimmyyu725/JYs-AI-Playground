@@ -25,8 +25,8 @@
       </div>
 
       <div class="table-status">
-        <span class="status-pill model"><i></i> GPT-5.6 Luna</span>
-        <span class="status-pill">Reasoning · Medium</span>
+        <span class="status-pill model" id="table-model"><i></i> GPT-5.6 Luna</span>
+        <span class="status-pill" id="table-reasoning">Reasoning · Medium</span>
         <span class="status-pill no-fallback">No local fallback</span>
       </div>
 
@@ -83,7 +83,7 @@
           <div class="action-context">
             <span class="eyebrow" id="action-context-eyebrow">Your decision</span>
             <strong id="action-context-title">Waiting for the action</strong>
-            <small id="action-context-copy">Luna opponents may take as long as needed.</small>
+            <small id="action-context-copy">OpenAI opponents may take as long as needed.</small>
           </div>
 
           <div class="primary-actions" id="primary-actions">
@@ -127,7 +127,7 @@
         <section class="rail-panel ai-panel">
           <div class="panel-heading">
             <div>
-              <span class="eyebrow">Luna lens</span>
+              <span class="eyebrow">OpenAI lens</span>
               <h2>Decision lens</h2>
             </div>
             <span class="live-indicator" id="live-indicator"><i></i> Idle</span>
@@ -147,7 +147,7 @@
               <span id="reasoning-status">No model request is active.</span>
             </div>
             <div class="live-reasoning">
-              <p id="reasoning-text">When available, OpenAI's supported reasoning summary streams here. Otherwise Luna's public decision rationale appears after the action. Hidden chain-of-thought is never exposed.</p>
+              <p id="reasoning-text">When available, OpenAI's supported reasoning summary streams here. Otherwise the model's public decision rationale appears after the action. Hidden chain-of-thought is never exposed.</p>
               <span class="thinking-cursor hidden" id="thinking-cursor"></span>
             </div>
             <div class="reasoning-feed-heading">
@@ -178,7 +178,7 @@
           <span class="promise-icon">∞</span>
           <div>
             <strong>No artificial turn timer</strong>
-            <p>The table waits for Luna. API errors pause the hand and require retry; no local policy takes over.</p>
+            <p>The table waits for the selected OpenAI model. API errors pause the hand and require retry; no local policy takes over.</p>
           </div>
         </section>
       </aside>
@@ -189,18 +189,18 @@
         <div class="setup-ornament" aria-hidden="true"><i></i><span>LR</span><i></i></div>
         <span class="eyebrow">Tonight's private table</span>
         <h1>Enter the Luna Room</h1>
-        <p class="setup-lede" id="setup-lede">One human. Distinct characters. Every opponent powered only by GPT-5.6 Luna.</p>
+        <p class="setup-lede" id="setup-lede">One human. Distinct characters. Choose the GPT-5.6 model behind every opponent.</p>
 
         <fieldset class="mode-field">
           <legend>Choose a table mode</legend>
           <div class="mode-options" id="mode-options">
             <label>
               <input type="radio" name="gameMode" value="human" checked />
-              <span><b>♠</b><strong>Play vs AI</strong><small>Take a seat against Luna</small></span>
+              <span><b>♠</b><strong>Play vs AI</strong><small>Take a seat against OpenAI</small></span>
             </label>
             <label>
               <input type="radio" name="gameMode" value="arena" />
-              <span><b>∞</b><strong>AI vs AI Arena</strong><small>Watch Luna characters battle</small></span>
+              <span><b>∞</b><strong>AI vs AI Arena</strong><small>Watch AI characters battle</small></span>
             </label>
           </div>
         </fieldset>
@@ -250,7 +250,14 @@
           </label>
         </div>
 
-        <div class="character-preview" id="character-preview"></div>
+        <section class="ai-roster-section">
+          <div class="roster-heading">
+            <div><span>AI roster</span><small>Choose a model and reasoning depth for every seat</small></div>
+            <button class="text-button" id="apply-roster" type="button">Apply first seat to all</button>
+          </div>
+          <div class="ai-roster" id="ai-roster"></div>
+        </section>
+        <div class="character-preview" id="character-preview" aria-hidden="true"></div>
         <button class="gold-button enter-button" id="setup-submit" type="submit">Take your seat</button>
         <button class="text-button cancel-setup hidden" id="cancel-setup" type="button">Return to current hand</button>
       </form>

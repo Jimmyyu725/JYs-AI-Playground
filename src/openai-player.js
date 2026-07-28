@@ -1,4 +1,4 @@
-import { MODEL_ID, REASONING_EFFORT } from "./poker-game.js";
+import { apiKeyForGame, modelMetadata, normalizeModelConfig } from "./platform/model-registry.js";
 
 const DECISION_SCHEMA = {
   type: "object",
@@ -38,17 +38,17 @@ function safeAPIError(status, payload, requestId) {
 }
 
 function validateDecision(decision, legal) {
-  if (!decision || typeof decision !== "object") throw new AIDecisionError("Luna returned no decision object", "invalid_output");
+  if (!decision || typeof decision !== "object") throw new AIDecisionError("The model returned no decision object", "invalid_output");
   if (!legal.actions.includes(decision.action)) {
-    throw new AIDecisionError(`Luna selected illegal action “${decision.action}”`, "illegal_action");
+    throw new AIDecisionError(`The model selected illegal action “${decision.action}”`, "illegal_action");
   }
   if (decision.action === "bet" || decision.action === "raise") {
     if (!Number.isInteger(decision.target_total)) {
-      throw new AIDecisionError("Luna omitted the required bet or raise total", "invalid_sizing");
+      throw new AIDecisionError("The model omitted the required bet or raise total", "invalid_sizing");
     }
     if (decision.target_total < legal.minimumTotal || decision.target_total > legal.maximumTotal) {
       throw new AIDecisionError(
-        `Luna sized outside the legal range ${legal.minimumTotal}–${legal.maximumTotal}`,
+        `The model sized outside the legal range ${legal.minimumTotal}–${legal.maximumTotal}`,
         "invalid_sizing",
       );
     }
@@ -121,11 +121,13 @@ async function readResponseStream(response, callbacks) {
   return { outputText: outputText.trim(), summaryText: summaryText.trim(), response: completedResponse };
 }
 
-export async function requestLunaDecision(snapshot, callbacks = {}) {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) throw new AIDecisionError("OPENAI_API_KEY is not configured", "missing_api_key");
+export async function requestHoldemDecision(snapshot, requestedConfig = {}, callbacks = {}) {
+  const aiConfig = normalizeModelConfig("holdem", requestedConfig);
+  const { envName, value: apiKey } = apiKeyForGame("holdem");
+  if (!apiKey) throw new AIDecisionError(`${envName} is not configured`, "missing_api_key");
+  const label = modelMetadata(aiConfig.model)?.label ?? aiConfig.model;
 
-  callbacks.onStatus?.("Connecting to GPT-5.6 Luna…");
+  callbacks.onStatus?.(`Connecting to ${label}…`);
   let response;
   try {
     response = await fetch("https://api.openai.com/v1/responses", {
@@ -135,8 +137,8 @@ export async function requestLunaDecision(snapshot, callbacks = {}) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: MODEL_ID,
-        reasoning: { effort: REASONING_EFFORT, summary: "auto" },
+        model: aiConfig.model,
+        reasoning: { effort: aiConfig.reasoningEffort, summary: "auto" },
         instructions: systemInstructions(snapshot),
         input: JSON.stringify(snapshot),
         text: {
@@ -166,17 +168,17 @@ export async function requestLunaDecision(snapshot, callbacks = {}) {
     throw safeAPIError(response.status, payload, response.headers.get("x-request-id"));
   }
 
-  callbacks.onStatus?.("Luna is reasoning…");
+  callbacks.onStatus?.(`${label} is reasoning…`);
   const streamed = await readResponseStream(response, callbacks);
   if (!streamed.outputText) {
-    throw new AIDecisionError("Luna completed without a decision", "empty_output");
+    throw new AIDecisionError("The model completed without a decision", "empty_output");
   }
 
   let parsed;
   try {
     parsed = JSON.parse(streamed.outputText);
   } catch {
-    throw new AIDecisionError("Luna's structured decision could not be parsed", "invalid_json");
+    throw new AIDecisionError("The model's structured decision could not be parsed", "invalid_json");
   }
 
   return {
@@ -185,3 +187,6 @@ export async function requestLunaDecision(snapshot, callbacks = {}) {
     responseId: streamed.response?.id ?? null,
   };
 }
+
+export const requestLunaDecision = (snapshot, callbacks = {}) =>
+  requestHoldemDecision(snapshot, { model: "gpt-5.6-luna", reasoningEffort: "medium" }, callbacks);

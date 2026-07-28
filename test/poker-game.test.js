@@ -106,3 +106,29 @@ test("keeps a persistent transcript of completed AI summaries", () => {
   assert.equal(state.aiInsights[0].summary, "The price supports a disciplined call.");
   assert.equal(state.aiInsights[1].summary, "Pressure the capped blind with a compact raise.");
 });
+
+test("stores an independent allowlisted model configuration for every AI seat", () => {
+  const game = new PokerGame({
+    gameMode: "arena",
+    opponentCount: 2,
+    arenaPaused: true,
+    aiPlayers: [
+      { model: "gpt-5.6-sol", reasoningEffort: "max" },
+      { model: "gpt-5.6-terra", reasoningEffort: "low" },
+    ],
+  });
+  const state = game.publicState();
+  assert.equal(state.model, "mixed");
+  assert.equal(state.reasoningEffort, "mixed");
+  assert.deepEqual(state.players.map((player) => player.aiConfig), [
+    { model: "gpt-5.6-sol", reasoningEffort: "max" },
+    { model: "gpt-5.6-terra", reasoningEffort: "low" },
+  ]);
+});
+
+test("shares public opponent characters with the acting AI but no opponent cards", () => {
+  const game = new PokerGame({ gameMode: "arena", opponentCount: 2, arenaPaused: true });
+  const snapshot = game.aiSnapshot();
+  assert.match(snapshot.table.players[1].personality, /aggressive/i);
+  assert.equal("holeCards" in snapshot.table.players[1], false);
+});

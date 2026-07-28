@@ -1,10 +1,17 @@
 const BOT_PREVIEW = [
-  { initials: "VV", color: "#d96f9f" },
-  { initials: "RM", color: "#e89a44" },
-  { initials: "SP", color: "#75c8d8" },
-  { initials: "MC", color: "#79b989" },
-  { initials: "IK", color: "#9f87e8" },
+  { name: "Vesper Vale", title: "The Velvet Knife", initials: "VV", color: "#d96f9f" },
+  { name: "Rook Mercer", title: "The Enforcer", initials: "RM", color: "#e89a44" },
+  { name: "Selene Park", title: "The Oracle", initials: "SP", color: "#75c8d8" },
+  { name: "Moss Calder", title: "The Anchor", initials: "MC", color: "#79b989" },
+  { name: "Iris Knox", title: "The Wildcard", initials: "IK", color: "#9f87e8" },
 ];
+
+const MODEL_OPTIONS = [
+  ["gpt-5.6-sol", "GPT-5.6 Sol"],
+  ["gpt-5.6-terra", "GPT-5.6 Terra"],
+  ["gpt-5.6-luna", "GPT-5.6 Luna"],
+];
+const REASONING_OPTIONS = ["none", "low", "medium", "high", "xhigh", "max"];
 
 const elements = Object.fromEntries(
   [
@@ -15,7 +22,7 @@ const elements = Object.fromEntries(
     "reasoning-status", "reasoning-text", "thinking-cursor", "reasoning-count", "reasoning-feed", "decision-explanation", "history-list", "scroll-latest",
     "arena-controls", "arena-progress", "arena-track-fill", "arena-toggle", "arena-new-table", "setup-modal", "setup-form",
     "setup-lede", "mode-options", "human-name-field", "player-count-legend", "opponent-options", "setup-grid",
-    "arena-target-field", "arena-hand-target", "setup-submit", "character-preview", "cancel-setup", "new-table-button", "toast",
+    "arena-target-field", "arena-hand-target", "setup-submit", "character-preview", "ai-roster", "apply-roster", "table-model", "table-reasoning", "cancel-setup", "new-table-button", "toast",
   ].map((id) => [id.replace(/-([a-z])/g, (_match, letter) => letter.toUpperCase()), document.getElementById(id)]),
 );
 
@@ -202,16 +209,18 @@ function renderControls() {
 
     if (state.aiError) {
       elements.actionContextTitle.textContent = "Model request paused";
-      elements.actionContextCopy.textContent = "Retry Luna to continue. No local action will be substituted.";
+      elements.actionContextCopy.textContent = "Retry the selected model to continue. No local action will be substituted.";
     } else if (state.arena.finished) {
       elements.actionContextTitle.textContent = "Arena session complete";
-      elements.actionContextCopy.textContent = `${completed} hand${completed === 1 ? "" : "s"} played with every decision made by Luna.`;
+      elements.actionContextCopy.textContent = `${completed} hand${completed === 1 ? "" : "s"} played with every decision made by the selected OpenAI models.`;
     } else if (state.arena.paused) {
       elements.actionContextTitle.textContent = state.aiThinking ? "Pausing after this decision" : "Arena paused";
-      elements.actionContextCopy.textContent = "Resume when you are ready for the next Luna decision.";
+      elements.actionContextCopy.textContent = "Resume when you are ready for the next model decision.";
     } else if (state.aiThinking) {
       elements.actionContextTitle.textContent = `${state.aiThinking.playerName} is considering the room`;
-      elements.actionContextCopy.textContent = "Every seat uses GPT-5.6 Luna with medium reasoning.";
+      elements.actionContextCopy.textContent = state.model === "mixed"
+        ? "The AI seats are using individual GPT-5.6 model configurations."
+        : `Every AI seat uses ${state.model} with ${state.reasoningEffort} reasoning.`;
     } else {
       elements.actionContextTitle.textContent = state.phase === "hand_over" ? "Preparing the next hand" : "AI Arena is live";
       elements.actionContextCopy.textContent = "All hole cards are visible to you; each AI sees only its own cards.";
@@ -248,13 +257,13 @@ function renderControls() {
     elements.actionContextCopy.textContent = legal.toCall > 0 ? `Call ${chips(legal.callAmount)}, find a raise, or leave the hand.` : "Check the room or take the betting lead.";
   } else if (state.aiError) {
     elements.actionContextTitle.textContent = "Model request paused";
-    elements.actionContextCopy.textContent = "Retry Luna to continue. No local action will be substituted.";
+    elements.actionContextCopy.textContent = "Retry the selected model to continue. No local action will be substituted.";
   } else if (state.aiThinking) {
     elements.actionContextTitle.textContent = `${state.aiThinking.playerName} is considering the room`;
     elements.actionContextCopy.textContent = "There is no artificial decision timer.";
   } else {
     elements.actionContextTitle.textContent = state.phase === "hand_over" ? "The pot is settled" : "Waiting for the action";
-    elements.actionContextCopy.textContent = "Luna opponents may take as long as needed.";
+    elements.actionContextCopy.textContent = "OpenAI opponents may take as long as needed.";
   }
 }
 
@@ -264,7 +273,7 @@ function renderOverlay() {
     elements.overlayEyebrow.textContent = "OpenAI turn paused";
     elements.overlayTitle.textContent = `${state.aiError.playerName} needs a retry`;
     elements.overlayCopy.textContent = state.aiError.message;
-    elements.overlayAction.textContent = "Retry Luna";
+    elements.overlayAction.textContent = "Retry model";
     elements.overlayAction.dataset.action = "retry";
     elements.tableOverlay.classList.remove("hidden");
   } else if (state.gameMode === "arena" && state.phase === "game_over") {
@@ -320,7 +329,7 @@ function renderInsight() {
   const name = document.createElement("strong");
   name.textContent = player.name;
   const title = document.createElement("span");
-  title.textContent = player.isHuman ? "House guest" : `${character.title} · ${state.model}`;
+  title.textContent = player.isHuman ? "House guest" : `${character.title} · ${player.aiConfig.model} · ${player.aiConfig.reasoningEffort}`;
   copy.append(name, title);
   elements.thinkerProfile.append(avatar, copy);
 
@@ -329,13 +338,13 @@ function renderInsight() {
   elements.liveIndicator.innerHTML = `<i></i> ${isThinking ? "Live" : "Idle"}`;
   elements.thinkingCursor.classList.toggle("hidden", !isThinking);
   if (isThinking) {
-    elements.reasoningStatus.textContent = state.aiThinking.status || "Luna is reasoning…";
+    elements.reasoningStatus.textContent = state.aiThinking.status || "The selected model is reasoning…";
     elements.reasoningText.textContent = liveSummary || "Waiting for the API-provided reasoning summary…";
   } else {
     elements.reasoningStatus.textContent = "No model request is active.";
     elements.reasoningText.textContent = (state.aiInsights?.length ?? 0) > 0
       ? "Completed summaries stay in the decision log below. Select a player to review their latest table note."
-      : player.isHuman ? "Your decisions stay yours." : "Completed Luna summaries will remain in the decision log below.";
+      : player.isHuman ? "Your decisions stay yours." : "Completed model summaries will remain in the decision log below.";
   }
   elements.decisionExplanation.textContent = player.lastExplanation || "A concise player-facing explanation will appear after the decision.";
   renderReasoningFeed();
@@ -391,6 +400,8 @@ function render() {
   elements.blindLabel.textContent = `${chips(state.smallBlind)} / ${chips(state.bigBlind)}`;
   elements.phaseLabel.textContent = phaseName(state.phase);
   elements.potValue.textContent = chips(state.pot);
+  elements.tableModel.innerHTML = `<i></i> ${state.model === "mixed" ? "Mixed GPT-5.6" : MODEL_OPTIONS.find(([id]) => id === state.model)?.[1] ?? state.model}`;
+  elements.tableReasoning.textContent = `Reasoning · ${state.reasoningEffort}`;
   const actor = state.players.find((player) => player.seat === state.currentActorSeat);
   elements.turnLabel.textContent = state.gameMode === "arena" && state.arena.paused
     ? state.aiThinking ? "Pausing after the current decision" : "Arena paused"
@@ -422,14 +433,49 @@ async function performAction(action, targetTotal = null) {
 
 function updateCharacterPreview() {
   const count = Number(new FormData(elements.setupForm).get("opponentCount") ?? 3);
+  const existing = [...elements.aiRoster.querySelectorAll(".ai-roster-row")].map((row) => ({
+    model: row.querySelector(".seat-model")?.value,
+    reasoningEffort: row.querySelector(".seat-reasoning")?.value,
+  }));
+  elements.aiRoster.replaceChildren();
   elements.characterPreview.replaceChildren();
-  for (const character of BOT_PREVIEW.slice(0, count)) {
+  BOT_PREVIEW.slice(0, count).forEach((character, index) => {
+    const row = document.createElement("div");
+    row.className = "ai-roster-row";
+    row.dataset.aiIndex = String(index);
+    const characterBlock = document.createElement("div");
+    characterBlock.className = "roster-character";
+    const rosterAvatar = document.createElement("span");
+    rosterAvatar.className = "roster-avatar";
+    rosterAvatar.style.setProperty("--character-color", character.color);
+    rosterAvatar.textContent = character.initials;
+    const characterCopy = document.createElement("span");
+    const characterName = document.createElement("strong");
+    characterName.textContent = character.name;
+    const characterTitle = document.createElement("small");
+    characterTitle.textContent = character.title;
+    characterCopy.append(characterName, characterTitle);
+    characterBlock.append(rosterAvatar, characterCopy);
+
+    const model = document.createElement("select");
+    model.className = "seat-model";
+    model.setAttribute("aria-label", `${character.name} model`);
+    for (const [value, label] of MODEL_OPTIONS) model.add(new Option(label, value));
+    model.value = existing[index]?.model ?? "gpt-5.6-luna";
+    const reasoning = document.createElement("select");
+    reasoning.className = "seat-reasoning";
+    reasoning.setAttribute("aria-label", `${character.name} reasoning effort`);
+    for (const effort of REASONING_OPTIONS) reasoning.add(new Option(`Reasoning: ${effort}`, effort));
+    reasoning.value = existing[index]?.reasoningEffort ?? "medium";
+    row.append(characterBlock, model, reasoning);
+    elements.aiRoster.append(row);
+
     const avatar = document.createElement("span");
     avatar.className = "preview-character";
     avatar.style.setProperty("--character-color", character.color);
     avatar.textContent = character.initials;
     elements.characterPreview.append(avatar);
-  }
+  });
 }
 
 function selectedSetupMode() {
@@ -443,8 +489,8 @@ function updateSetupMode() {
   elements.setupGrid.classList.toggle("arena-configured", isArena);
   elements.playerCountLegend.textContent = isArena ? "Choose AI seats" : "Choose your opponents";
   elements.setupLede.textContent = isArena
-    ? "An all-Luna table. See every card, follow every decision, and pause the action whenever you like."
-    : "One human. Distinct characters. Every opponent powered only by GPT-5.6 Luna.";
+    ? "An all-OpenAI table. See every card, follow every decision, and pause the action whenever you like."
+    : "One human. Distinct characters. Choose the GPT-5.6 model behind every opponent.";
   elements.setupSubmit.textContent = isArena ? "Start AI Arena" : "Take your seat";
   for (const label of elements.opponentOptions.querySelectorAll("small")) {
     label.textContent = isArena ? label.dataset.arena : label.dataset.human;
@@ -466,6 +512,10 @@ elements.setupForm.addEventListener("submit", async (event) => {
     smallBlind,
     bigBlind,
     arenaHandTarget: targetValue === "unlimited" ? null : Number(targetValue),
+    aiPlayers: [...elements.aiRoster.querySelectorAll(".ai-roster-row")].map((row) => ({
+      model: row.querySelector(".seat-model").value,
+      reasoningEffort: row.querySelector(".seat-reasoning").value,
+    })),
   };
   const submit = elements.setupForm.querySelector('button[type="submit"]');
   submit.disabled = true;
@@ -488,6 +538,16 @@ elements.setupForm.addEventListener("submit", async (event) => {
 
 elements.opponentOptions.addEventListener("change", updateCharacterPreview);
 elements.modeOptions.addEventListener("change", updateSetupMode);
+elements.applyRoster.addEventListener("click", () => {
+  const first = elements.aiRoster.querySelector(".ai-roster-row");
+  if (!first) return;
+  const model = first.querySelector(".seat-model").value;
+  const reasoning = first.querySelector(".seat-reasoning").value;
+  for (const row of elements.aiRoster.querySelectorAll(".ai-roster-row")) {
+    row.querySelector(".seat-model").value = model;
+    row.querySelector(".seat-reasoning").value = reasoning;
+  }
+});
 
 async function openSetup() {
   try {

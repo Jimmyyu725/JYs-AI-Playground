@@ -1,8 +1,6 @@
 import { createDeck, shuffleDeck } from "./cards.js";
 import { resolveSidePots } from "./hand-evaluator.js";
-
-export const MODEL_ID = "gpt-5.6-luna";
-export const REASONING_EFFORT = "medium";
+import { normalizeModelConfig } from "./platform/model-registry.js";
 
 export const BOT_CHARACTERS = [
   {
@@ -70,16 +68,19 @@ export class PokerGame {
     this.bigBlind = clampInteger(config.bigBlind, this.smallBlind * 2, 20_000, 20);
     if (this.smallBlind >= this.bigBlind) this.smallBlind = Math.max(1, Math.floor(this.bigBlind / 2));
 
+    const configuredAIPlayers = Array.isArray(config.aiPlayers) ? config.aiPlayers : [];
+    const aiConfigAt = (index) => normalizeModelConfig("holdem", configuredAIPlayers[index] ?? config);
+
     if (this.gameMode === "arena") {
       this.players = BOT_CHARACTERS.slice(0, opponentCount).map((character, index) =>
-        this._makePlayer(index, character.name, false, character),
+        this._makePlayer(index, character.name, false, character, aiConfigAt(index)),
       );
     } else {
       const humanName = String(config.humanName ?? "You").trim().slice(0, 18) || "You";
       this.players = [
         this._makePlayer(0, humanName, true, null),
         ...BOT_CHARACTERS.slice(0, opponentCount).map((character, index) =>
-          this._makePlayer(index + 1, character.name, false, character),
+          this._makePlayer(index + 1, character.name, false, character, aiConfigAt(index)),
         ),
       ];
     }
@@ -109,12 +110,13 @@ export class PokerGame {
     this.startNewHand();
   }
 
-  _makePlayer(seat, name, isHuman, character) {
+  _makePlayer(seat, name, isHuman, character, aiConfig = null) {
     return {
       seat,
       name,
       isHuman,
       character,
+      aiConfig,
       stack: this.startingStack,
       holeCards: [],
       streetBet: 0,
@@ -572,6 +574,8 @@ export class PokerGame {
         name: actor.name,
         title: actor.character.title,
         personality: actor.character.personality,
+        model: actor.aiConfig.model,
+        reasoningEffort: actor.aiConfig.reasoningEffort,
         stack: actor.stack,
         holeCards: actor.holeCards,
         streetBet: actor.streetBet,
@@ -587,6 +591,8 @@ export class PokerGame {
         players: this.players.map((player) => ({
           seat: player.seat,
           name: player.name,
+          title: player.character?.title ?? "House guest",
+          personality: player.character?.personality ?? "Human guest",
           stack: player.stack,
           streetBet: player.streetBet,
           totalCommitted: player.totalCommitted,
@@ -604,9 +610,12 @@ export class PokerGame {
   publicState() {
     const actor = this.currentActor;
     const humanLegal = actor?.isHuman ? this.legalActionsFor(actor) : null;
+    const aiConfigs = this.players.filter((player) => !player.isHuman).map((player) => player.aiConfig);
+    const modelNames = new Set(aiConfigs.map((config) => config.model));
+    const efforts = new Set(aiConfigs.map((config) => config.reasoningEffort));
     return {
-      model: MODEL_ID,
-      reasoningEffort: REASONING_EFFORT,
+      model: modelNames.size === 1 ? aiConfigs[0].model : "mixed",
+      reasoningEffort: efforts.size === 1 ? aiConfigs[0].reasoningEffort : "mixed",
       noLocalFallback: true,
       gameMode: this.gameMode,
       arena: this.isArenaMode
@@ -640,6 +649,7 @@ export class PokerGame {
           name: player.name,
           isHuman: player.isHuman,
           character: player.character,
+          aiConfig: player.aiConfig,
           stack: player.stack,
           streetBet: player.streetBet,
           totalCommitted: player.totalCommitted,

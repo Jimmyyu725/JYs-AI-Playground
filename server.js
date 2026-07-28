@@ -3,7 +3,8 @@ import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
 import express from "express";
 import { PokerGame } from "./src/poker-game.js";
-import { AIDecisionError, requestLunaDecision } from "./src/openai-player.js";
+import { AIDecisionError, requestHoldemDecision } from "./src/openai-player.js";
+import { apiKeyForGame, publicModelRegistry } from "./src/platform/model-registry.js";
 
 const rootDir = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(rootDir, ".env.local") });
@@ -89,13 +90,13 @@ async function runAIChain(version) {
 
       const seat = actor.seat;
       const startedAt = performance.now();
-      table.aiThinking = { seat, playerName: actor.name, status: "Connecting to GPT-5.6 Luna…", startedAt: Date.now() };
+      table.aiThinking = { seat, playerName: actor.name, status: `Connecting to ${actor.aiConfig.model}…`, startedAt: Date.now() };
       broadcast("ai_stream", { phase: "started", seat, playerName: actor.name, summary: "" });
       broadcastState();
 
       try {
         const snapshot = table.aiSnapshot();
-        const decision = await requestLunaDecision(snapshot, {
+        const decision = await requestHoldemDecision(snapshot, actor.aiConfig, {
           onStatus(status) {
             if (game !== table || version !== gameVersion) return;
             table.aiThinking = { ...table.aiThinking, status };
@@ -151,9 +152,13 @@ async function runAIChain(version) {
 app.get("/api/health", (_request, response) => {
   response.json({
     ok: true,
-    model: "gpt-5.6-luna",
-    reasoningEffort: "medium",
-    apiKeyConfigured: Boolean(process.env.OPENAI_API_KEY),
+    apiKeys: {
+      holdem: Boolean(apiKeyForGame("holdem").value),
+      go: Boolean(apiKeyForGame("go").value),
+      wuziqi: Boolean(apiKeyForGame("wuziqi").value),
+    },
+    models: publicModelRegistry(),
+    games: { holdem: true, go: false, wuziqi: false },
     noLocalFallback: true,
   });
 });
