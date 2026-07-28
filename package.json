@@ -1,0 +1,26 @@
+{
+  "name": "luna-holdem",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Browser Texas Hold'em with OpenAI GPT-5.6 Luna opponents.",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "node --test",
+    "check": "node --check server.js && node --check public/app.js && node --test",
+    "api:check": "node scripts/check-openai.js",
+    "ui:check": "node scripts/check-ui.js",
+    "flow:check": "node scripts/check-game-flow.js"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.1",
+    "express": "^5.1.0"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "devDependencies": {
+    "playwright-core": "^1.62.0"
+  }
+}

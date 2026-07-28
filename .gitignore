@@ -1,0 +1,11 @@
+.env
+.env.*
+!.env.example
+*.textClipping
+node_modules/
+.imagegen-venv/
+.DS_Store
+coverage/
+output/
+tmp/
+npm-debug.log*
