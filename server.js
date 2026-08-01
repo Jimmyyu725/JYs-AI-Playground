@@ -736,8 +736,11 @@ app.use((error, _request, response, _next) => {
 });
 
 const port = Number.parseInt(process.env.PORT, 10) || 4173;
-const server = app.listen(port, "127.0.0.1", () => {
-  console.log(`JYs AI Playground is ready at http://127.0.0.1:${port}`);
+// Loopback by default. Set HOST=0.0.0.0 to reach the playground from the LAN;
+// the app has no authentication, so never expose it to the public internet.
+const host = process.env.HOST || "127.0.0.1";
+const server = app.listen(port, host, () => {
+  console.log(`JYs AI Playground is ready at http://${host === "0.0.0.0" ? "127.0.0.1" : host}:${port}`);
   if (goGame) {
     console.log(`Restored Go move ${goGame.moveNumber} from the local save slot`);
     scheduleGoAITurn(goGameVersion);

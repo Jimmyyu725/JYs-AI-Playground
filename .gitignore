@@ -10,3 +10,4 @@ output/
 tmp/
 .playground-data/
 npm-debug.log*
+.server.log

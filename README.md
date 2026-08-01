@@ -57,6 +57,16 @@ Game routes:
 - [Go / 围棋](http://127.0.0.1:4173/games/go/)
 - [Wuziqi / 五子棋](http://127.0.0.1:4173/games/wuziqi/)
 
+The server binds to loopback by default. To reach it from another machine on the
+same LAN, set `HOST`:
+
+```bash
+HOST=0.0.0.0 npm start
+```
+
+The playground has no authentication and every seat spends real API credit, so
+keep it on a trusted network and never expose it to the public internet.
+
 ## House guarantees
 
 - The server owns all rules, legal actions, cards, boards, scoring, captures, wins, and turn order.
