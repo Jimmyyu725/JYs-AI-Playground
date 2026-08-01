@@ -10,8 +10,14 @@ const MODEL_OPTIONS = [
   ["gpt-5.6-sol", "GPT-5.6 Sol"],
   ["gpt-5.6-terra", "GPT-5.6 Terra"],
   ["gpt-5.6-luna", "GPT-5.6 Luna"],
+  ["deepseek-v4-pro", "DeepSeek V4 Pro"],
 ];
 const REASONING_OPTIONS = ["none", "low", "medium", "high", "xhigh", "max"];
+const SUMMARY_SOURCE_LABELS = {
+  openai_reasoning_summary: "OpenAI reasoning summary",
+  deepseek_reasoning_content: "DeepSeek raw reasoning",
+  public_decision_rationale: "public rationale",
+};
 
 const elements = Object.fromEntries(
   [
@@ -367,7 +373,8 @@ function renderReasoningFeed() {
     name.textContent = insight.playerName;
     const meta = document.createElement("span");
     const action = insight.action ? ` · ${insight.action.replace("_", " ")}` : "";
-    meta.textContent = `Hand ${insight.handNumber} · ${phaseName(insight.phase)}${action} · ${(insight.latencyMs / 1000).toFixed(1)}s`;
+    const source = SUMMARY_SOURCE_LABELS[insight.summarySource] ?? "";
+    meta.textContent = `Hand ${insight.handNumber} · ${phaseName(insight.phase)}${action} · ${(insight.latencyMs / 1000).toFixed(1)}s${source ? ` · ${source}` : ""}`;
     heading.append(name, meta);
 
     const summary = document.createElement("p");

@@ -17,7 +17,20 @@ try {
 
   if (health.games?.go) markAvailable("#go-status");
   if (health.games?.wuziqi) markAvailable("#wuziqi-status");
-  keySummary.textContent = `${ready} of ${total} private game keys configured`;
+
+  // A DeepSeek-only setup still runs every room, so report each provider rather than
+  // the OpenAI key count alone.
+  const providerKeys = health.providerKeys;
+  if (providerKeys) {
+    const configured = Object.entries(providerKeys)
+      .filter(([, games]) => Object.values(games).some(Boolean))
+      .map(([provider]) => provider);
+    keySummary.textContent = configured.length
+      ? `Providers ready: ${configured.join(" · ")}`
+      : "No provider keys configured";
+  } else {
+    keySummary.textContent = `${ready} of ${total} private game keys configured`;
+  }
 } catch {
   keySummary.textContent = "House status unavailable";
 }

@@ -9,7 +9,7 @@ import { requestWuziqiDecision } from "./src/games/wuziqi-ai.js";
 import { WuziqiGame } from "./src/games/wuziqi-game.js";
 import { PokerGame } from "./src/poker-game.js";
 import { AIDecisionError, requestHoldemDecision } from "./src/openai-player.js";
-import { apiKeyForGame, publicModelRegistry } from "./src/platform/model-registry.js";
+import { apiKeyForGame, configuredProviderKeys, publicModelRegistry } from "./src/platform/model-registry.js";
 
 const rootDir = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(rootDir, ".env.local") });
@@ -211,7 +211,7 @@ async function runAIChain(version) {
         if (game !== table || version !== gameVersion) return;
         const latencyMs = performance.now() - startedAt;
         const visibleSummary = decision.reasoningSummary || decision.explanation;
-        const summarySource = decision.reasoningSummary ? "openai_reasoning_summary" : "public_decision_rationale";
+        const summarySource = decision.reasoningSource || "public_decision_rationale";
         table.recordAIInsight(seat, {
           summary: visibleSummary,
           summarySource,
@@ -306,7 +306,7 @@ async function runGoAIChain(version) {
         const visibleSummary = decision.reasoningSummary || decision.explanation;
         table.recordAIInsight(color, {
           summary: visibleSummary,
-          summarySource: decision.reasoningSummary ? "openai_reasoning_summary" : "public_decision_rationale",
+          summarySource: decision.reasoningSource || "public_decision_rationale",
           explanation: decision.explanation,
           latencyMs,
           action: decision.action,
@@ -377,7 +377,7 @@ async function runWuziqiAIChain(version) {
         const visibleSummary = decision.reasoningSummary || decision.explanation;
         table.recordAIInsight(color, {
           summary: visibleSummary,
-          summarySource: decision.reasoningSummary ? "openai_reasoning_summary" : "public_decision_rationale",
+          summarySource: decision.reasoningSource || "public_decision_rationale",
           explanation: decision.explanation,
           latencyMs,
           action: decision.action,
@@ -418,6 +418,7 @@ app.get("/api/health", (_request, response) => {
       go: Boolean(apiKeyForGame("go").value),
       wuziqi: Boolean(apiKeyForGame("wuziqi").value),
     },
+    providerKeys: configuredProviderKeys(),
     models: publicModelRegistry(),
     games: { holdem: true, go: true, wuziqi: true },
     noLocalFallback: true,

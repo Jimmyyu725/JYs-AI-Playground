@@ -1,12 +1,7 @@
-import { apiKeyForGame, modelMetadata, normalizeModelConfig } from "./model-registry.js";
+import { AIDecisionError } from "./ai-decision-error.js";
+import { apiKeyFor, modelMetadata } from "./model-registry.js";
 
-export class AIDecisionError extends Error {
-  constructor(message, code = "ai_decision_error") {
-    super(message);
-    this.name = "AIDecisionError";
-    this.code = code;
-  }
-}
+export { AIDecisionError } from "./ai-decision-error.js";
 
 function extractCompletedSummary(response) {
   const parts = [];
@@ -77,17 +72,16 @@ async function readResponseStream(response, callbacks) {
   return { outputText: outputText.trim(), summaryText: summaryText.trim(), response: completedResponse };
 }
 
-export async function requestStructuredDecision({
+export async function requestOpenAIStructuredDecision({
+  config,
   gameId,
-  modelConfig,
   instructions,
   input,
   schemaName,
   schema,
   maxOutputTokens = 4096,
 }, callbacks = {}) {
-  const config = normalizeModelConfig(gameId, modelConfig);
-  const { envName, value: apiKey } = apiKeyForGame(gameId);
+  const { envName, value: apiKey } = apiKeyFor("openai", gameId);
   if (!apiKey) throw new AIDecisionError(`${envName} is not configured`, "missing_api_key");
   const label = modelMetadata(config.model)?.label ?? config.model;
   callbacks.onStatus?.(`Connecting to ${label}…`);
@@ -146,6 +140,7 @@ export async function requestStructuredDecision({
   return {
     output,
     reasoningSummary: streamed.summaryText,
+    reasoningSource: streamed.summaryText ? "openai_reasoning_summary" : "",
     responseId: streamed.response?.id ?? null,
     modelConfig: config,
   };

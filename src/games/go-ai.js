@@ -1,4 +1,4 @@
-import { AIDecisionError, requestStructuredDecision } from "../platform/openai-gateway.js";
+import { AIDecisionError, requestStructuredDecision } from "../platform/decision-gateway.js";
 
 const GO_DECISION_SCHEMA = {
   type: "object",
@@ -71,6 +71,7 @@ export async function requestGoDecision(snapshot, modelConfig, callbacks = {}) {
     column: decision.column,
     explanation: String(decision.explanation).slice(0, 420),
     reasoningSummary: response.reasoningSummary,
+    reasoningSource: response.reasoningSource,
     responseId: response.responseId,
   };
 }

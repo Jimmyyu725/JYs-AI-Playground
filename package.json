@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Casino-inspired Texas Hold'em, Go, and Wuziqi with selectable OpenAI GPT-5.6 opponents.",
+  "description": "Casino-inspired Texas Hold'em, Go, and Wuziqi with selectable OpenAI GPT-5.6 and DeepSeek V4 opponents.",
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
@@ -16,6 +16,7 @@
     "go:api:check": "node scripts/check-board-openai.js go",
     "wuziqi:ui:check": "node scripts/check-wuziqi-ui.js",
     "wuziqi:api:check": "node scripts/check-board-openai.js wuziqi",
+    "ds:api:check": "node scripts/check-deepseek.js",
     "flow:check": "node scripts/check-game-flow.js",
     "arena:check": "node scripts/check-arena-flow.js"
   },

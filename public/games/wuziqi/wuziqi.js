@@ -1,5 +1,6 @@
-const MODEL_OPTIONS = [["gpt-5.6-sol", "GPT-5.6 Sol"], ["gpt-5.6-terra", "GPT-5.6 Terra"], ["gpt-5.6-luna", "GPT-5.6 Luna"]];
+const MODEL_OPTIONS = [["gpt-5.6-sol", "GPT-5.6 Sol"], ["gpt-5.6-terra", "GPT-5.6 Terra"], ["gpt-5.6-luna", "GPT-5.6 Luna"], ["deepseek-v4-pro", "DeepSeek V4 Pro"]];
 const REASONING_OPTIONS = ["none", "low", "medium", "high", "xhigh", "max"];
+const SUMMARY_SOURCE_LABELS = { openai_reasoning_summary: "OpenAI summary", deepseek_reasoning_content: "DeepSeek raw reasoning", public_decision_rationale: "public rationale" };
 const CHARACTERS = [
   { name: "Rook Mercer", title: "The Enforcer", initials: "RM", color: "#e89a44" },
   { name: "Iris Knox", title: "The Wildcard", initials: "IK", color: "#9f87e8" },
@@ -11,6 +12,7 @@ let liveSummary = "";
 let toastTimer = null;
 
 function modelLabel(id) { return MODEL_OPTIONS.find(([value]) => value === id)?.[1] ?? id; }
+function shortModelLabel(id) { return String(id).replace(/^gpt-5\.6-/, "").replace(/^deepseek-/, ""); }
 function showToast(message) { clearTimeout(toastTimer); elements.toast.textContent = message; elements.toast.classList.add("visible"); toastTimer = setTimeout(() => elements.toast.classList.remove("visible"), 5000); }
 async function request(path, options = {}) { const response = await fetch(path, { ...options, headers: { "Content-Type": "application/json", ...(options.headers ?? {}) } }); let payload = null; try { payload = await response.json(); } catch { /* empty */ } if (!response.ok) throw new Error(payload?.error || `Request failed (${response.status})`); return payload; }
 
@@ -54,7 +56,7 @@ function renderInsight() {
   const actor = state.players.find((player) => player.color === (state.aiThinking?.color ?? state.currentColor)), thinking = Boolean(state.aiThinking); elements.liveIndicator.classList.toggle("active", thinking); elements.liveIndicator.innerHTML = `<i></i> ${thinking ? "Live" : "Idle"}`; elements.thinkerProfile.replaceChildren();
   const stone = document.createElement("span"), copy = document.createElement("div"), name = document.createElement("strong"), meta = document.createElement("span"); stone.className = `profile-stone ${actor?.color ?? "black"}`; name.textContent = actor?.name ?? "No active player"; meta.textContent = actor?.isHuman ? "Human player" : `${modelLabel(actor?.aiConfig.model)} · ${actor?.aiConfig.reasoningEffort} reasoning`; copy.append(name,meta); elements.thinkerProfile.append(stone,copy); elements.reasoningStatus.textContent = state.aiThinking?.status ?? "No model request is active."; elements.reasoningText.textContent = thinking ? liveSummary || "Waiting for a supported reasoning summary…" : "Completed summaries remain in the transcript below.";
   elements.reasoningCount.textContent = `${state.aiInsights.length} ${state.aiInsights.length === 1 ? "entry" : "entries"}`; elements.reasoningFeed.replaceChildren();
-  for (const insight of state.aiInsights) { const item = document.createElement("li"), heading = document.createElement("div"), insightName = document.createElement("strong"), info = document.createElement("span"), summary = document.createElement("p"); item.className = "reasoning-entry"; item.style.setProperty("--entry-color", insight.characterColor); insightName.textContent = insight.playerName; info.textContent = `Move ${insight.moveNumber} · ${insight.model.replace("gpt-5.6-","")} · ${(insight.latencyMs/1000).toFixed(1)}s`; summary.textContent = insight.summary || insight.explanation; heading.append(insightName,info); item.append(heading,summary); elements.reasoningFeed.append(item); }
+  for (const insight of state.aiInsights) { const item = document.createElement("li"), heading = document.createElement("div"), insightName = document.createElement("strong"), info = document.createElement("span"), summary = document.createElement("p"); item.className = "reasoning-entry"; item.style.setProperty("--entry-color", insight.characterColor); insightName.textContent = insight.playerName; info.textContent = `Move ${insight.moveNumber} · ${shortModelLabel(insight.model)} · ${(insight.latencyMs/1000).toFixed(1)}s${SUMMARY_SOURCE_LABELS[insight.summarySource] ? ` · ${SUMMARY_SOURCE_LABELS[insight.summarySource]}` : ""}`; summary.textContent = insight.summary || insight.explanation; heading.append(insightName,info); item.append(heading,summary); elements.reasoningFeed.append(item); }
 }
 function renderHistory() { elements.historyList.replaceChildren(); state.logs.slice(0,90).forEach((entry,index) => { const item = document.createElement("li"), number = document.createElement("span"), text = document.createElement("span"); item.className = `history-entry ${entry.kind}`; number.textContent = String(state.logs.length-index).padStart(2,"0"); text.textContent = entry.text; item.append(number,text); elements.historyList.append(item); }); }
 function render() {
