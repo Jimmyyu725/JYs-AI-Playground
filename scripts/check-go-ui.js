@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import { once } from "node:events";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
+import { resolveChromePath } from "./chrome-path.js";
 import net from "node:net";
 import os from "node:os";
 import path from "node:path";
@@ -65,7 +66,7 @@ if (!created.ok) throw new Error(`Could not create Go smoke game (${created.stat
 
 const browser = await chromium.launch({
   headless: true,
-  executablePath: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+  executablePath: resolveChromePath(),
 });
 const errors = [];
 const attachErrors = (page) => {
@@ -117,7 +118,7 @@ if (errors.length) throw new Error(`Go browser errors: ${errors.join(" | ")}`);
 if (desktop.intersections !== 81 || desktop.enabledIntersections !== 81 || desktop.players !== 2 || !desktop.setupHidden || !desktop.passEnabled || !desktop.saveEnabled || desktop.bodyFontSize < 15) {
   throw new Error(`Go desktop smoke failed: ${JSON.stringify(desktop)}`);
 }
-if (setup.rosterRows !== 2 || setup.modelOptions !== 3 || setup.reasoningOptions !== 6 || !setup.humanFieldsHidden || setup.submitText !== "Start AI Arena") {
+if (setup.rosterRows !== 2 || setup.modelOptions !== 4 || setup.reasoningOptions !== 6 || !setup.humanFieldsHidden || setup.submitText !== "Start AI Arena") {
   throw new Error(`Go setup smoke failed: ${JSON.stringify(setup)}`);
 }
 if (mobile.documentWidth > mobile.viewportWidth + 1 || mobile.intersections !== 81) {

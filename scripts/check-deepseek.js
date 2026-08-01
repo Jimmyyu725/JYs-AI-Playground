@@ -22,16 +22,22 @@ async function checkHoldem() {
   return { action: decision.action, targetTotal: decision.targetTotal, legal: snapshot.legal.actions.includes(decision.action) };
 }
 
+// A board decision only counts as legal if the server would actually accept it.
+function boardMoveIsLegal(game, decision) {
+  if (decision.action !== "place") return decision.row === null && decision.column === null;
+  return game.legalPlacements().some(([row, column]) => row === decision.row && column === decision.column);
+}
+
 async function checkGo() {
   const game = new GoGame({ gameMode: "arena", arenaPaused: true, boardSize: 9, aiPlayers: [modelConfig, modelConfig] });
   const decision = await requestGoDecision(game.aiSnapshot(), modelConfig);
-  return { action: decision.action, row: decision.row, column: decision.column, legal: true };
+  return { action: decision.action, row: decision.row, column: decision.column, legal: boardMoveIsLegal(game, decision) };
 }
 
 async function checkWuziqi() {
   const game = new WuziqiGame({ gameMode: "arena", arenaPaused: true, boardSize: 15, aiPlayers: [modelConfig, modelConfig] });
   const decision = await requestWuziqiDecision(game.aiSnapshot(), modelConfig);
-  return { action: decision.action, row: decision.row, column: decision.column, legal: true };
+  return { action: decision.action, row: decision.row, column: decision.column, legal: boardMoveIsLegal(game, decision) };
 }
 
 const checks = { holdem: checkHoldem, go: checkGo, wuziqi: checkWuziqi };

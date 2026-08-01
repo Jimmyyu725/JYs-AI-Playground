@@ -114,6 +114,13 @@ npm run arena:check       # one complete live Hold’em AI Arena hand
 
 Browser and flow checks expect the local server to be running. Live API checks consume API usage.
 
+The browser checks drive an installed Chrome, discovered per platform. Set `CHROME_PATH`
+to override the lookup:
+
+```bash
+CHROME_PATH=/usr/bin/google-chrome npm run ui:check
+```
+
 ## Structure
 
 ```text

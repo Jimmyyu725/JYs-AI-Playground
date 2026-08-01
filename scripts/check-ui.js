@@ -1,4 +1,5 @@
 import { chromium } from "playwright-core";
+import { resolveChromePath } from "./chrome-path.js";
 
 const baseURL = process.env.LUNA_HOLDEM_URL || "http://127.0.0.1:4173";
 await fetch(`${baseURL}/api/game`, {
@@ -9,7 +10,7 @@ await fetch(`${baseURL}/api/game`, {
 
 const browser = await chromium.launch({
   headless: true,
-  executablePath: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+  executablePath: resolveChromePath(),
 });
 const page = await browser.newPage({ viewport: { width: 1440, height: 1050 }, deviceScaleFactor: 1 });
 const pageErrors = [];
@@ -112,7 +113,7 @@ if (pageErrors.length) throw new Error(`Browser console errors: ${pageErrors.joi
 if (!result.setupHidden || result.seats !== 3 || result.communitySlots !== 5 || result.brokenImages.length) {
   throw new Error(`UI smoke check failed: ${JSON.stringify(result)}`);
 }
-if (!setupResult.humanNameHidden || !setupResult.targetVisible || setupResult.playerLegend !== "Choose AI seats" || setupResult.submitLabel !== "Start AI Arena" || setupResult.rosterRows !== 3 || setupResult.modelOptions !== 3 || setupResult.reasoningOptions !== 6) {
+if (!setupResult.humanNameHidden || !setupResult.targetVisible || setupResult.playerLegend !== "Choose AI seats" || setupResult.submitLabel !== "Start AI Arena" || setupResult.rosterRows !== 3 || setupResult.modelOptions !== 4 || setupResult.reasoningOptions !== 6) {
   throw new Error(`Arena setup smoke check failed: ${JSON.stringify(setupResult)}`);
 }
 if (mobileResult.documentWidth > mobileResult.viewportWidth + 1 || mobileResult.seats !== 3) {
