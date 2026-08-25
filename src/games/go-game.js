@@ -114,6 +114,8 @@ export class GoGame {
     requireSaved(positionHistory.length > 0, "position history is empty");
     requireSaved(positionHistory.every((hash) => typeof hash === "string" && hash.length === expectedHashLength && /^[BW.]+$/.test(hash)), "position history contains an invalid board");
     requireSaved(positionHistory.includes(boardHash(board)), "current board is absent from position history");
+    requireSaved(state.moveNumber >= positionHistory.length - 1, "move number is lower than the played stone count");
+    requireSaved(state.consecutivePasses !== 2 || state.phase === "complete", "two consecutive passes require a completed game");
 
     const humanPlayers = state.players.filter((player) => player.isHuman === true);
     const human = humanPlayers[0];

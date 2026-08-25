@@ -126,6 +126,22 @@ test("stores an independent allowlisted model configuration for every AI seat", 
   ]);
 });
 
+test("caps the persistent AI insight transcript", () => {
+  const game = new PokerGame({ gameMode: "arena", opponentCount: 2, arenaPaused: true });
+  for (let index = 0; index < 260; index += 1) {
+    game.recordAIInsight(index % 2, {
+      summary: `Insight ${index}`,
+      summarySource: "public_decision_rationale",
+      explanation: "Bounded transcript.",
+      latencyMs: 100,
+      action: "call",
+    });
+  }
+  assert.equal(game.aiInsights.length, 200);
+  assert.equal(game.aiInsights[0].summary, "Insight 60");
+  assert.equal(game.aiInsights[199].summary, "Insight 259");
+});
+
 test("shares public opponent characters with the acting AI but no opponent cards", () => {
   const game = new PokerGame({ gameMode: "arena", opponentCount: 2, arenaPaused: true });
   const snapshot = game.aiSnapshot();

@@ -11,13 +11,16 @@ try {
   const response = await fetch("/api/health");
   if (!response.ok) throw new Error("Health check failed");
   const health = await response.json();
-  const keys = health.apiKeys ?? { holdem: health.apiKeyConfigured };
-  const ready = Object.values(keys).filter(Boolean).length;
-  const total = Object.keys(keys).length;
+  const rooms = health.apiKeys ?? { holdem: health.apiKeyConfigured };
+  const ready = Object.values(rooms).filter((entry) =>
+    entry && typeof entry === "object" ? Object.values(entry).some(Boolean) : Boolean(entry),
+  ).length;
+  const total = Object.keys(rooms).length;
 
   if (health.games?.go) markAvailable("#go-status");
   if (health.games?.wuziqi) markAvailable("#wuziqi-status");
-  keySummary.textContent = `${ready} of ${total} private game keys configured`;
+  if (health.games?.doudizhu) markAvailable("#doudizhu-status");
+  keySummary.textContent = `${ready} of ${total} rooms have private game keys configured`;
 } catch {
   keySummary.textContent = "House status unavailable";
 }

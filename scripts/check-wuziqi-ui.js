@@ -48,6 +48,6 @@ await browser.close();
 
 if (errors.length) throw new Error(`Wuziqi browser errors: ${errors.join(" | ")}`);
 if (desktop.intersections !== 225 || desktop.enabledIntersections !== 225 || desktop.players !== 2 || !desktop.setupHidden || !desktop.resignEnabled || desktop.bodyFontSize < 15) throw new Error(`Wuziqi desktop smoke failed: ${JSON.stringify(desktop)}`);
-if (setup.rosterRows !== 2 || setup.modelOptions !== 3 || setup.reasoningOptions !== 6 || !setup.humanFieldsHidden || setup.submitText !== "Start AI Arena") throw new Error(`Wuziqi setup smoke failed: ${JSON.stringify(setup)}`);
+if (setup.rosterRows !== 2 || setup.modelOptions !== 5 || setup.reasoningOptions !== 6 || !setup.humanFieldsHidden || setup.submitText !== "Start AI Arena") throw new Error(`Wuziqi setup smoke failed: ${JSON.stringify(setup)}`);
 if (mobile.documentWidth > mobile.viewportWidth + 1 || mobile.intersections !== 225) throw new Error(`Wuziqi mobile smoke failed: ${JSON.stringify(mobile)}`);
 console.log(JSON.stringify({ ok: true, desktop, setup, mobile }));

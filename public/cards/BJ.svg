@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 150 210" width="150" height="210">
+  <rect x="2" y="2" width="146" height="206" rx="14" fill="#fdf3f1" stroke="#c0392b" stroke-width="3"/>
+  <rect x="8" y="8" width="134" height="194" rx="10" fill="none" stroke="#c0392b" stroke-width="1.5"/>
+  <text x="12" y="40" font-family="Georgia, serif" font-size="30" font-weight="bold" fill="#c0392b">JOKER</text>
+  <g fill="#c0392b">
+    <path d="M75 58 L81 92 L69 92 Z"/>
+    <path d="M75 150 L81 116 L69 116 Z"/>
+    <path d="M58 75 L92 69 L92 81 Z"/>
+    <path d="M92 133 L58 127 L58 139 Z"/>
+  </g>
+  <text x="12" y="172" font-family="Georgia, serif" font-size="30" font-weight="bold" fill="#c0392b" transform="rotate(180 75 105)">JOKER</text>
+</svg>

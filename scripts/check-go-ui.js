@@ -117,7 +117,7 @@ if (errors.length) throw new Error(`Go browser errors: ${errors.join(" | ")}`);
 if (desktop.intersections !== 81 || desktop.enabledIntersections !== 81 || desktop.players !== 2 || !desktop.setupHidden || !desktop.passEnabled || !desktop.saveEnabled || desktop.bodyFontSize < 15) {
   throw new Error(`Go desktop smoke failed: ${JSON.stringify(desktop)}`);
 }
-if (setup.rosterRows !== 2 || setup.modelOptions !== 3 || setup.reasoningOptions !== 6 || !setup.humanFieldsHidden || setup.submitText !== "Start AI Arena") {
+if (setup.rosterRows !== 2 || setup.modelOptions !== 5 || setup.reasoningOptions !== 6 || !setup.humanFieldsHidden || setup.submitText !== "Start AI Arena") {
   throw new Error(`Go setup smoke failed: ${JSON.stringify(setup)}`);
 }
 if (mobile.documentWidth > mobile.viewportWidth + 1 || mobile.intersections !== 81) {

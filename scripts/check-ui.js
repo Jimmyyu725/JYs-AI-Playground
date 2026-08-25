@@ -112,7 +112,7 @@ if (pageErrors.length) throw new Error(`Browser console errors: ${pageErrors.joi
 if (!result.setupHidden || result.seats !== 3 || result.communitySlots !== 5 || result.brokenImages.length) {
   throw new Error(`UI smoke check failed: ${JSON.stringify(result)}`);
 }
-if (!setupResult.humanNameHidden || !setupResult.targetVisible || setupResult.playerLegend !== "Choose AI seats" || setupResult.submitLabel !== "Start AI Arena" || setupResult.rosterRows !== 3 || setupResult.modelOptions !== 3 || setupResult.reasoningOptions !== 6) {
+if (!setupResult.humanNameHidden || !setupResult.targetVisible || setupResult.playerLegend !== "Choose AI seats" || setupResult.submitLabel !== "Start AI Arena" || setupResult.rosterRows !== 3 || setupResult.modelOptions !== 5 || setupResult.reasoningOptions !== 6) {
   throw new Error(`Arena setup smoke check failed: ${JSON.stringify(setupResult)}`);
 }
 if (mobileResult.documentWidth > mobileResult.viewportWidth + 1 || mobileResult.seats !== 3) {
@@ -121,7 +121,7 @@ if (mobileResult.documentWidth > mobileResult.viewportWidth + 1 || mobileResult.
 if (arenaResult.seats !== 3 || arenaResult.faceUpHoleCards !== 6 || !arenaResult.arenaControlsVisible || !arenaResult.humanActionsHidden || arenaResult.toggleLabel !== "Resume arena" || !arenaResult.transcriptVisible || arenaResult.bodyFontSize < 15 || arenaResult.reasoningFontSize < 12 || arenaResult.historyFontSize < 11 || arenaResult.truncatedNames.length || arenaResult.brokenImages.length) {
   throw new Error(`Arena UI smoke check failed: ${JSON.stringify(arenaResult)}`);
 }
-if (!lobbyResult.title?.includes("Choose your game") || lobbyResult.rooms !== 3 || lobbyResult.holdemPath !== "/games/holdem/" || lobbyResult.brokenImages.length) {
+if (!lobbyResult.title?.includes("Choose your game") || lobbyResult.rooms !== 4 || lobbyResult.holdemPath !== "/games/holdem/" || lobbyResult.brokenImages.length) {
   throw new Error(`Lobby UI smoke check failed: ${JSON.stringify(lobbyResult)}`);
 }
 console.log(JSON.stringify({ ok: true, lobby: lobbyResult, desktop: result, setup: setupResult, mobile: mobileResult, arena: arenaResult }));

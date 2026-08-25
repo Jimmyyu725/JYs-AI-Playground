@@ -114,6 +114,20 @@ main { width: min(1400px, calc(100% - 64px)); margin: 0 auto; }
 .holdem .card-art { background: radial-gradient(circle at 50% 40%, #194b3a, #071b15 68%, #050a08); }
 .go .card-art { background: radial-gradient(circle at 50% 30%, #6c421d, #24150b 65%, #090806); }
 .wuziqi .card-art { background: radial-gradient(circle at 48% 42%, #55232a, #230c12 68%, #080608); }
+.doudizhu .card-art { background: radial-gradient(circle at 50% 30%, #7a4a1e, #2a1608 65%, #090806); }
+.dd-card-one, .dd-card-two {
+  position: absolute;
+  width: 118px;
+  height: 168px;
+  border-radius: 12px;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  font: 700 44px/1 var(--display);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55);
+}
+.dd-card-one { left: 24%; top: 16%; transform: rotate(-12deg); background: linear-gradient(150deg, #fdf6e8, #e8dcc2); color: #7a3b22; }
+.dd-card-two { right: 22%; bottom: 12%; transform: rotate(13deg); background: linear-gradient(150deg, #b3352e, #6f1410); color: #f5e6c8; }
 .card-art::after { content: ""; position: absolute; inset: 22px; border: 1px solid rgba(227, 204, 146, 0.16); }
 .game-glyph { position: absolute; left: 50%; top: 50%; z-index: 2; transform: translate(-50%, -50%); color: rgba(241, 220, 162, 0.92); font: 600 94px/1 var(--display); text-shadow: 0 8px 25px #000; }
 .suit { position: absolute; z-index: 1; color: rgba(230, 194, 107, 0.15); font-size: 160px; }

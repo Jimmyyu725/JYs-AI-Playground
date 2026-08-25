@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 150 210" width="150" height="210">
+  <rect x="2" y="2" width="146" height="206" rx="14" fill="#f7f5f0" stroke="#1d1d1f" stroke-width="3"/>
+  <rect x="8" y="8" width="134" height="194" rx="10" fill="none" stroke="#1d1d1f" stroke-width="1.5"/>
+  <text x="12" y="40" font-family="Georgia, serif" font-size="30" font-weight="bold" fill="#1d1d1f">JOKER</text>
+  <g fill="#1d1d1f" opacity="0.85">
+    <circle cx="75" cy="100" r="38" fill="none" stroke="#1d1d1f" stroke-width="3"/>
+    <circle cx="75" cy="100" r="12" fill="#1d1d1f"/>
+    <path d="M75 62 L79 88 L75 84 L71 88 Z"/>
+    <path d="M75 138 L79 112 L75 116 L71 112 Z"/>
+    <path d="M37 100 L63 96 L59 100 L63 104 Z"/>
+    <path d="M113 100 L87 96 L91 100 L87 104 Z"/>
+  </g>
+  <text x="12" y="172" font-family="Georgia, serif" font-size="30" font-weight="bold" fill="#1d1d1f" transform="rotate(180 75 105)">JOKER</text>
+</svg>

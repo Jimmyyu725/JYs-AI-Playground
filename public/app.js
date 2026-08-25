@@ -10,6 +10,8 @@ const MODEL_OPTIONS = [
   ["gpt-5.6-sol", "GPT-5.6 Sol"],
   ["gpt-5.6-terra", "GPT-5.6 Terra"],
   ["gpt-5.6-luna", "GPT-5.6 Luna"],
+  ["deepseek-v4-pro", "DeepSeek V4 Pro"],
+  ["deepseek-v4-flash", "DeepSeek V4 Flash"],
 ];
 const REASONING_OPTIONS = ["none", "low", "medium", "high", "xhigh", "max"];
 
@@ -34,6 +36,7 @@ let liveSeat = null;
 let toastTimer = null;
 let raiseTurnKey = "";
 let renderedInsightIds = "";
+let requestInFlight = 0;
 
 function chips(value) {
   return Number(value ?? 0).toLocaleString("en-US");
@@ -64,14 +67,19 @@ function showToast(message) {
 }
 
 async function request(path, options = {}) {
-  const response = await fetch(path, {
-    ...options,
-    headers: { "Content-Type": "application/json", ...(options.headers ?? {}) },
-  });
-  let payload = null;
-  try { payload = await response.json(); } catch { /* empty response */ }
-  if (!response.ok) throw new Error(payload?.error || `Request failed (${response.status})`);
-  return payload;
+  requestInFlight += 1;
+  try {
+    const response = await fetch(path, {
+      ...options,
+      headers: { "Content-Type": "application/json", ...(options.headers ?? {}) },
+    });
+    let payload = null;
+    try { payload = await response.json(); } catch { /* empty response */ }
+    if (!response.ok) throw new Error(payload?.error || `Request failed (${response.status})`);
+    return payload;
+  } finally {
+    requestInFlight -= 1;
+  }
 }
 
 function cardElement(code, placeholder = false) {
@@ -607,17 +615,25 @@ elements.overlayAction.addEventListener("click", async () => {
 });
 
 document.addEventListener("keydown", (event) => {
-  if (!state?.legalActions || event.target.matches("input, select, textarea")) return;
+  if (!state?.legalActions || !elements.setupModal.classList.contains("hidden")) return;
+  if (event.target.matches("input, select, textarea")) return;
   const key = event.key.toLowerCase();
   if (key === "f" && !elements.foldButton.disabled) elements.foldButton.click();
   if (key === "c" && !elements.checkCallButton.disabled) elements.checkCallButton.click();
   if (key === "a" && !elements.allInButton.disabled) elements.allInButton.click();
 });
 
+setInterval(() => {
+  if (state?.aiThinking) {
+    const seconds = Math.max(0, Math.round((Date.now() - state.aiThinking.startedAt) / 1000));
+    elements.reasoningStatus.textContent = `${state.aiThinking.status ?? "Reasoning"} (${seconds}s)`;
+  }
+}, 1000);
+
 const events = new EventSource("/api/events");
 events.onmessage = (event) => {
   const message = JSON.parse(event.data);
-  if (message.type === "state") {
+  if (message.type === "state" && requestInFlight === 0) {
     state = message.payload;
     if (!state.aiThinking) liveSeat = null;
     render();
@@ -625,7 +641,6 @@ events.onmessage = (event) => {
     const update = message.payload;
     if (update.phase === "started") {
       liveSeat = update.seat;
-      selectedSeat = update.seat;
       liveSummary = "";
     } else if (update.phase === "summary_delta") {
       liveSeat = update.seat;

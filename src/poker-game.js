@@ -510,6 +510,7 @@ export class PokerGame {
       latencyMs: player.lastLatencyMs,
       at: new Date().toISOString(),
     });
+    this.aiInsights = this.aiInsights.slice(-200);
   }
 
   setAIError(seat, message) {

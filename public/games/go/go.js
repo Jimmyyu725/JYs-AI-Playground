@@ -2,6 +2,8 @@ const MODEL_OPTIONS = [
   ["gpt-5.6-sol", "GPT-5.6 Sol"],
   ["gpt-5.6-terra", "GPT-5.6 Terra"],
   ["gpt-5.6-luna", "GPT-5.6 Luna"],
+  ["deepseek-v4-pro", "DeepSeek V4 Pro"],
+  ["deepseek-v4-flash", "DeepSeek V4 Flash"],
 ];
 const REASONING_OPTIONS = ["none", "low", "medium", "high", "xhigh", "max"];
 const CHARACTERS = [
@@ -23,6 +25,8 @@ let state = null;
 let liveSummary = "";
 let toastTimer = null;
 let boardSignature = "";
+let actionBusy = false;
+let requestInFlight = 0;
 
 function modelLabel(id) {
   return MODEL_OPTIONS.find(([value]) => value === id)?.[1] ?? id;
@@ -37,11 +41,16 @@ function showToast(message, tone = "error") {
 }
 
 async function request(path, options = {}) {
-  const response = await fetch(path, { ...options, headers: { "Content-Type": "application/json", ...(options.headers ?? {}) } });
-  let payload = null;
-  try { payload = await response.json(); } catch { /* empty response */ }
-  if (!response.ok) throw new Error(payload?.error || `Request failed (${response.status})`);
-  return payload;
+  requestInFlight += 1;
+  try {
+    const response = await fetch(path, { ...options, headers: { "Content-Type": "application/json", ...(options.headers ?? {}) } });
+    let payload = null;
+    try { payload = await response.json(); } catch { /* empty response */ }
+    if (!response.ok) throw new Error(payload?.error || `Request failed (${response.status})`);
+    return payload;
+  } finally {
+    requestInFlight -= 1;
+  }
 }
 
 function starPoints(size) {
@@ -235,12 +244,16 @@ function render() {
 }
 
 async function performAction(action, row = null, column = null) {
+  if (actionBusy) return;
+  actionBusy = true;
   try {
     state = await request("/api/go/action", { method: "POST", body: JSON.stringify({ action, row, column }) });
     liveSummary = "";
     render();
   } catch (error) {
     showToast(error.message);
+  } finally {
+    actionBusy = false;
   }
 }
 
@@ -370,10 +383,17 @@ elements.overlayAction.addEventListener("click", async () => {
   } catch (error) { showToast(error.message); }
 });
 
+setInterval(() => {
+  if (state?.aiThinking) {
+    const seconds = Math.max(0, Math.round((Date.now() - state.aiThinking.startedAt) / 1000));
+    elements.reasoningStatus.textContent = `${state.aiThinking.status ?? "Reasoning"} (${seconds}s)`;
+  }
+}, 1000);
+
 const events = new EventSource("/api/go/events");
 events.onmessage = (event) => {
   const message = JSON.parse(event.data);
-  if (message.type === "state") {
+  if (message.type === "state" && requestInFlight === 0) {
     state = message.payload;
     if (!state.aiThinking) liveSummary = "";
     render();
