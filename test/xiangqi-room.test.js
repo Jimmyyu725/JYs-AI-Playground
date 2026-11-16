@@ -144,6 +144,24 @@ test("gateway failures are not retried automatically", async () => {
   assert.equal(count, 1);
 });
 
+test("an unparseable structured answer is retried like an illegal move", async () => {
+  const table = new XiangqiTable({ gameMode: "arena" });
+  let count = 0;
+  const { decision, attempts } = await requestXiangqiDecisionWithRetry({
+    viewFactory: () => ({ state: table.state, view: table.aiView("red") }),
+    side: "red",
+    modelConfig: {},
+    gateway: async (request) => {
+      count += 1;
+      if (count === 1) throw new AIDecisionError("The model's structured decision could not be parsed", "invalid_json");
+      assert.match(request.instructions, /AUTOMATIC RETRY 1\/2: The model's structured decision could not be parsed/);
+      return reply({ move: "b0c2", choice: null, explanation: "Horse out." });
+    },
+  });
+  assert.equal(attempts, 2);
+  assert.equal(decision.move, "b0c2");
+});
+
 test("a finished game can be reviewed by the AI character in its own voice", async () => {
   const table = new XiangqiTable({ gameMode: "human", humanSide: "red", humanName: "Jay", aiPlayers: [{ characterId: "tenzin", model: "gpt-6-luna", reasoningEffort: "high" }] });
   table.applyHumanAction({ type: "move", move: "h2e2" });

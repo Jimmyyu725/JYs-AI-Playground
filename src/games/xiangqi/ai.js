@@ -15,6 +15,10 @@ export const XIANGQI_GATEWAY_SCHEMA = Object.freeze({
   required: XIANGQI_DECISION_SCHEMA.required.filter((key) => key !== "tableTalk"),
 });
 
+// Gateway errors that mean the model answered, but not with a usable structured decision.
+// They are retried like an illegal move; transport, quota and key errors are not.
+const MALFORMED_OUTPUT_CODES = new Set(["invalid_json", "empty_output"]);
+
 const ENGINE_TALK_SENTENCE = /\s*"tableTalk" is an optional in-character remark of at most \d+ characters, or null\./;
 
 export function xiangqiPrompt(view, retryContext = null) {
@@ -84,7 +88,7 @@ export async function requestXiangqiDecisionWithRetry({
       const decision = await requestXiangqiDecision({ state, side, view, modelConfig, voice, retryContext, callbacks, gateway });
       return { decision, attempts: attempt };
     } catch (error) {
-      const retryable = error instanceof XiangqiDecisionRejected;
+      const retryable = error instanceof XiangqiDecisionRejected || (error instanceof AIDecisionError && MALFORMED_OUTPUT_CODES.has(error.code));
       if (!retryable || attempt >= maxAttempts || !shouldContinue()) {
         if (retryable) error.message = `${error.message} (gave up after ${attempt} attempts)`;
         throw error;
