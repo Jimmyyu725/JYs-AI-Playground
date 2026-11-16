@@ -553,8 +553,15 @@ function recordEntries() {
   return entries.sort((a, b) => a.at - b.at);
 }
 
+const recordList = log.el.querySelector(".kit-transcript-list");
 function renderRecord() {
-  for (const entry of recordEntries()) {
+  const entries = recordEntries();
+  // Follow the newest line unless the reader has scrolled back through the record.
+  const follow = recordList.scrollHeight - recordList.scrollTop - recordList.clientHeight < 32;
+  queueMicrotask(() => {
+    if (follow && entries.length) recordList.scrollTop = recordList.scrollHeight;
+  });
+  for (const entry of entries) {
     seenRecord.add(entry.id);
     const item = log.add({ who: entry.who, text: entry.text, kind: entry.kind === "result" || entry.kind === "error" ? "system" : entry.kind });
     item.dataset.tone = entry.kind;
@@ -608,6 +615,7 @@ function render({ animate = true, forceNew = false } = {}) {
   }
   ui.room.dataset.phase = state.phase;
   ui.room.dataset.mode = state.gameMode;
+  ui.room.dataset.thinking = state.aiThinking ? state.aiThinking.color : "";
   ui.moveNumber.textContent = state.moveNumber;
   renderBoard({ animate });
   renderPlates();

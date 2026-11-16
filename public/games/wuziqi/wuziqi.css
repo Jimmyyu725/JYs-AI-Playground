@@ -375,6 +375,36 @@ button {
   background-blend-mode: normal, multiply, multiply, normal;
   clip-path: polygon(0.3% 0.6%, 34% 0, 71% 0.4%, 99.6% 0.1%, 100% 38%, 99.7% 72%, 99.9% 99.5%, 63% 100%, 28% 99.6%, 0.2% 99.9%, 0 61%, 0.4% 27%);
 }
+/* While a model reads the board, a faint wash of ink drifts across the paper. */
+.sheet-paper::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(38% 30% at var(--wash-x, 30%) var(--wash-y, 40%), rgb(140 151 161 / 0.22), transparent 70%),
+    radial-gradient(30% 26% at calc(100% - var(--wash-x, 30%)) calc(100% - var(--wash-y, 40%)), rgb(28 25 22 / 0.08), transparent 70%);
+  opacity: 0;
+  transition: opacity 0.8s ease;
+  pointer-events: none;
+}
+.study-room:not([data-thinking=""]) .sheet-paper::after {
+  opacity: 1;
+  animation: wash 9s ease-in-out infinite alternate;
+}
+@property --wash-x {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: 30%;
+}
+@property --wash-y {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: 40%;
+}
+@keyframes wash {
+  50% { --wash-x: 62%; --wash-y: 30%; }
+  to { --wash-x: 45%; --wash-y: 70%; }
+}
 .sheet-lines {
   position: absolute;
   inset-block-start: calc(var(--pad) + var(--cell) / 2);
@@ -1352,7 +1382,8 @@ button {
   }
   .stone.is-new,
   .stone.is-new::before,
-  .leaf {
+  .leaf,
+  .study-room:not([data-thinking=""]) .sheet-paper::after {
     animation: none;
   }
   .victory-stroke {
