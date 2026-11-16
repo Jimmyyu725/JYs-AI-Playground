@@ -733,6 +733,7 @@ function syncLogs(state) {
     // The engine still calls the room by its old name; the ledger speaks for this salon.
     const text = entry.text
       .replace(/the Luna Room/g, "Salon Riviera")
+      .replace(/Luna personalities/g, "guests")
       .replace(/\b([2-9TJQKA])([CDHS])\b/g, (_, rank, suit) => `${RANK_LABELS[rank] ?? rank}${{ C: "♣", D: "♦", H: "♥", S: "♠" }[suit]}`);
     const item = ledger.add({ text, kind });
     item.dataset.logKind = entry.kind;

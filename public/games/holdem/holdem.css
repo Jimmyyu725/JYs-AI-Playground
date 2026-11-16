@@ -240,7 +240,7 @@ select {
   color: var(--brass-hi);
   cursor: pointer;
 }
-.ledger-toggle {
+.salon-tools .ledger-toggle {
   display: none;
 }
 
@@ -1486,7 +1486,7 @@ body[data-mode="arena"] .seat-model,
   .salon-title p span {
     white-space: nowrap;
   }
-  .ledger-toggle {
+  .salon-tools .ledger-toggle {
     display: inline-flex;
     min-block-size: 40px;
     padding: 0 14px;
