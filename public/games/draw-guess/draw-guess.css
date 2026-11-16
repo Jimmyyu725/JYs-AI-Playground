@@ -575,3 +575,20 @@ body {
   .atelier-rays, .atelier-motes { animation: none; }
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 }
+
+/* Small frames (phones): keep every panel control reachable inside the square canvas. */
+.frame-panel { overflow-y: auto; scrollbar-width: thin; }
+.slip[data-kind="system"] .slip-who { color: var(--apricot); }
+
+@container (max-width: 440px) {
+  .frame-panel { padding: 12px; }
+  .panel-copy { font-size: 0.82rem; margin-bottom: 8px; }
+  .panel-hand { font-size: 1.1rem; margin-top: 2px; }
+  .mode-tabs { margin-bottom: 6px; }
+  .prompt-form { gap: 6px; }
+  .prompt-form textarea { min-height: 72px; font-size: 1.1rem; padding: 8px; }
+  .word-card { min-width: 96px; padding: 12px 10px 10px; }
+  .word-card strong { font-size: 1.5rem; }
+}
+.tape { flex-wrap: wrap; justify-content: center; row-gap: 0; }
+.tape-word { white-space: nowrap; }
