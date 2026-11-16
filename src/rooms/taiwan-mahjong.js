@@ -148,10 +148,11 @@ async function runAIChain() {
       })));
       if (!live()) return;
       current.aiThinking = null;
+      const talk = [];
       outcomes.forEach((outcome, index) => {
         const seat = seats[index];
         if (outcome.status === "fulfilled") {
-          if (outcome.value?.talk) channel.broadcast("table_talk", outcome.value.talk);
+          if (outcome.value?.talk) talk.push(outcome.value.talk);
           if (outcome.value) channel.broadcast("ai_move", { seat, label: outcome.value.decision.label });
         } else if (current.seatStillToAct(seat) && !current.aiError) {
           current.setAIError(seat, publicError(outcome.reason));
@@ -160,6 +161,8 @@ async function runAIChain() {
       });
       persist(current);
       broadcastState();
+      // The line follows the move it comments on, so the log reads in order.
+      for (const line of talk) channel.broadcast("table_talk", line);
     }
     if (live()) scheduleArenaNextHand(version);
   } finally {
