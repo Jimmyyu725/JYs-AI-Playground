@@ -220,19 +220,24 @@ function renderVictory(animate) {
 
   const unitRow = span ? dRow / span : 0;
   const unitColumn = span ? dColumn / span : 1;
-  const clamp = (value) => Math.max(0.7, Math.min(builtSize - 1.7, value));
-  let sealRow = endRow + unitRow * 1.4 + unitColumn * 0.9;
-  let sealColumn = endColumn + unitColumn * 1.4 - unitRow * 0.9;
-  if (sealRow < 0 || sealRow > builtSize - 1 || sealColumn < 0 || sealColumn > builtSize - 1) {
-    sealRow = startRow - unitRow * 1.4 + unitColumn * 0.9;
-    sealColumn = startColumn - unitColumn * 1.4 - unitRow * 0.9;
+  // The seal goes beside one end of the line, wherever it covers the fewest stones.
+  const clamp = (value) => Math.max(0.3, Math.min(builtSize - 1.3, value));
+  const stones = [];
+  state.board.forEach((cells, row) => cells.forEach((cell, column) => cell && stones.push([row, column])));
+  const candidates = [];
+  for (const [row, column, sign] of [[endRow, endColumn, 1], [startRow, startColumn, -1]]) {
+    for (const [along, across] of [[1.5, 0.9], [1.5, -0.9], [0.4, 1.4], [0.4, -1.4], [1.6, 0]]) {
+      candidates.push([clamp(row + sign * unitRow * along + unitColumn * across), clamp(column + sign * unitColumn * along - unitRow * across)]);
+    }
   }
+  const covered = ([row, column]) => stones.filter(([r, c]) => Math.abs(r - row) < 1.1 && Math.abs(c - column) < 1.1).length;
+  const [sealRow, sealColumn] = candidates.reduce((best, candidate) => (covered(candidate) < covered(best) ? candidate : best));
   const seal = document.createElement("div");
   seal.className = "victory-seal";
   seal.lang = "zh-Hans";
   seal.textContent = "胜";
-  seal.style.setProperty("--r", clamp(sealRow).toFixed(2));
-  seal.style.setProperty("--c", clamp(sealColumn).toFixed(2));
+  seal.style.setProperty("--r", sealRow.toFixed(2));
+  seal.style.setProperty("--c", sealColumn.toFixed(2));
   if (!animate || prefersReducedMotion()) {
     stroke.classList.add("is-static");
     seal.classList.add("is-static");
