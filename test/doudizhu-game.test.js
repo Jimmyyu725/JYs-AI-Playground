@@ -6,6 +6,7 @@ import {
   beatsCombo,
   createDouDizhuDeck,
   describeCombo,
+  exampleFollows,
 } from "../src/games/doudizhu-game.js";
 
 test("builds a unique 54-card deck with two jokers", () => {
@@ -45,6 +46,14 @@ test("recognizes every legal combo type", () => {
     [["3C", "3D", "3H", "3S", "5H", "5S", "9C", "9D"], "four_two_pair"],
     [["3C", "3D", "3H", "3S"], "bomb"],
     [["SJ", "BJ"], "rocket"],
+    // Kickers that rank below the body.
+    [["8C", "8D", "8H", "3S"], "triple_single"],
+    [["8C", "8D", "8H", "SJ"], "triple_single"],
+    [["8C", "8D", "8H", "3S", "3D"], "triple_pair"],
+    [["8C", "8D", "8H", "8S", "3S", "3D"], "four_two_single"],
+    [["8C", "8D", "8H", "8S", "3S", "4D"], "four_two_single"],
+    [["8C", "8D", "8H", "8S", "3S", "3D", "4C", "4D"], "four_two_pair"],
+    [["5C", "5D", "5H", "6S", "6C", "6D", "3H", "4C"], "airplane_single"],
   ];
   for (const [cards, type] of cases) {
     assert.equal(analyzeCombo(cards).type, type, `${cards.join(" ")} should be ${type}`);
@@ -124,6 +133,26 @@ test("two passes after a bid close the bidding", () => {
   assert.equal(game.landlordSeat, bidder);
   assert.equal(game.highestBid, 2);
   assert.throws(() => game.applyBid((bidder + 2) % 3, 1), /Bidding is not open/);
+});
+
+test("bidding goes round once: a player who passed never bids again", () => {
+  const lastSpeaker = new DouDizhuGame({ gameMode: "human" });
+  const first = lastSpeaker.currentActorSeat;
+  lastSpeaker.applyBid(first, 0);
+  lastSpeaker.applyBid((first + 1) % 3, 0);
+  lastSpeaker.applyBid((first + 2) % 3, 1);
+  assert.equal(lastSpeaker.phase, "playing");
+  assert.equal(lastSpeaker.landlordSeat, (first + 2) % 3);
+  assert.equal(lastSpeaker.highestBid, 1);
+
+  const outbid = new DouDizhuGame({ gameMode: "human" });
+  const opener = outbid.currentActorSeat;
+  outbid.applyBid(opener, 1);
+  outbid.applyBid((opener + 1) % 3, 2);
+  outbid.applyBid((opener + 2) % 3, 0);
+  assert.equal(outbid.phase, "playing");
+  assert.equal(outbid.landlordSeat, (opener + 1) % 3);
+  assert.equal(outbid.highestBid, 2);
 });
 
 test("rejects bids that do not raise the current bid", () => {
@@ -253,6 +282,9 @@ test("hides AI hands from the human but reveals everything in arena mode", () =>
   assert.equal(humanState.players[1].hand.length, 0);
   assert.equal(humanState.players[2].hand.length, 0);
 
+  humanGame.phase = "complete";
+  assert.ok(humanGame.publicState().players.every((player) => player.hand.length === 17), "a settled hand shows every leftover card");
+
   const arenaGame = new DouDizhuGame({ gameMode: "arena", arenaPaused: true });
   const arenaState = arenaGame.publicState();
   assert.ok(arenaState.players.every((player) => player.hand.length === 17 && !player.isHuman));
@@ -263,4 +295,18 @@ test("describes combos for the transcript", () => {
   assert.equal(describeCombo(analyzeCombo(["3C", "4D", "5H", "6S", "7C"])), "Straight");
   assert.equal(describeCombo(analyzeCombo(["SJ", "BJ"])), "Rocket");
   assert.equal(describeCombo(analyzeCombo(["9C", "9D", "9H", "9S"])), "Bomb");
+});
+
+test("follow examples only suggest plays that beat the table", () => {
+  const hand = ["BJ", "SJ", "2S", "AS", "AH", "KD", "KC", "KS", "QH", "9S", "9H", "8C", "7D", "6S", "5S", "5H", "5D", "5C", "3H"];
+  for (const target of [["4S"], ["4S", "4H"], ["8S", "8H", "8D", "3C"], ["8S", "8H", "8D", "3C", "3D"], ["3S", "4S", "5S", "6S", "7S"], ["6C", "6D", "6H", "6S"]]) {
+    const combo = analyzeCombo(target);
+    const examples = exampleFollows(hand, combo);
+    assert.ok(examples.length > 0, `expected an answer to ${target.join(" ")}`);
+    for (const example of examples) {
+      assert.ok(example.cards.every((code) => hand.includes(code)));
+      assert.ok(beatsCombo(analyzeCombo(example.cards), combo), `${example.cards.join(" ")} should beat ${target.join(" ")}`);
+    }
+  }
+  assert.deepEqual(exampleFollows(["3C", "4D"], analyzeCombo(["2S"])), []);
 });

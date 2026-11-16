@@ -227,8 +227,8 @@ function renderSeat(index) {
   view.action.textContent = actionText(player, index);
   view.action.dataset.kind = /pass|不/i.test(view.action.textContent) ? "pass" : view.action.textContent ? "move" : "";
 
-  // Arena reveals every hand, in rows of ten so the corners stay readable; otherwise AI hands are a fan of backs.
-  const arena = state.gameMode === "arena";
+  // Arena (and a settled hand) reveals every hand, in rows of ten so the corners stay readable; otherwise AI hands are a fan of backs.
+  const arena = state.gameMode === "arena" || (state.phase === "complete" && player.hand.length === player.cardCount);
   const faces = arena ? player.hand : Array.from({ length: Math.min(player.cardCount, 20) }, () => "BACK");
   const signature = faces.join(",");
   if (view.cards.dataset.signature !== signature) {
@@ -273,7 +273,8 @@ function renderPhase() {
     dom.phaseDetail.textContent = actor ? `${actor.isHuman ? "Your" : `${actor.name}'s`} turn to bid · three passes redeal` : "";
   } else if (state.phase === "playing") {
     const leading = !state.lastPlay || state.leaderSeat === state.currentActorSeat;
-    dom.phaseText.textContent = `地主 ${state.players[state.landlordSeat].name} · bid ${state.highestBid}`;
+    // The bid also sits in the stakes bar, so phones drop it here to keep the landlord's name whole.
+    dom.phaseText.replaceChildren(`地主 ${state.players[state.landlordSeat].name}`, el("span", "phase-bid", ` · bid ${state.highestBid}`));
     dom.phaseDetail.textContent = actor ? `${actor.isHuman ? "You" : actor.name} ${leading ? "lead" + (actor.isHuman ? "" : "s") : "to follow"}` : "";
   } else {
     dom.phaseText.textContent = state.result?.winner === "landlord" ? "The landlord takes the hand" : "The farmers take the hand";

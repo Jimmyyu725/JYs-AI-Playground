@@ -105,10 +105,12 @@ export function analyzeCombo(cards) {
   if (total === 2) {
     const [first, second] = groupEntries;
     if (first.rank === JOKER_SMALL && second.rank === JOKER_BIG) return { type: "rocket", mainRank: 18, length: 1 };
-    if (first.count === 3 && second.count === 1) return { type: "triple_single", mainRank: first.rankValue, length: 1 };
-    if (first.count === 3 && second.count === 2) return { type: "triple_pair", mainRank: first.rankValue, length: 1 };
+    // The body (triple or four) may rank above or below its kicker.
+    const [body, kicker] = first.count >= second.count ? [first, second] : [second, first];
+    if (body.count === 3 && kicker.count === 1) return { type: "triple_single", mainRank: body.rankValue, length: 1 };
+    if (body.count === 3 && kicker.count === 2) return { type: "triple_pair", mainRank: body.rankValue, length: 1 };
     // Four with two singles: the two attached singles may share a rank (6 cards).
-    if (first.count === 4 && second.count === 2) return { type: "four_two_single", mainRank: first.rankValue, length: 1 };
+    if (body.count === 4 && kicker.count === 2) return { type: "four_two_single", mainRank: body.rankValue, length: 1 };
     throw new Error("That combination is not a legal Dou Dizhu play");
   }
 
@@ -244,6 +246,44 @@ export function exampleLeads(hand) {
   return examples.slice(0, 8);
 }
 
+/** A few verified plays from the hand that beat the combo on the table (cheapest first, then bombs and the rocket). */
+export function exampleFollows(hand, target) {
+  const groups = groupByRank(hand);
+  const sorted = [...groups.entries()].sort((left, right) => rankValue(left[0]) - rankValue(right[0]));
+  const examples = [];
+  const add = (cards) => {
+    try {
+      const combo = analyzeCombo(cards);
+      if (beatsCombo(combo, target)) examples.push({ type: combo.type, cards, description: `${describeCombo(combo).toLowerCase()} ${cards.join(" ")}` });
+    } catch { /* not a combo */ }
+  };
+  const above = (count) => sorted.filter(([rank, cards]) => cards.length >= count && rankValue(rank) > target.mainRank);
+  const kickers = (exclude, count) => sorted.filter(([rank, cards]) => rank !== exclude && cards.length >= count && cards.length < 4);
+  const width = { single: 1, pair: 2, triple: 3 }[target.type];
+  if (width) {
+    const [first] = above(width).filter(([, cards]) => cards.length < 4);
+    if (first) add(first[1].slice(0, width));
+  } else if (target.type === "triple_single" || target.type === "triple_pair") {
+    const kickerSize = target.type === "triple_single" ? 1 : 2;
+    const [triple] = above(3).filter(([, cards]) => cards.length === 3);
+    const [kicker] = triple ? kickers(triple[0], kickerSize) : [];
+    if (triple && kicker) add([...triple[1], ...kicker[1].slice(0, kickerSize)]);
+  } else if (target.type === "straight" || target.type === "pair_straight") {
+    const perRank = target.type === "straight" ? 1 : 2;
+    const length = target.length;
+    for (let top = target.mainRank + 1; top <= rankValue("A"); top += 1) {
+      const window = STRAIGHT_RANKS.filter((rank) => rankValue(rank) > top - length && rankValue(rank) <= top);
+      if (window.every((rank) => (groups.get(rank)?.length ?? 0) >= perRank)) {
+        add(window.flatMap((rank) => groups.get(rank).slice(0, perRank)));
+        break;
+      }
+    }
+  }
+  for (const [, cards] of sorted) if (cards.length === 4) add(cards);
+  if (groups.has(JOKER_SMALL) && groups.has(JOKER_BIG)) add([JOKER_SMALL, JOKER_BIG]);
+  return examples.slice(0, 6);
+}
+
 function firstBidderFor(handNumber) {
   return (handNumber - 1) % 3;
 }
@@ -256,7 +296,7 @@ export class DouDizhuGame {
     this.phase = "bidding";
     this.highestBid = 0;
     this.highestBidderSeat = null;
-    this.consecutivePasses = 0;
+    this.bidTurns = 0;
     this.landlordSeat = null;
     this.bottomCards = [];
     this.currentActorSeat = null;
@@ -338,7 +378,7 @@ export class DouDizhuGame {
     this.phase = "bidding";
     this.highestBid = 0;
     this.highestBidderSeat = null;
-    this.consecutivePasses = 0;
+    this.bidTurns = 0;
     this.landlordSeat = null;
     this.bottomCards = [];
     this.leaderSeat = null;
@@ -366,6 +406,8 @@ export class DouDizhuGame {
     this._log("hand", `Hand ${this.handNumber}: cards are dealt and bidding opens with ${this.players[this.currentActorSeat].name}.`);
   }
 
+  // Standard 叫分 bidding: each player speaks once, in turn. A bid of 3 ends it at once;
+  // otherwise the highest bidder takes the seat after the third player speaks, and three passes redeal.
   applyBid(seat, score = null) {
     if (this.phase !== "bidding") throw new Error("Bidding is not open");
     if (seat !== this.currentActorSeat) throw new Error("That player is not bidding now");
@@ -373,35 +415,32 @@ export class DouDizhuGame {
     if (score === null || score === 0) {
       player.bid = 0;
       player.lastAction = "Passed";
-      this.consecutivePasses += 1;
       this._log("bid", `${player.name} passes.`, { seat });
-      this._advanceBidder(seat);
-      if (this.consecutivePasses >= 3 && this.highestBidderSeat === null) {
-        this._log("system", "No one bid. The house redeals.");
-        this.startNewHand();
-        return;
-      }
-      if (this.consecutivePasses >= 2 && this.highestBidderSeat !== null) {
+    } else {
+      const parsed = Number.parseInt(score, 10);
+      if (!Number.isInteger(parsed) || parsed < 1 || parsed > 3) throw new Error("Bid must be 1, 2, or 3");
+      if (parsed <= this.highestBid) throw new Error(`You must bid higher than ${this.highestBid}`);
+      player.bid = parsed;
+      player.lastAction = `Bid ${parsed}`;
+      this.highestBid = parsed;
+      this.highestBidderSeat = seat;
+      this._log("bid", `${player.name} bids ${parsed}.`, { seat, score: parsed });
+      if (parsed === 3) {
         this._finishBidding();
         return;
       }
+    }
+    this.bidTurns += 1;
+    if (this.bidTurns < 3) {
+      this._advanceBidder(seat);
       return;
     }
-
-    const parsed = Number.parseInt(score, 10);
-    if (!Number.isInteger(parsed) || parsed < 1 || parsed > 3) throw new Error("Bid must be 1, 2, or 3");
-    if (parsed <= this.highestBid) throw new Error(`You must bid higher than ${this.highestBid}`);
-    player.bid = parsed;
-    player.lastAction = `Bid ${parsed}`;
-    this.highestBid = parsed;
-    this.highestBidderSeat = seat;
-    this.consecutivePasses = 0;
-    this._log("bid", `${player.name} bids ${parsed}.`, { seat, score: parsed });
-    if (parsed === 3) {
-      this._finishBidding();
+    if (this.highestBidderSeat === null) {
+      this._log("system", "No one bid. The house redeals.");
+      this.startNewHand();
       return;
     }
-    this._advanceBidder(seat);
+    this._finishBidding();
   }
 
   _advanceBidder(previousSeat) {
@@ -575,6 +614,7 @@ export class DouDizhuGame {
   aiSnapshot() {
     const actor = this.currentActor;
     if (!actor || actor.isHuman) throw new Error("No AI Dou Dizhu player is currently acting");
+    const leading = this.leaderSeat === actor.seat || !this.lastPlay;
     return {
       game: "Dou Dizhu",
       phase: this.phase,
@@ -587,7 +627,8 @@ export class DouDizhuGame {
         voice: actor.character.voice ?? "",
         hand: [...actor.hand],
         handByRank: handByRankSummary(actor.hand),
-        exampleLeads: this.phase === "playing" ? exampleLeads(actor.hand) : [],
+        exampleLeads: this.phase === "playing" && leading ? exampleLeads(actor.hand) : [],
+        exampleFollows: this.phase === "playing" && !leading ? exampleFollows(actor.hand, this.lastPlay.combo) : [],
         isLandlord: actor.seat === this.landlordSeat,
       },
       table: {
@@ -608,7 +649,7 @@ export class DouDizhuGame {
         })),
       },
       play: {
-        leading: this.leaderSeat === actor.seat || !this.lastPlay,
+        leading,
         lastPlay: this.lastPlay
           ? {
               seat: this.lastPlay.seat,
@@ -637,7 +678,8 @@ export class DouDizhuGame {
   }
 
   publicState() {
-    const revealAll = this.isArenaMode;
+    // Arena shows every hand; a settled hand turns the leftover cards face up, as at a real table.
+    const revealAll = this.isArenaMode || this.phase === "complete";
     const aiConfigs = this.players.filter((player) => !player.isHuman).map((player) => player.aiConfig);
     const models = new Set(aiConfigs.map((config) => config.model));
     const efforts = new Set(aiConfigs.map((config) => config.reasoningEffort));

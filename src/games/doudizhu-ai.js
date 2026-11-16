@@ -40,8 +40,8 @@ Legal combos: ${rules.combos}
 Following: ${rules.following}
 Your hand (codes, sorted high to low): ${snapshot.actor.hand.join(" ")}.
 Your hand grouped by rank (rank:count): ${snapshot.actor.handByRank}.
-${snapshot.actor.isLandlord ? "You are the landlord." : "You are a farmer; the two farmers are teammates."}
-Opponents: ${table.players.filter((player) => player.seat !== snapshot.actor.seat).map((player) => `${player.name} (${player.cardCount} cards)`).join("; ")}.`;
+${table.landlordSeat === null ? "No one is the landlord yet: the winning bidder becomes the landlord and plays alone against the other two." : snapshot.actor.isLandlord ? "You are the landlord; both farmers play against you." : "You are a farmer; the two farmers are teammates against the landlord."}
+Other players: ${table.players.filter((player) => player.seat !== snapshot.actor.seat).map((player) => `${player.name} (${table.landlordSeat === null ? "" : player.isLandlord ? "landlord, opponent, " : snapshot.actor.isLandlord ? "farmer, opponent, " : "farmer, your teammate, "}${player.cardCount} cards)`).join("; ")}.`;
 }
 
 function bidInstructions(snapshot) {
@@ -68,9 +68,18 @@ function playInstructions(snapshot, retryContext = null) {
     ? `You must beat: ${play.mustBeat.description} (combo type ${play.mustBeat.comboType}, length ${play.mustBeat.length}, main rank ${play.mustBeat.mainRank}). Either play the same combo type with the same length and a higher main rank, or a bomb, or the rocket.`
     : "You lead this trick: choose any legal combo freely.";
   const passText = play.leading ? "You may not pass." : "You may pass.";
-  const exampleText = (snapshot.actor.exampleLeads ?? []).length
-    ? `The house verified these example legal plays from your hand: ${snapshot.actor.exampleLeads.map((example) => `${example.description} (${example.cards.join(" ")})`).join("; ")}.`
-    : "The house found no example leads in your hand.";
+  const leads = snapshot.actor.exampleLeads ?? [];
+  const follows = snapshot.actor.exampleFollows ?? [];
+  let exampleText;
+  if (play.leading) {
+    exampleText = leads.length
+      ? `The house verified these example legal leads from your hand: ${leads.map((example) => `${example.description} (${example.cards.join(" ")})`).join("; ")}.`
+      : "The house found no example leads in your hand.";
+  } else {
+    exampleText = follows.length
+      ? `The house verified that these plays from your hand beat the table (not an exhaustive list): ${follows.map((example) => example.description).join("; ")}.`
+      : "The house found no simple play in your hand that beats the table; passing is likely your only legal choice unless you can build a matching combo yourself.";
+  }
   return `${characterIntro(snapshot)}
 
 ${sharedRules(snapshot)}
@@ -79,7 +88,7 @@ ${beatText} ${passText}
 
 ${exampleText}
 
-Every card in a play must belong to ONE single legal combo. ILLEGAL examples: two unrelated singles like 3C 4C; a pair plus one extra card; four cards of two different ranks; a straight containing 2, SJ, or BJ. When unsure, choose the simplest legal option such as one of the examples above. For pass set action "pass" and cards null. For play set action "play" and cards to the exact card codes from your hand. The explanation is a public high-level rationale of at most 45 words. Return only the requested structured decision.${retryText}`;
+Every card in a play must belong to ONE single legal combo. ILLEGAL examples: two unrelated singles like 3C 4C; a pair plus one extra card; four cards of two different ranks; a straight containing 2, SJ, or BJ. When unsure, choose one of the verified plays above, or pass when following. For pass set action "pass" and cards null. For play set action "play" and cards to the exact card codes from your hand. The explanation is a public high-level rationale of at most 45 words. Return only the requested structured decision.${retryText}`;
 }
 
 function rejectedDecision(error) {
@@ -289,7 +298,7 @@ export async function requestDoudizhuReview(table, seat, callbacks = {}) {
 Character: ${character.personality ?? ""}
 Voice: ${character.voice ?? ""}
 
-The hand is over. Review it for the other players in your own voice: name the two or three moments that decided it (a bid, a bomb, a lead, a pass), what you or others should have done differently, and one lesson. Use only the public record in the input. At most 120 words, plain text, no Markdown.`;
+The hand is over. Review it for the other players in your own voice, in the first person: the moves logged under the name ${reviewer.name} are yours, so say "I", never your own name. Cover the two or three moments that decided it (a bid, a bomb, a lead, a pass), what you or others should have done differently, and one lesson. Use only the public record in the input. At most 120 words, plain text, no Markdown.`;
   const response = await requestStructuredDecision({
     gameId: "doudizhu",
     modelConfig: reviewer.aiConfig,
