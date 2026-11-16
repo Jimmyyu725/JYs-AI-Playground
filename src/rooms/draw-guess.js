@@ -60,6 +60,7 @@ function buildTable(body = {}) {
     roundDurationMs: roundSeconds * 1000,
     promptTimeoutMs: 120000,
     chooseTimeoutMs: 25000,
+    ...(Number.isInteger(body.firstDrawerSeat) && body.firstDrawerSeat >= 0 && body.firstDrawerSeat < players.length ? { firstDrawerSeat: body.firstDrawerSeat } : {}),
   }, { now: Date.now() });
   return freshTable({ mode, players, state, imageQuality: body.imageQuality === "medium" ? "medium" : "low" });
 }

@@ -425,6 +425,8 @@ function renderFrame() {
   const drawingByHand = iAmDrawer && view.phase === "prompting" && promptMode === "paint";
   sketch.hidden = !drawingByHand;
   tools.hidden = !drawingByHand;
+  // While painting by hand only the tab strip floats over the canvas; strokes must reach the canvas.
+  $("frame-panel").dataset.layer = drawingByHand ? "tabs" : "full";
   const canGuess = me >= 0 && view.phase === "guessing" && !iAmDrawer && !round.solvedOrder.includes(me) && !round.passedSeats.includes(me)
     && round.guesses.filter((guess) => guess.seat === me).length < view.config.maxGuessesPerRound;
   guessBar.hidden = !canGuess;
