@@ -19,7 +19,7 @@ import {
 } from "./engine.js";
 
 export const TABLE_TALK_MAX = 140;
-const RECENT_EVENT_LIMIT = 24;
+const RECENT_EVENT_LIMIT = 40;
 export const RETRYABLE_DECISION_CODES = Object.freeze(new Set(["invalid_json", "invalid_shape", "invalid_action_id", "invalid_table_talk"]));
 
 export const COUP_RULES_TEXT = [
@@ -116,7 +116,11 @@ export function buildCoupAiView(state, seat, { persona = null } = {}) {
         lostCards: player.revealed,
       })),
     deckCount: view.deckCount,
-    recentEvents: view.log.slice(-RECENT_EVENT_LIMIT).map((entry) => entry.text),
+    // Passes are noise for card counting; dropping them keeps more turns of claims in view.
+    recentEvents: view.log
+      .filter((entry) => entry.kind !== "pass")
+      .slice(-RECENT_EVENT_LIMIT)
+      .map((entry) => entry.text),
     legalActions: legal.map((action, index) => ({
       id: index + 1,
       label: describeAction(state, seat, action),
@@ -165,7 +169,7 @@ DECISION
 ${view.situation}
 ${options}
 
-Answer with the actionId of exactly one option above. tableTalk is an optional in-character line said aloud to the table (at most ${TABLE_TALK_MAX} characters, or null). Never reveal your face-down cards unless you intend to bluff.${retryText}`;
+Answer with the actionId of exactly one option above. tableTalk is an optional in-character line said aloud to the table (at most ${TABLE_TALK_MAX} characters; empty or null for silence). Never reveal your face-down cards unless you intend to bluff.${retryText}`;
 }
 
 function fail(code, error) {

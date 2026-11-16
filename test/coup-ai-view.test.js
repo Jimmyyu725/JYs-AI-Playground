@@ -171,3 +171,13 @@ test("lose-influence choices list only the seat's own face-down cards", () => {
   const next = applyAction(state, 1, parsed.action);
   assert.deepEqual(liveCards(next.players[1]), ["Assassin"]);
 });
+
+test("recent events leave out passes so earlier claims stay in view", () => {
+  let state = newGame();
+  state = applyAction(state, 0, { type: "tax" });
+  state = applyAction(state, 1, { type: "pass" });
+  state = applyAction(state, 2, { type: "pass" });
+  const view = buildCoupAiView(state, 1);
+  assert.ok(view.recentEvents.some((text) => text.includes("declares tax")));
+  assert.equal(view.recentEvents.some((text) => text.includes("passes")), false);
+});
