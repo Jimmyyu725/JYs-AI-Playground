@@ -464,6 +464,7 @@ function renderHand() {
   dom.handTitle.textContent = me.name;
   dom.handRole.textContent = state.landlordSeat === null ? "" : me.isLandlord ? "地主 Landlord" : "农民 Farmer";
   dom.handDock.dataset.team = state.landlordSeat === null ? "" : me.isLandlord ? "landlord" : "farmer";
+  $("hand-cap").hidden = !me.isLandlord;
   dom.handDock.dataset.active = String(state.currentActorSeat === me.seat && state.phase !== "complete");
   dom.handMug.querySelector("b").textContent = String(me.cardCount);
   const dealing = seen.hand !== state.handNumber;
