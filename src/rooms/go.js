@@ -274,7 +274,46 @@ export function register(app, ctx) {
     }
   });
 
-  app.post("/api/go/arena/pause", (_request, response, next) => {
+  app.post("/api/go/review", async (request, response, next) => {
+    const table = goGame;
+    try {
+      requireGoGame();
+      const requested = request.body?.color;
+      const color = requested === "black" || requested === "white" ? requested : table.players.find((player) => !player.isHuman)?.color;
+      const snapshot = table.reviewSnapshot(color);
+      if (table.reviewPending) {
+        const error = new Error("A review is already being written");
+        error.status = 409;
+        throw error;
+      }
+      const reviewer = table.players.find((player) => player.color === color);
+      table.reviewPending = color;
+      broadcastGoState();
+      try {
+        const review = await requestGoReview(snapshot, reviewer.aiConfig);
+        table.review = {
+          ...review,
+          color,
+          playerName: reviewer.name,
+          characterId: reviewer.character?.id ?? null,
+          model: reviewer.aiConfig.model,
+          reasoningEffort: reviewer.aiConfig.reasoningEffort,
+          at: new Date().toISOString(),
+        };
+      } finally {
+        table.reviewPending = null;
+      }
+      if (goGame !== table) return response.status(409).json({ error: "A new game started before the review arrived" });
+      persistGoGame();
+      response.json(table.publicState());
+      broadcastGoState();
+    } catch (error) {
+      if (goGame === table && table) broadcastGoState();
+      next(error);
+    }
+  });
+
+  app.post("/api/go/arena/pause",(_request, response, next) => {
     try {
       const table = requireGoGame();
       table.pauseArena();

@@ -53,6 +53,8 @@ export class GoGame {
     this.aiThinking = null;
     this.aiError = null;
     this.positionHistory = new Set([boardHash(this.board)]);
+    this.tableTalk = [];
+    this.review = null;
     this.saveStatus = { savedAt: null, error: null, restored: false };
 
     const requestedAI = Array.isArray(config.aiPlayers) ? config.aiPlayers : [];
@@ -121,7 +123,9 @@ export class GoGame {
     const humanPlayers = state.players.filter((player) => player.isHuman === true);
     const human = humanPlayers[0];
     requireSaved(state.gameMode === "human" ? humanPlayers.length === 1 : humanPlayers.length === 0, "human player does not match game mode");
-    const aiPlayers = state.players.filter((player) => !player.isHuman).map((player) => player.aiConfig);
+    const aiPlayers = state.players
+      .filter((player) => !player.isHuman)
+      .map((player) => ({ ...player.aiConfig, characterId: typeof player.characterId === "string" ? player.characterId : undefined }));
     const game = new GoGame({
       boardSize: state.boardSize,
       komi: state.komi,
@@ -145,6 +149,8 @@ export class GoGame {
     game.aiError = state.aiError == null ? null : structuredClone(state.aiError);
     game.aiThinking = null;
     game.positionHistory = new Set(positionHistory);
+    game.tableTalk = Array.isArray(state.tableTalk) ? structuredClone(state.tableTalk).slice(-30) : [];
+    game.review = state.review && typeof state.review === "object" ? structuredClone(state.review) : null;
     game.players.forEach((player) => {
       const savedPlayer = state.players.find((candidate) => candidate.color === player.color);
       player.lastAction = String(savedPlayer.lastAction ?? "").slice(0, 120);
@@ -287,9 +293,9 @@ export class GoGame {
     this.currentColor = opposite(this.currentColor);
   }
 
-  scorePosition() {
-    const scores = { black: 0, white: this.komi };
-    for (const cell of this.board) if (cell) scores[cell] += 1;
+  /** Owner of every empty point under area scoring: a region bordered by one colour only, else null. */
+  territoryOwners() {
+    const owners = Array(this.board.length).fill(null);
     const visited = new Set();
     for (let row = 0; row < this.boardSize; row += 1) {
       for (let column = 0; column < this.boardSize; column += 1) {
@@ -310,9 +316,16 @@ export class GoGame {
             else if (!visited.has(this._index(nextRow, nextColumn))) stack.push([nextRow, nextColumn]);
           }
         }
-        if (borders.size === 1) scores[[...borders][0]] += region.length;
+        if (borders.size === 1) for (const key of region) owners[key] = [...borders][0];
       }
     }
+    return owners;
+  }
+
+  scorePosition() {
+    const scores = { black: 0, white: this.komi };
+    for (const cell of this.board) if (cell) scores[cell] += 1;
+    for (const owner of this.territoryOwners()) if (owner) scores[owner] += 1;
     return scores;
   }
 
@@ -407,7 +420,10 @@ export class GoGame {
           isHuman: player.isHuman,
           aiConfig: player.aiConfig ? { ...player.aiConfig } : null,
           lastAction: player.lastAction,
+          characterId: player.character?.id ?? null,
         })),
+        tableTalk: structuredClone(this.tableTalk ?? []),
+        review: this.review == null ? null : structuredClone(this.review),
       },
     };
   }
@@ -465,6 +481,32 @@ export class GoGame {
     };
   }
 
+  /** Input for a post-game review by the AI player of `color`. */
+  reviewSnapshot(color) {
+    if (this.phase !== "complete") throw new Error("Finish the game before asking for a review");
+    const reviewer = this.players.find((player) => player.color === color && !player.isHuman);
+    if (!reviewer) throw new Error("Only an AI player can review this game");
+    return {
+      game: "Go",
+      rules: { scoring: "Chinese area", komi: this.komi },
+      boardSize: this.boardSize,
+      finalBoardRows: Array.from({ length: this.boardSize }, (_, row) =>
+        this.board.slice(row * this.boardSize, (row + 1) * this.boardSize).map((cell) => cell === "black" ? "B" : cell === "white" ? "W" : ".").join(""),
+      ),
+      result: this.result,
+      captures: { ...this.captures },
+      reviewer: {
+        color: reviewer.color,
+        name: reviewer.name,
+        title: reviewer.character.title,
+        personality: reviewer.character.personality,
+        voice: reviewer.character.voice ?? "",
+      },
+      players: this.players.map((player) => ({ color: player.color, name: player.name, isHuman: player.isHuman })),
+      moveRecord: this.logs.filter((entry) => entry.kind === "move" || entry.kind === "result").map((entry) => entry.text),
+    };
+  }
+
   publicState() {
     const aiConfigs = this.players.filter((player) => !player.isHuman).map((player) => player.aiConfig);
     const models = new Set(aiConfigs.map((config) => config.model));
@@ -483,6 +525,14 @@ export class GoGame {
       consecutivePasses: this.consecutivePasses,
       lastMove: this.lastMove,
       result: this.result,
+      territory: this.phase === "complete" && this.result?.reason === "score"
+        ? (() => {
+            const owners = this.territoryOwners();
+            return Array.from({ length: this.boardSize }, (_, row) => owners.slice(row * this.boardSize, (row + 1) * this.boardSize));
+          })()
+        : null,
+      review: this.review,
+      reviewPending: this.reviewPending ?? null,
       arena: this.isArenaMode ? { paused: this.arenaPaused } : null,
       model: models.size === 1 ? aiConfigs[0].model : "mixed",
       reasoningEffort: efforts.size === 1 ? aiConfigs[0].reasoningEffort : "mixed",
