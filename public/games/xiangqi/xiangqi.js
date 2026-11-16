@@ -186,8 +186,14 @@ function renderPieces(animate) {
       node.classList.add("is-moving");
       requestAnimationFrame(() => requestAnimationFrame(() => {
         place(node, moving.to);
-        node.addEventListener("transitionend", () => node.classList.remove("is-moving"), { once: true });
-        setTimeout(() => node.classList.remove("is-moving"), 500);
+        const land = () => {
+          if (!node.classList.contains("is-moving")) return;
+          node.classList.remove("is-moving");
+          node.classList.add("is-landing");
+          setTimeout(() => node.classList.remove("is-landing"), 260);
+        };
+        node.addEventListener("transitionend", land, { once: true });
+        setTimeout(land, 500);
       }));
     }
     layer.append(node);

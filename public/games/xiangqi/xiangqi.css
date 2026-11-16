@@ -470,6 +470,14 @@ body[data-flipped="true"] .glyph {
   filter: drop-shadow(0 calc(var(--size) * 0.14) calc(var(--size) * 0.12) rgb(26 6 2 / 0.55));
   z-index: 2;
 }
+.piece.is-landing {
+  animation: settle 0.24s ease-out;
+}
+@keyframes settle {
+  0% { scale: 1.07; }
+  55% { scale: 0.97; }
+  100% { scale: 1; }
+}
 .piece.is-selected::after {
   content: "";
   position: absolute;
