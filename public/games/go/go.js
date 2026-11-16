@@ -6,6 +6,11 @@ const MODEL_OPTIONS = [
   ["deepseek-v4-flash", "DeepSeek V4 Flash"],
 ];
 const REASONING_OPTIONS = ["none", "low", "medium", "high", "xhigh", "max"];
+const SUMMARY_SOURCE_LABELS = {
+  openai_reasoning_summary: "OpenAI summary",
+  deepseek_reasoning_content: "DeepSeek raw reasoning",
+  public_decision_rationale: "public rationale",
+};
 const CHARACTERS = [
   { name: "Vesper Vale", title: "The Velvet Knife", initials: "VV", color: "#d96f9f" },
   { name: "Selene Park", title: "The Oracle", initials: "SP", color: "#75c8d8" },
@@ -30,6 +35,10 @@ let requestInFlight = 0;
 
 function modelLabel(id) {
   return MODEL_OPTIONS.find(([value]) => value === id)?.[1] ?? id;
+}
+
+function shortModelLabel(id) {
+  return String(id).replace(/^gpt-5\.6-/, "").replace(/^deepseek-/, "");
 }
 
 function showToast(message, tone = "error") {
@@ -192,7 +201,8 @@ function renderInsight() {
     const insightName = document.createElement("strong");
     insightName.textContent = insight.playerName;
     const metaLine = document.createElement("span");
-    metaLine.textContent = `Move ${insight.moveNumber} · ${insight.model.replace("gpt-5.6-", "")} · ${(insight.latencyMs / 1000).toFixed(1)}s`;
+    const source = SUMMARY_SOURCE_LABELS[insight.summarySource] ?? "";
+    metaLine.textContent = `Move ${insight.moveNumber} · ${shortModelLabel(insight.model)} · ${(insight.latencyMs / 1000).toFixed(1)}s${source ? ` · ${source}` : ""}`;
     heading.append(insightName, metaLine);
     const summary = document.createElement("p");
     summary.textContent = insight.summary || insight.explanation;

@@ -18,6 +18,7 @@
     "wuziqi:api:check": "node scripts/check-board-openai.js wuziqi",
     "doudizhu:ui:check": "node scripts/check-doudizhu-ui.js",
     "doudizhu:api:check": "node scripts/check-board-openai.js doudizhu",
+    "ds:api:check": "node scripts/check-deepseek.js",
     "flow:check": "node scripts/check-game-flow.js",
     "arena:check": "node scripts/check-arena-flow.js"
   },

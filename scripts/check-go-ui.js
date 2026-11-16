@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import { once } from "node:events";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
+import { resolveChromePath } from "./chrome-path.js";
 import net from "node:net";
 import os from "node:os";
 import path from "node:path";
@@ -65,7 +66,7 @@ if (!created.ok) throw new Error(`Could not create Go smoke game (${created.stat
 
 const browser = await chromium.launch({
   headless: true,
-  executablePath: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+  executablePath: resolveChromePath(),
 });
 const errors = [];
 const attachErrors = (page) => {

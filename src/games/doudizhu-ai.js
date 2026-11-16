@@ -1,4 +1,4 @@
-import { AIDecisionError, requestStructuredDecision } from "../platform/openai-gateway.js";
+import { AIDecisionError, requestStructuredDecision } from "../platform/decision-gateway.js";
 import { analyzeCombo, beatsCombo, describeCombo, isValidCardCode } from "./doudizhu-game.js";
 
 export const DOUDIZHU_PLAY_MAX_ATTEMPTS = 3;

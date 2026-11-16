@@ -140,12 +140,18 @@ export function resolveSidePots(players, communityCards, dealerIndex) {
 
   for (const level of contributionLevels) {
     const contributors = players.filter((player) => player.totalCommitted >= level);
-    const amount = (level - previousLevel) * contributors.length;
+    const perContributor = level - previousLevel;
+    const amount = perContributor * contributors.length;
     previousLevel = level;
     if (amount <= 0) continue;
 
     const eligible = contributors.filter((player) => player.inHand && !player.folded);
-    if (!eligible.length) continue;
+    if (!eligible.length) {
+      // No live player can contest this layer, so it was never called. Return each
+      // contributor's chips instead of dropping them, which would destroy chips.
+      for (const player of contributors) payouts[player.seat] += perContributor;
+      continue;
+    }
     for (const player of eligible) {
       if (!evaluations.has(player.seat)) {
         evaluations.set(player.seat, evaluateBest([...player.holeCards, ...communityCards]));

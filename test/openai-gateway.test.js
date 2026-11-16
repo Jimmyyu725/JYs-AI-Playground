@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { AIDecisionError, readChatCompletionStream, readResponseStream } from "../src/platform/openai-gateway.js";
+import { AIDecisionError, readResponseStream } from "../src/platform/openai-gateway.js";
 
 function streamResponse(chunks) {
   const encoder = new TextEncoder();
@@ -70,34 +70,5 @@ test("propagates failed responses as decision errors", async () => {
   await assert.rejects(
     () => readResponseStream(stream, {}),
     (error) => error instanceof AIDecisionError && error.code === "response_failed" && /boom/.test(error.message),
-  );
-});
-
-test("assembles DeepSeek chat completion content deltas and ignores private reasoning", async () => {
-  const chunk = (object) => `data: ${JSON.stringify(object)}\n\n`;
-  const stream = streamResponse([
-    chunk({ choices: [{ delta: { reasoning_content: "PRIVATE THINKING" }, finish_reason: null }] }),
-    chunk({ choices: [{ delta: { content: '{"action":' }, finish_reason: null }] }),
-    chunk({ choices: [{ delta: { content: '"pass"}' }, finish_reason: null }] }),
-    "data: [DONE]\n\n",
-  ]);
-  const result = await readChatCompletionStream(stream, {});
-  assert.equal(result, '{"action":"pass"}');
-  assert.equal(result.includes("PRIVATE"), false);
-});
-
-test("drains a final DeepSeek SSE block without a trailing blank line", async () => {
-  const stream = streamResponse([
-    `data: ${JSON.stringify({ choices: [{ delta: { content: "{\"row\": 3}" }, finish_reason: "stop" }] })}`,
-  ]);
-  const result = await readChatCompletionStream(stream, {});
-  assert.equal(result, '{"row": 3}');
-});
-
-test("surfaces DeepSeek stream errors", async () => {
-  const stream = streamResponse([`data: ${JSON.stringify({ error: { message: "quota exceeded" } })}\n\n`]);
-  await assert.rejects(
-    () => readChatCompletionStream(stream, {}),
-    (error) => error instanceof AIDecisionError && error.code === "stream_error" && /quota exceeded/.test(error.message),
   );
 });

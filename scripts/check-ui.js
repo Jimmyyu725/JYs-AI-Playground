@@ -1,4 +1,5 @@
 import { chromium } from "playwright-core";
+import { resolveChromePath } from "./chrome-path.js";
 
 const baseURL = process.env.LUNA_HOLDEM_URL || "http://127.0.0.1:4173";
 await fetch(`${baseURL}/api/game`, {
@@ -9,7 +10,7 @@ await fetch(`${baseURL}/api/game`, {
 
 const browser = await chromium.launch({
   headless: true,
-  executablePath: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+  executablePath: resolveChromePath(),
 });
 const page = await browser.newPage({ viewport: { width: 1440, height: 1050 }, deviceScaleFactor: 1 });
 const pageErrors = [];

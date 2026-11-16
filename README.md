@@ -11,14 +11,19 @@ Open [http://127.0.0.1:4173](http://127.0.0.1:4173) to enter the central casino 
 
 ## Model configuration
 
-Every AI seat can independently select one of the real model variants from either provider:
+Every AI seat independently selects one model from either provider:
 
-- OpenAI — `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna`
-- DeepSeek — `deepseek-v4-pro`, `deepseek-v4-flash`
+| Model | Provider | API |
+| --- | --- | --- |
+| `gpt-5.6-sol` | OpenAI | Responses API, strict `json_schema` |
+| `gpt-5.6-terra` | OpenAI | Responses API, strict `json_schema` |
+| `gpt-5.6-luna` | OpenAI | Responses API, strict `json_schema` |
+| `deepseek-v4-pro` | DeepSeek | Chat Completions, `json_object` |
+| `deepseek-v4-flash` | DeepSeek | Chat Completions, `json_object` |
 
-Available reasoning efforts are `none`, `low`, `medium`, `high`, `xhigh`, and `max`. The server validates both fields against an allowlist. OpenAI rooms use the Responses API; DeepSeek rooms use the OpenAI-compatible chat completions API at `https://api.deepseek.com`.
+Available reasoning efforts are `none`, `low`, `medium`, `high`, `xhigh`, and `max`. Every model above accepts all six. The server validates the model and the effort against an allowlist before any request leaves the machine.
 
-Create an ignored `.env.local` from `.env.example` and keep the game credentials separate:
+Create an ignored `.env.local` from `.env.example`:
 
 ```dotenv
 OPENAI_API_KEY=your_holdem_key
@@ -28,7 +33,15 @@ DEEPSEEK_API_KEY=your_deepseek_key
 PORT=4173
 ```
 
-Keys are read only by the local Express server. They are never returned by `/api/health`, included in browser JavaScript, or committed to Git. `DEEPSEEK_API_KEY` is the shared fallback for every DeepSeek room; set `DEEPSEEK_GO_API_KEY` or `DEEPSEEK_WUZIQI_API_KEY` to override it per room.
+OpenAI credentials stay separate per game so a leaked key cannot reach the other rooms. DeepSeek seats use `DEEPSEEK_API_KEY` unless `DEEPSEEK_GO_API_KEY` or `DEEPSEEK_WUZIQI_API_KEY` is set, in which case the per-game key wins.
+
+Keys are read only by the local Express server. They are never returned by `/api/health`, included in browser JavaScript, or committed to Git.
+
+### Provider differences that the code handles
+
+- **DeepSeek has no strict `json_schema` mode.** The decision schema is embedded in the system prompt and requested as `json_object`. Because that guarantees only syntactic validity, the gateway unwraps single-key envelopes the model sometimes emits, and every decision is still validated against the live game rules before it is applied.
+- **DeepSeek returns `reasoning_content`, not an abridged summary.** See the guarantees below.
+- `deepseek-v4-pro` is not yet reachable over DeepSeek's Responses API endpoint, so its adapter uses Chat Completions.
 
 ## Run
 
@@ -47,17 +60,30 @@ Game routes:
 - [Wuziqi / 五子棋](http://127.0.0.1:4173/games/wuziqi/)
 - [Dou Dizhu / 斗地主](http://127.0.0.1:4173/games/doudizhu/)
 
+The server binds to loopback by default. To reach it from another machine on the
+same LAN, set `HOST`:
+
+```bash
+HOST=0.0.0.0 npm start
+```
+
+The playground has no authentication and every seat spends real API credit, so
+keep it on a trusted network and never expose it to the public internet.
+
 ## House guarantees
 
 - The server owns all rules, legal actions, cards, boards, scoring, captures, wins, and turn order.
-- OpenAI receives only the acting character’s private information plus public game state. Hold’em opponents never receive one another’s hole cards. DeepSeek receives the same snapshots through its chat completions API.
+- The selected model receives only the acting character’s private information plus public game state. Hold’em opponents never receive one another’s hole cards.
 - AI characters do receive their opponents’ public character profiles and visible move/action history, making the displayed personas strategically relevant.
-- Responses API requests stream without an application turn timer.
+- Model requests stream without an application turn timer.
 - API failures pause the game for an explicit retry.
 - Go automatically retries malformed or illegal model moves twice before pausing.
 - Dou Dizhu automatically retries malformed or illegal model plays twice before pausing.
 - There is no local LLM, heuristic player, or silent model fallback.
-- The UI retains public rationales and supported OpenAI reasoning summaries in a persistent transcript. It does not expose or claim to expose private chain-of-thought.
+- The UI retains public rationales and whatever reasoning text the provider itself returns, in a persistent transcript labelled by source:
+  - **OpenAI seats** show only the API's reasoning *summary*. Private chain-of-thought is neither exposed nor claimed to be exposed.
+  - **DeepSeek seats** show the full `reasoning_content` the API returns, because DeepSeek deliberately publishes it. Entries are labelled `DeepSeek raw reasoning` so the two are never conflated.
+  - Seats whose response carried no reasoning text fall back to the model's own public rationale, labelled `public rationale`.
 
 ## Rules
 
@@ -91,11 +117,20 @@ npm run go:api:check      # one live Go decision using the Go key
 npm run wuziqi:api:check  # one live Wuziqi decision using the Wuziqi key
 npm run doudizhu:api:check # one live Dou Dizhu bid using the Dou Dizhu key
 CHECK_MODEL=deepseek-v4-flash npm run wuziqi:api:check   # one live DeepSeek decision
+npm run ds:api:check      # one live DeepSeek V4 Pro decision in Hold'em, Go, and Wuziqi
+                          # optional: node scripts/check-deepseek.js <game> <reasoningEffort>
 npm run flow:check        # live multi-character Hold’em turn chain
 npm run arena:check       # one complete live Hold’em AI Arena hand
 ```
 
 Browser and flow checks expect the local server to be running. Live API checks consume API usage.
+
+The browser checks drive an installed Chrome, discovered per platform. Set `CHROME_PATH`
+to override the lookup:
+
+```bash
+CHROME_PATH=/usr/bin/google-chrome npm run ui:check
+```
 
 ## Structure
 
@@ -110,8 +145,11 @@ src/games/go-game.js            Authoritative Go engine and scoring
 src/games/go-save-store.js      Atomic local Go save-slot storage
 src/games/wuziqi-game.js        Authoritative Wuziqi engine
 src/games/doudizhu-game.js      Authoritative Dou Dizhu engine, bidding, and scoring
-src/platform/model-registry.js  Model, reasoning, and credential allowlists
-src/platform/openai-gateway.js  Shared Responses API streaming and schemas
+src/platform/model-registry.js  Model, provider, reasoning, and credential allowlists
+src/platform/decision-gateway.js  Routes a decision to the provider that owns the model
+src/platform/openai-gateway.js  OpenAI Responses API streaming and strict schemas
+src/platform/deepseek-gateway.js  DeepSeek Chat Completions streaming and JSON recovery
+src/platform/ai-decision-error.js  Shared provider-agnostic decision error
 src/platform/characters.js      Public AI character registry
 server.js                       APIs, SSE streams, and AI turn orchestration
 test/                           Deterministic rules and privacy tests
@@ -121,6 +159,11 @@ scripts/                        Browser, live API, and flow checks
 ## Visual asset
 
 The shared casino backdrop at `public/assets/casino-ambient.png` was generated with `gpt-image-2`. All table, board, stone, chip, and lobby components are original HTML/CSS interfaces; the Hold’em room reuses the card artwork from the earlier desktop game.
+
+## DeepSeek references
+
+- [DeepSeek API docs](https://api-docs.deepseek.com/)
+- [JSON output](https://api-docs.deepseek.com/guides/json_mode)
 
 ## OpenAI references
 

@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { deepseekApiKeyForGame, modelProvider, normalizeModelConfig, publicModelRegistry } from "../src/platform/model-registry.js";
+import { apiKeyFor, normalizeModelConfig, providerForModel, publicModelRegistry } from "../src/platform/model-registry.js";
 
-test("publishes every selectable model and reasoning effort", () => {
+test("publishes every selectable model, provider, and reasoning effort", () => {
   const registry = publicModelRegistry();
   assert.deepEqual(registry.models.map((model) => model.id), [
     "gpt-5.6-sol",
@@ -11,6 +11,7 @@ test("publishes every selectable model and reasoning effort", () => {
     "deepseek-v4-pro",
     "deepseek-v4-flash",
   ]);
+  assert.deepEqual(registry.providers.map((provider) => provider.id), ["openai", "deepseek"]);
   assert.deepEqual(registry.reasoningEfforts, ["none", "low", "medium", "high", "xhigh", "max"]);
 });
 
@@ -20,27 +21,48 @@ test("normalizes game defaults and rejects arbitrary model configuration", () =>
     model: "gpt-5.6-sol",
     reasoningEffort: "max",
   });
-  assert.deepEqual(normalizeModelConfig("holdem", { model: "deepseek-v4-flash", reasoningEffort: "high" }), {
-    model: "deepseek-v4-flash",
-    reasoningEffort: "high",
-  });
   assert.throws(() => normalizeModelConfig("holdem", { model: "local-model" }), /Unsupported model/);
   assert.throws(() => normalizeModelConfig("holdem", { reasoningEffort: "automatic" }), /Unsupported reasoning effort/);
 });
 
-test("maps every model to its provider", () => {
-  assert.equal(modelProvider("gpt-5.6-luna"), "openai");
-  assert.equal(modelProvider("deepseek-v4-pro"), "deepseek");
-  assert.equal(modelProvider("deepseek-v4-flash"), "deepseek");
-  assert.equal(modelProvider("local-model"), null);
+test("accepts DeepSeek V4 Pro at every reasoning effort in every game", () => {
+  for (const gameId of ["holdem", "go", "wuziqi", "doudizhu"]) {
+    for (const reasoningEffort of ["none", "low", "medium", "high", "xhigh", "max"]) {
+      assert.deepEqual(normalizeModelConfig(gameId, { model: "deepseek-v4-pro", reasoningEffort }), {
+        model: "deepseek-v4-pro",
+        reasoningEffort,
+      });
+    }
+  }
 });
 
-test("resolves DeepSeek credentials per room with a shared fallback", () => {
-  process.env.DEEPSEEK_API_KEY = "shared-key";
-  delete process.env.DEEPSEEK_GO_API_KEY;
-  assert.equal(deepseekApiKeyForGame("go").value, "shared-key");
-  process.env.DEEPSEEK_GO_API_KEY = "go-key";
-  assert.equal(deepseekApiKeyForGame("go").value, "go-key");
-  delete process.env.DEEPSEEK_API_KEY;
-  delete process.env.DEEPSEEK_GO_API_KEY;
+test("routes each model to its owning provider", () => {
+  assert.equal(providerForModel("gpt-5.6-sol"), "openai");
+  assert.equal(providerForModel("deepseek-v4-pro"), "deepseek");
+  assert.throws(() => providerForModel("local-model"), /Unsupported model/);
+});
+
+test("keeps provider credentials separate and falls back to the shared DeepSeek key", () => {
+  const managed = ["DEEPSEEK_API_KEY", "DEEPSEEK_GO_API_KEY", "OPENAI_GO_API_KEY", "OPENAI_WUZIQI_API_KEY"];
+  const restore = Object.fromEntries(managed.map((name) => [name, process.env[name]]));
+  try {
+    delete process.env.DEEPSEEK_GO_API_KEY;
+    process.env.DEEPSEEK_API_KEY = "shared-deepseek";
+    process.env.OPENAI_GO_API_KEY = "openai-go";
+
+    assert.deepEqual(apiKeyFor("deepseek", "go"), { envName: "DEEPSEEK_API_KEY", value: "shared-deepseek" });
+    assert.deepEqual(apiKeyFor("openai", "go"), { envName: "OPENAI_GO_API_KEY", value: "openai-go" });
+
+    process.env.DEEPSEEK_GO_API_KEY = "dedicated-go";
+    assert.deepEqual(apiKeyFor("deepseek", "go"), { envName: "DEEPSEEK_GO_API_KEY", value: "dedicated-go" });
+
+    // An OpenAI game never falls back to another room's credential.
+    delete process.env.OPENAI_WUZIQI_API_KEY;
+    assert.deepEqual(apiKeyFor("openai", "wuziqi"), { envName: "OPENAI_WUZIQI_API_KEY", value: undefined });
+  } finally {
+    for (const name of managed) {
+      if (restore[name] === undefined) delete process.env[name];
+      else process.env[name] = restore[name];
+    }
+  }
 });

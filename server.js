@@ -11,7 +11,7 @@ import { requestWuziqiDecision } from "./src/games/wuziqi-ai.js";
 import { WuziqiGame } from "./src/games/wuziqi-game.js";
 import { PokerGame } from "./src/poker-game.js";
 import { AIDecisionError, requestHoldemDecision } from "./src/openai-player.js";
-import { apiKeyForGame, deepseekApiKeyForGame, publicModelRegistry } from "./src/platform/model-registry.js";
+import { apiKeyFor, configuredProviderKeys, publicModelRegistry } from "./src/platform/model-registry.js";
 
 const rootDir = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(rootDir, ".env.local") });
@@ -245,7 +245,7 @@ async function runAIChain(version) {
         if (game !== table || version !== gameVersion) return;
         const latencyMs = performance.now() - startedAt;
         const visibleSummary = decision.reasoningSummary || decision.explanation;
-        const summarySource = decision.reasoningSummary ? "openai_reasoning_summary" : "public_decision_rationale";
+        const summarySource = decision.reasoningSource || "public_decision_rationale";
         table.recordAIInsight(seat, {
           summary: visibleSummary,
           summarySource,
@@ -340,7 +340,7 @@ async function runGoAIChain(version) {
         const visibleSummary = decision.reasoningSummary || decision.explanation;
         table.recordAIInsight(color, {
           summary: visibleSummary,
-          summarySource: decision.reasoningSummary ? "openai_reasoning_summary" : "public_decision_rationale",
+          summarySource: decision.reasoningSource || "public_decision_rationale",
           explanation: decision.explanation,
           latencyMs,
           action: decision.action,
@@ -411,7 +411,7 @@ async function runWuziqiAIChain(version) {
         const visibleSummary = decision.reasoningSummary || decision.explanation;
         table.recordAIInsight(color, {
           summary: visibleSummary,
-          summarySource: decision.reasoningSummary ? "openai_reasoning_summary" : "public_decision_rationale",
+          summarySource: decision.reasoningSource || "public_decision_rationale",
           explanation: decision.explanation,
           latencyMs,
           action: decision.action,
@@ -555,11 +555,12 @@ app.get("/api/health", (_request, response) => {
   response.json({
     ok: true,
     apiKeys: {
-      holdem: { openai: Boolean(apiKeyForGame("holdem").value), deepseek: Boolean(deepseekApiKeyForGame("holdem").value) },
-      go: { openai: Boolean(apiKeyForGame("go").value), deepseek: Boolean(deepseekApiKeyForGame("go").value) },
-      wuziqi: { openai: Boolean(apiKeyForGame("wuziqi").value), deepseek: Boolean(deepseekApiKeyForGame("wuziqi").value) },
-      doudizhu: { openai: Boolean(apiKeyForGame("doudizhu").value), deepseek: Boolean(deepseekApiKeyForGame("doudizhu").value) },
+      holdem: { openai: Boolean(apiKeyFor("openai", "holdem").value), deepseek: Boolean(apiKeyFor("deepseek", "holdem").value) },
+      go: { openai: Boolean(apiKeyFor("openai", "go").value), deepseek: Boolean(apiKeyFor("deepseek", "go").value) },
+      wuziqi: { openai: Boolean(apiKeyFor("openai", "wuziqi").value), deepseek: Boolean(apiKeyFor("deepseek", "wuziqi").value) },
+      doudizhu: { openai: Boolean(apiKeyFor("openai", "doudizhu").value), deepseek: Boolean(apiKeyFor("deepseek", "doudizhu").value) },
     },
+    providerKeys: configuredProviderKeys(),
     models: publicModelRegistry(),
     games: { holdem: true, go: true, wuziqi: true, doudizhu: true },
     noLocalFallback: true,
@@ -991,8 +992,11 @@ app.use((error, _request, response, _next) => {
 });
 
 const port = Number.parseInt(process.env.PORT, 10) || 4173;
-const server = app.listen(port, "127.0.0.1", () => {
-  console.log(`JYs AI Playground is ready at http://127.0.0.1:${port}`);
+// Loopback by default. Set HOST=0.0.0.0 to reach the playground from the LAN;
+// the app has no authentication, so never expose it to the public internet.
+const host = process.env.HOST || "127.0.0.1";
+const server = app.listen(port, host, () => {
+  console.log(`JYs AI Playground is ready at http://${host === "0.0.0.0" ? "127.0.0.1" : host}:${port}`);
   if (goGame) {
     console.log(`Restored Go move ${goGame.moveNumber} from the local save slot`);
     scheduleGoAITurn(goGameVersion);

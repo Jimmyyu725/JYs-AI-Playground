@@ -1,4 +1,5 @@
 import { chromium } from "playwright-core";
+import { resolveChromePath } from "./chrome-path.js";
 
 const baseURL = process.env.PLAYGROUND_URL || "http://127.0.0.1:4173";
 const created = await fetch(`${baseURL}/api/wuziqi/game`, {
@@ -8,7 +9,7 @@ const created = await fetch(`${baseURL}/api/wuziqi/game`, {
 });
 if (!created.ok) throw new Error(`Could not create Wuziqi smoke game (${created.status})`);
 
-const browser = await chromium.launch({ headless: true, executablePath: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" });
+const browser = await chromium.launch({ headless: true, executablePath: resolveChromePath() });
 const errors = [];
 const attachErrors = (page) => {
   page.on("pageerror", (error) => errors.push(error.message));

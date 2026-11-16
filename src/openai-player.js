@@ -1,4 +1,4 @@
-import { AIDecisionError, requestStructuredDecision } from "./platform/openai-gateway.js";
+import { AIDecisionError, requestStructuredDecision } from "./platform/decision-gateway.js";
 
 const DECISION_SCHEMA = {
   type: "object",
@@ -11,7 +11,7 @@ const DECISION_SCHEMA = {
   additionalProperties: false,
 };
 
-export { AIDecisionError } from "./platform/openai-gateway.js";
+export { AIDecisionError } from "./platform/decision-gateway.js";
 
 function validateDecision(decision, legal) {
   if (!decision || typeof decision !== "object") throw new AIDecisionError("The model returned no decision object", "invalid_output");
@@ -59,6 +59,7 @@ export async function requestHoldemDecision(snapshot, requestedConfig = {}, call
   return {
     ...validateDecision(result.output, snapshot.legal),
     reasoningSummary: result.reasoningSummary,
+    reasoningSource: result.reasoningSource,
     responseId: result.responseId,
   };
 }
