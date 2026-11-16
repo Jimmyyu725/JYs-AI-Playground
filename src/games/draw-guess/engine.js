@@ -262,7 +262,9 @@ function tokensMatchSequence(tokens, start, answerTokens, formsOf) {
  * { reason, match } where reason is "word", "synonym", "chinese" or "spelled_out".
  */
 export function findPromptLeak(text, wordEntry) {
-  const tokens = tokenize(text);
+  // Check both readings of hyphenated text: "ice-cream" as one token and "cat-like" as two.
+  const splitTokens = baseNormalize(text).split(/[^\p{L}\d]+/u).filter(Boolean);
+  const tokenLists = [tokenize(text), splitTokens];
   const answers = [
     { tokens: tokenize(wordEntry.word), reason: "word" },
     ...(wordEntry.synonyms ?? []).map((synonym) => ({ tokens: tokenize(synonym), reason: "synonym" })),
@@ -270,10 +272,12 @@ export function findPromptLeak(text, wordEntry) {
 
   for (const answer of answers) {
     const compactForms = inflectedForms(answer.tokens.join(""));
-    for (let index = 0; index < tokens.length; index += 1) {
-      if (compactForms.has(tokens[index])) return { reason: answer.reason, match: tokens[index] };
-      if (answer.tokens.length > 1 && tokensMatchSequence(tokens, index, answer.tokens, inflectedForms)) {
-        return { reason: answer.reason, match: tokens.slice(index, index + answer.tokens.length).join(" ") };
+    for (const tokens of tokenLists) {
+      for (let index = 0; index < tokens.length; index += 1) {
+        if (compactForms.has(tokens[index])) return { reason: answer.reason, match: tokens[index] };
+        if (answer.tokens.length > 1 && tokensMatchSequence(tokens, index, answer.tokens, inflectedForms)) {
+          return { reason: answer.reason, match: tokens.slice(index, index + answer.tokens.length).join(" ") };
+        }
       }
     }
   }
@@ -286,7 +290,7 @@ export function findPromptLeak(text, wordEntry) {
   // Runs of single-character tokens: "b a n a n a", "B, A, N, A, N, A".
   let run = "";
   const runs = [];
-  for (const token of tokens) {
+  for (const token of splitTokens) {
     if (token.length === 1) run += token;
     else {
       if (run.length > 1) runs.push(run);
