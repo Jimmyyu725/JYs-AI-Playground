@@ -1,521 +1,912 @@
-const MODEL_OPTIONS = [
-  ["gpt-6.1-sol", "GPT-6.1 Sol"],
-  ["gpt-6.1-terra", "GPT-6.1 Terra"],
-  ["gpt-6-luna", "GPT-6 Luna"],
-  ["gpt-6-astra", "GPT-6 Astra"],
-  ["deepseek-v4-pro", "DeepSeek V4 Pro"],
-  ["deepseek-flash", "DeepSeek Flash"],
-];
-const REASONING_OPTIONS = ["none", "low", "medium", "high", "xhigh", "max"];
-const CHARACTERS = [
-  { name: "Vesper Vale", title: "The Velvet Knife", initials: "VV", color: "#d96f9f" },
-  { name: "Rook Mercer", title: "The Enforcer", initials: "RM", color: "#e89a44" },
-  { name: "Iris Knox", title: "The Wildcard", initials: "IK", color: "#9f87e8" },
-];
+import {
+  backToLobby, characterPicker, drawer, loadCharacters, loadModels, modelPicker, portraitUrl,
+  prefersReducedMotion, seat as kitSeat, toast, transcript,
+} from "/shared/kit.js";
+import { sfx } from "/shared/sfx.js";
+import { bindTableTalk, speak } from "/shared/speech.js";
+import { laneSfx } from "/games/doudizhu/lane-sfx.js";
 
-const ids = [
-  "new-game-button", "model-pill", "reasoning-pill", "hand-number", "turn-label", "turn-detail", "ribbon-mark", "thinking-elapsed",
-  "player-slot-0", "player-slot-1", "player-slot-2", "bottom-cards", "last-play", "bid-status",
-  "game-overlay", "overlay-eyebrow", "overlay-title", "overlay-copy", "overlay-action",
-  "hand-dock", "hand-title", "hand-cards", "selected-count", "bid-actions", "bid-1", "bid-2", "bid-3", "bid-pass",
-  "play-actions", "play-button", "pass-button", "hint-label", "arena-toggle",
-  "base-score", "bomb-count", "multiplier", "result-label",
-  "live-indicator", "thinker-profile", "reasoning-status", "reasoning-text", "reasoning-count", "reasoning-feed",
-  "history-list", "setup-modal", "setup-form", "setup-lede", "mode-options", "human-name-field",
-  "ai-roster", "apply-roster", "setup-submit", "cancel-setup", "toast",
-];
-const elements = Object.fromEntries(ids.map((id) => [id.replace(/-([a-z0-9])/g, (_match, letter) => letter.toUpperCase()), document.getElementById(id)]));
+const ART = "/assets/rooms/doudizhu";
+const SUITS = {
+  S: { glyph: "♠", name: "spades" },
+  H: { glyph: "♥", name: "hearts" },
+  C: { glyph: "♣", name: "clubs" },
+  D: { glyph: "♦", name: "diamonds" },
+};
+const RANK_LABEL = { T: "10" };
+const COURT = { J: "j", Q: "q", K: "k" };
+const COMBO_ZH = {
+  single: "单张", pair: "对子", triple: "三张", triple_single: "三带一", triple_pair: "三带二",
+  straight: "顺子", pair_straight: "连对", airplane: "飞机", airplane_single: "飞机带翅膀",
+  airplane_pair: "飞机带对", four_two_single: "四带二", four_two_pair: "四带两对",
+  bomb: "炸弹", rocket: "王炸",
+};
+
+const $ = (id) => document.getElementById(id);
+const el = (tag, className, text) => {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text != null) node.textContent = text;
+  return node;
+};
+
+const dom = {
+  table: $("table"),
+  seats: [$("seat-0"), $("seat-1"), $("seat-2")],
+  phaseMark: $("phase-mark"), phaseText: $("phase-text"), phaseDetail: $("phase-detail"),
+  elapsed: $("elapsed"), arenaToggle: $("arena-toggle"),
+  bottomCards: $("bottom-cards"), trick: $("trick"), notice: $("table-notice"),
+  handDock: $("hand-dock"), hand: $("hand"), handTitle: $("hand-title"), handRole: $("hand-role"), handMug: $("hand-mug"),
+  bidStrips: $("bid-strips"), playButtons: $("play-buttons"),
+  passButton: $("pass-button"), clearButton: $("clear-button"), playButton: $("play-button"), hint: $("hint"),
+  bidValue: $("bid-value"), bombValue: $("bomb-value"), multiplierValue: $("multiplier-value"), stakeMultiplier: $("stake-multiplier"),
+  liveIndicator: $("live-indicator"), lensWho: $("lens-who"), lensStatus: $("lens-status"), lensSummary: $("lens-summary"), insights: $("insights"),
+  bulb: $("bulb-pool"), drift: $("paper-drift"), flash: $("flash"),
+};
 
 let state = null;
-let selectedCards = new Set();
+let selected = new Set();
 let liveSummary = "";
-let toastTimer = null;
-let actionBusy = false;
-let requestInFlight = 0;
+let busy = false;
+let requestsInFlight = 0;
+let lastPayload = null;
+const seen = { hand: null, trickKey: null, bombs: 0, revealed: false, resultKey: null, recordKey: null };
+const seatViews = [null, null, null];
 
-function modelLabel(id) {
-  return MODEL_OPTIONS.find(([value]) => value === id)?.[1] ?? id;
-}
+/* ---------- Cards ---------- */
 
-function showToast(message) {
-  clearTimeout(toastTimer);
-  elements.toast.textContent = message;
-  elements.toast.classList.add("visible");
-  toastTimer = setTimeout(() => elements.toast.classList.remove("visible"), 5000);
-}
-
-async function request(path, options = {}) {
-  requestInFlight += 1;
-  try {
-    const response = await fetch(path, { ...options, headers: { "Content-Type": "application/json", ...(options.headers ?? {}) } });
-    let payload = null;
-    try { payload = await response.json(); } catch { /* empty */ }
-    if (!response.ok) throw new Error(payload?.error || `Request failed (${response.status})`);
-    return payload;
-  } finally {
-    requestInFlight -= 1;
+function cardFace(code, { size = "md", tag = "div" } = {}) {
+  const card = el(tag, "card");
+  card.dataset.size = size;
+  card.dataset.code = code;
+  if (code === "BACK") {
+    card.classList.add("is-back");
+    card.setAttribute("aria-label", "Face-down card");
+    return card;
   }
-}
-
-function cardSrc(code) {
-  if (code === "SJ" || code === "BJ") return `/cards/${code}.svg`;
-  if (code === "BACK") return "/cards/BACK.jpg";
-  return `/cards/${code}.png`;
-}
-
-function cardElement(code, { small = false, selectable = false, selected = false, back = false } = {}) {
-  const card = document.createElement("button");
-  card.type = "button";
-  card.className = `dd-card${small ? " small" : ""}${selectable ? " selectable" : ""}${selected ? " selected" : ""}${back ? " back" : ""}`;
-  const image = document.createElement("img");
-  image.src = cardSrc(back ? "BACK" : code);
-  image.alt = back ? "Face-down card" : code;
-  image.loading = "eager";
-  card.append(image);
+  if (code === "SJ" || code === "BJ") {
+    const big = code === "BJ";
+    card.classList.add("is-joker", big ? "joker-big" : "joker-small");
+    card.style.setProperty("--art", `url("${ART}/joker-${big ? "big" : "small"}.webp")`);
+    const index = el("span", "index joker-index", "JOKER");
+    card.append(index);
+    card.setAttribute("aria-label", big ? "Big joker" : "Small joker");
+    return card;
+  }
+  const rank = code[0];
+  const suit = SUITS[code[1]];
+  const label = RANK_LABEL[rank] ?? rank;
+  card.dataset.suit = suit.name;
+  card.setAttribute("aria-label", `${label} of ${suit.name}`);
+  const index = el("span", "index");
+  index.append(el("b", null, label), el("i", null, suit.glyph));
+  card.append(index);
+  if (COURT[rank]) {
+    card.classList.add("is-court");
+    card.style.setProperty("--art", `url("${ART}/court-${COURT[rank]}-${suit.name}.webp")`);
+    const corner = index.cloneNode(true);
+    corner.classList.add("index-end");
+    card.append(corner);
+  } else {
+    card.append(el("span", "pip", suit.glyph));
+    const corner = index.cloneNode(true);
+    corner.classList.add("index-end");
+    card.append(corner);
+  }
   return card;
 }
 
-function renderPlayerSlot(seat, player) {
-  const target = elements[`playerSlot${seat}`];
-  target.replaceChildren();
-  target.className = `player-slot ${seat === 0 ? "bottom" : seat === 1 ? "top-left" : "top-right"}${state.currentActorSeat === seat && state.phase !== "complete" ? " active" : ""}${player.isLandlord ? " landlord" : ""}`;
-  target.style.setProperty("--player-color", player.character?.color ?? "#d7b66a");
+function cardLabel(code) {
+  if (code === "SJ") return "small joker";
+  if (code === "BJ") return "big joker";
+  return `${RANK_LABEL[code[0]] ?? code[0]}${SUITS[code[1]]?.glyph ?? ""}`;
+}
 
-  const avatar = document.createElement("span");
-  avatar.className = "slot-avatar";
-  avatar.textContent = player.isHuman ? "YOU" : player.character.initials;
-  const copy = document.createElement("div");
-  copy.className = "slot-copy";
-  const name = document.createElement("strong");
-  name.textContent = player.name;
-  const sub = document.createElement("small");
-  sub.textContent = player.isLandlord ? `地主 Landlord · ${player.cardCount} cards` : `农民 Farmer · ${player.cardCount} cards`;
-  copy.append(name, sub);
+function rankWord(code) {
+  if (code === "SJ") return "small joker";
+  if (code === "BJ") return "big joker";
+  return RANK_LABEL[code[0]] ?? code[0];
+}
 
-  const action = document.createElement("span");
-  action.className = "slot-action";
-  action.textContent = player.lastAction || (state.phase === "bidding" ? (player.bid ? `Bid ${player.bid}` : "Waiting") : "Seated");
-  target.append(avatar, copy, action);
+/** Reasoning summaries arrive as Markdown; the lens shows plain text. */
+function plainText(text) {
+  return String(text ?? "").replace(/\*\*(.+?)\*\*/g, "$1").replace(/^#+\s*/gm, "").trim();
+}
 
-  if (state.gameMode === "arena" || player.isHuman) {
-    const hand = document.createElement("div");
-    hand.className = "slot-hand";
-    for (const code of player.hand) hand.append(cardElement(code, { small: true }));
-    target.append(hand);
-  } else if (player.cardCount > 0) {
-    const backs = document.createElement("div");
-    backs.className = "slot-backs";
-    for (let index = 0; index < Math.min(player.cardCount, 12); index += 1) {
-      backs.append(cardElement("BACK", { small: true, back: true }));
-    }
-    target.append(backs);
+/* ---------- Requests ---------- */
+
+async function api(path, body) {
+  requestsInFlight += 1;
+  try {
+    const response = await fetch(path, body === undefined ? {} : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    let payload = null;
+    try { payload = await response.json(); } catch { /* empty body */ }
+    if (!response.ok) throw new Error(payload?.error || `Request failed (${response.status})`);
+    return payload;
+  } finally {
+    requestsInFlight -= 1;
   }
+}
+
+async function act(path, body) {
+  if (busy) return;
+  busy = true;
+  renderControls();
+  try {
+    const next = await api(path, body);
+    selected.clear();
+    liveSummary = "";
+    applyState(next);
+  } catch (error) {
+    sfx.play("error");
+    toast(error.message, { tone: "error" });
+  } finally {
+    busy = false;
+    if (state) renderControls();
+  }
+}
+
+/* ---------- Seats ---------- */
+
+function preloadThen(url, callback) {
+  const probe = new Image();
+  probe.onload = () => callback(url);
+  probe.src = url;
+}
+
+function setExpression(view, expression) {
+  if (view.expression === expression) return;
+  view.expression = expression;
+  view.seat.dataset.expression = expression;
+  const image = view.seat.querySelector(".kit-portrait img");
+  const characterId = view.player.character?.id;
+  if (!image || !characterId) return;
+  // Not every expression is painted yet: switch only once the image has actually loaded.
+  preloadThen(portraitUrl(characterId, expression), (url) => {
+    if (view.expression === expression) image.src = url;
+  });
+}
+
+function buildSeat(index, player) {
+  const zone = dom.seats[index];
+  zone.replaceChildren();
+  zone.dataset.speaker = String(index);
+  const view = { key: `${player.name}|${player.character?.id ?? "human"}`, player, expression: "neutral" };
+  const card = el("div", "seat-card");
+  const portrait = player.isHuman
+    ? kitSeat({ name: player.name, caption: "You", size: "md" })
+    : kitSeat({ character: player.character, name: player.character?.shortName ?? player.name, caption: player.character?.title ?? "", size: "md" });
+  const cap = el("img", "landlord-cap");
+  cap.src = `${ART}/landlord-badge.webp`;
+  cap.alt = "Landlord";
+  portrait.querySelector(".kit-portrait").after(cap);
+  const mug = el("span", "mug");
+  mug.append(el("b", null, "0"));
+  mug.title = "Cards left";
+  const meta = el("div", "seat-meta");
+  const role = el("span", "seat-role");
+  const model = el("span", "seat-model", player.isHuman ? "Human seat" : modelLabel(player.aiConfig));
+  meta.append(role, model);
+  const action = el("span", "seat-action");
+  const cards = el("div", "seat-cards");
+  card.append(portrait, mug, meta, action);
+  zone.append(card, cards);
+  Object.assign(view, { seat: portrait, mug, role, action, cards, model });
+  seatViews[index] = view;
+  return view;
+}
+
+let registry = null;
+function modelLabel(config) {
+  if (!config) return "";
+  const entry = registry?.models.find((model) => model.id === config.model);
+  return `${entry?.shortLabel ?? entry?.label ?? config.model} · ${config.reasoningEffort}`;
+}
+
+function renderSeat(index) {
+  const player = state.players[index];
+  const showInZone = !(player.isHuman && state.gameMode !== "arena");
+  const zone = dom.seats[index];
+  zone.hidden = !showInZone;
+  if (!showInZone) return;
+  const key = `${player.name}|${player.character?.id ?? "human"}`;
+  const view = seatViews[index]?.key === key ? seatViews[index] : buildSeat(index, player);
+  view.player = player;
+  const active = state.currentActorSeat === index && state.phase !== "complete";
+  zone.dataset.active = String(active);
+  zone.dataset.landlord = String(player.isLandlord);
+  zone.dataset.team = state.landlordSeat === null ? "" : player.isLandlord ? "landlord" : "farmer";
+  view.seat.dataset.active = String(active);
+  view.mug.querySelector("b").textContent = String(player.cardCount);
+  view.mug.dataset.low = String(player.cardCount > 0 && player.cardCount <= 2 && state.phase === "playing");
+  view.role.textContent = state.landlordSeat === null ? "" : player.isLandlord ? "地主 Landlord" : "农民 Farmer";
+  const thinking = state.aiThinking?.seat === index;
+  let expression = thinking ? "thinking" : "neutral";
+  if (state.result) expression = state.result.winningSeats.includes(index) ? "triumphant" : "defeated";
+  if (!player.isHuman) setExpression(view, expression);
+  view.action.textContent = actionText(player, index);
+  view.action.dataset.kind = /pass|不/i.test(view.action.textContent) ? "pass" : view.action.textContent ? "move" : "";
+
+  // Arena reveals every hand, in rows of ten so the corners stay readable; otherwise AI hands are a fan of backs.
+  const arena = state.gameMode === "arena";
+  const faces = arena ? player.hand : Array.from({ length: Math.min(player.cardCount, 20) }, () => "BACK");
+  const signature = faces.join(",");
+  if (view.cards.dataset.signature !== signature) {
+    view.cards.dataset.signature = signature;
+    view.cards.dataset.layout = arena ? "faces" : "backs";
+    const rowSize = arena ? 10 : 20;
+    const rows = [];
+    for (let start = 0; start < faces.length; start += rowSize) rows.push(faces.slice(start, start + rowSize));
+    view.cards.replaceChildren(...rows.map((row) => {
+      const line = el("div", "fan-row");
+      line.style.setProperty("--n", row.length);
+      line.append(...row.map((code, cardIndex) => {
+        const card = cardFace(code, { size: arena ? "sm" : "xs" });
+        card.style.setProperty("--i", cardIndex);
+        card.style.setProperty("--n", row.length);
+        return card;
+      }));
+      return line;
+    }));
+  }
+}
+
+function actionText(player, index) {
+  if (state.phase === "bidding") {
+    if (player.bid === 0) return "不叫 Pass";
+    if (player.bid) return `叫 ${player.bid}`;
+    return "";
+  }
+  // A pass only matters while the trick it passed on is still on the table.
+  if (state.phase === "playing" && player.lastAction === "Passed" && state.lastPlay) return "不出 Pass";
+  return "";
+}
+
+/* ---------- Center of the table ---------- */
+
+function renderPhase() {
+  const actor = state.players[state.currentActorSeat] ?? null;
+  const marks = { bidding: "叫", playing: "出", complete: "胜" };
+  dom.phaseMark.textContent = marks[state.phase] ?? "斗";
+  if (state.phase === "bidding") {
+    dom.phaseText.textContent = state.highestBidderSeat !== null ? `High bid ${state.highestBid} · ${state.players[state.highestBidderSeat].name}` : "Bidding for the landlord seat";
+    dom.phaseDetail.textContent = actor ? `${actor.isHuman ? "Your" : `${actor.name}'s`} turn to bid · three passes redeal` : "";
+  } else if (state.phase === "playing") {
+    const leading = !state.lastPlay || state.leaderSeat === state.currentActorSeat;
+    dom.phaseText.textContent = `地主 ${state.players[state.landlordSeat].name} · bid ${state.highestBid}`;
+    dom.phaseDetail.textContent = actor ? `${actor.isHuman ? "You" : actor.name} ${leading ? "lead" + (actor.isHuman ? "" : "s") : "to follow"}` : "";
+  } else {
+    dom.phaseText.textContent = state.result?.winner === "landlord" ? "The landlord takes the hand" : "The farmers take the hand";
+    dom.phaseDetail.textContent = `Hand ${state.handNumber} settled`;
+  }
+  dom.arenaToggle.hidden = state.gameMode !== "arena" || state.phase === "complete";
+  dom.arenaToggle.textContent = state.arena?.paused ? "Resume arena" : "Pause arena";
 }
 
 function renderBottomCards() {
-  elements.bottomCards.replaceChildren();
-  for (let index = 0; index < 3; index += 1) {
-    const code = state.bottomCards[index];
-    const revealed = state.bottomRevealed;
-    elements.bottomCards.append(cardElement(revealed ? code : "BACK", { small: true, back: !revealed }));
+  const revealed = Boolean(state.bottomRevealed && state.bottomCards.length);
+  const signature = `${state.handNumber}:${revealed ? state.bottomCards.join(",") : "hidden"}`;
+  if (dom.bottomCards.dataset.signature === signature) return;
+  dom.bottomCards.dataset.signature = signature;
+  const flip = revealed && !seen.revealed && seen.hand === state.handNumber;
+  dom.bottomCards.replaceChildren(...[0, 1, 2].map((index) => {
+    const card = cardFace(revealed ? state.bottomCards[index] : "BACK", { size: "sm" });
+    card.style.setProperty("--i", index);
+    if (flip) card.classList.add("flip-in");
+    return card;
+  }));
+  if (flip) setTimeout(() => sfx.play("cardFlick"), 120);
+  seen.revealed = revealed;
+}
+
+function trickKeyOf(play) {
+  return play ? `${state.handNumber}:${play.seat}:${play.cards.join(",")}` : `${state.handNumber}:none:${state.phase}`;
+}
+
+function renderTrick() {
+  const key = trickKeyOf(state.lastPlay);
+  if (dom.trick.dataset.key === key) return;
+  const fresh = seen.trickKey !== null && seen.trickKey !== key && Boolean(state.lastPlay);
+  dom.trick.dataset.key = key;
+  seen.trickKey = key;
+  dom.trick.replaceChildren();
+  if (!state.lastPlay) {
+    dom.trick.dataset.empty = "true";
+    dom.trick.append(el("span", "trick-empty", state.phase === "bidding" ? "The bottom three go to whoever wins the bid" : "The table is clear"));
+    return;
+  }
+  dom.trick.dataset.empty = "false";
+  const play = state.lastPlay;
+  const comboType = play.combo?.type ?? "";
+  dom.trick.dataset.combo = comboType;
+  const cards = el("div", "trick-cards");
+  play.cards.forEach((code, index) => {
+    const card = cardFace(code, { size: "md" });
+    card.style.setProperty("--i", index);
+    card.style.setProperty("--n", play.cards.length);
+    if (fresh) card.classList.add("slap");
+    cards.append(card);
+  });
+  const caption = el("p", "trick-caption");
+  const who = state.players[play.seat];
+  caption.append(el("strong", null, who.isHuman ? "You" : who.name), el("span", "combo-zh", COMBO_ZH[comboType] ?? ""), el("span", null, describe(play)));
+  dom.trick.append(cards, caption);
+  if (fresh) celebrateCombo(comboType, play.cards.length);
+}
+
+function describe(play) {
+  return String(play.description ?? "").replace(/\s+(?:[2-9TJQKA][CDHS]|SJ|BJ)(?=\s|$)/g, "").trim();
+}
+
+/* ---------- Effects: slap, bombs, rocket, firecracker paper ---------- */
+
+function shake(strength) {
+  if (prefersReducedMotion()) return;
+  dom.table.classList.remove("shake-soft", "shake-hard");
+  void dom.table.offsetWidth;
+  dom.table.classList.add(strength === "hard" ? "shake-hard" : "shake-soft");
+}
+
+function celebrateCombo(type, count) {
+  if (type === "rocket") {
+    laneSfx.rocket();
+    shake("hard");
+    flash();
+    burstPaper(PAPER_PER_BOMB);
+    burstPaper(24, { ephemeral: true });
+    callout("王炸", "Rocket · the stake doubles");
+  } else if (type === "bomb") {
+    laneSfx.firecrackers(16);
+    shake("hard");
+    burstPaper(PAPER_PER_BOMB);
+    callout("炸弹", "Bomb · the stake doubles");
+  } else {
+    sfx.play(count > 1 ? "cupSlam" : "cardFlick");
+    shake("soft");
   }
 }
 
-function renderLastPlay() {
-  elements.lastPlay.replaceChildren();
-  if (!state.lastPlay) {
-    const span = document.createElement("span");
-    span.textContent = state.phase === "bidding" ? "Bidding in progress…" : "No play yet";
-    elements.lastPlay.append(span);
+/** A poster-lettered stamp over the trick that bursts in and fades. */
+function callout(zh, en) {
+  const stamp = el("div", "callout");
+  stamp.setAttribute("role", "status");
+  stamp.append(el("strong", null, zh), el("small", null, en));
+  dom.trick.parentElement.append(stamp);
+  setTimeout(() => stamp.remove(), prefersReducedMotion() ? 1800 : 2200);
+}
+
+function flash() {
+  if (prefersReducedMotion()) return;
+  dom.flash.classList.remove("on");
+  void dom.flash.offsetWidth;
+  dom.flash.classList.add("on");
+}
+
+const PAPER_COLORS = ["#B9120B", "#d4241a", "#9c0f0a", "#e0a43c", "#f05a2a"];
+function paperPiece(restX, restY, rotate) {
+  const piece = el("i", "paper");
+  piece.style.setProperty("--x", `${restX}px`);
+  piece.style.setProperty("--y", `${restY}px`);
+  piece.style.setProperty("--r", `${rotate}deg`);
+  piece.style.background = PAPER_COLORS[Math.floor(Math.random() * PAPER_COLORS.length)];
+  return piece;
+}
+
+const PAPER_PER_BOMB = 20;
+
+/** Sprays paper from the stake badge; each piece settles on the paving and stays for the hand. */
+function burstPaper(count, { ephemeral = false } = {}) {
+  const origin = dom.stakeMultiplier.getBoundingClientRect();
+  const width = document.documentElement.clientWidth;
+  for (let index = 0; index < count; index += 1) {
+    const restX = 8 + Math.random() * (width - 24);
+    const restY = Math.random() * 18;
+    const rotate = Math.round(Math.random() * 360);
+    const piece = paperPiece(restX, restY, rotate);
+    if (ephemeral) piece.classList.add("spark");
+    dom.drift.append(piece);
+    if (prefersReducedMotion()) {
+      if (ephemeral) piece.remove();
+      continue;
+    }
+    const startX = origin.left + origin.width / 2;
+    const startY = origin.top + origin.height / 2;
+    const floorY = window.innerHeight - 12 - restY;
+    const midX = startX + (Math.random() - 0.5) * 360;
+    const midY = startY + 30 + Math.random() * 120;
+    piece.animate([
+      { transform: `translate(${startX}px, ${startY}px) rotate(0deg) scale(0.4)`, opacity: 0 },
+      { transform: `translate(${midX}px, ${midY}px) rotate(${rotate / 2}deg) scale(1.1)`, opacity: 1, offset: 0.25 },
+      { transform: `translate(${restX}px, ${floorY}px) rotate(${rotate}deg) scale(1)`, opacity: 1 },
+    ], { duration: 1200 + Math.random() * 900, easing: "cubic-bezier(.2,.7,.3,1)", fill: "backwards" }).finished.then(() => {
+      if (ephemeral) piece.remove();
+    }, () => {});
+  }
+  dom.stakeMultiplier.classList.remove("pop");
+  void dom.stakeMultiplier.offsetWidth;
+  dom.stakeMultiplier.classList.add("pop");
+}
+
+function syncPaperDrift() {
+  // Late joiners and reloads see the paper the hand has already earned.
+  const wanted = (state.bombsPlayed ?? 0) * PAPER_PER_BOMB;
+  if (dom.drift.querySelectorAll(".paper:not(.spark)").length > wanted) dom.drift.replaceChildren();
+  const width = document.documentElement.clientWidth;
+  for (let index = dom.drift.querySelectorAll(".paper:not(.spark)").length; index < wanted; index += 1) {
+    dom.drift.append(paperPiece(8 + Math.random() * (width - 24), Math.random() * 18, Math.round(Math.random() * 360)));
+  }
+}
+
+/* ---------- Bulb-light turn indicator ---------- */
+
+function moveBulb() {
+  const seatIndex = state?.phase === "complete" ? state.result?.winningSeats?.[0] : state?.currentActorSeat;
+  let target = null;
+  if (seatIndex != null) {
+    const player = state.players[seatIndex];
+    target = player.isHuman && state.gameMode !== "arena" ? dom.handDock : dom.seats[seatIndex].querySelector(".seat-card");
+  }
+  if (!target || target.closest("[hidden]")) {
+    dom.bulb.dataset.on = "false";
     return;
   }
-  const label = document.createElement("span");
-  label.textContent = `${state.players[state.lastPlay.seat].name} · ${state.lastPlay.description}`;
-  elements.lastPlay.append(label);
-  const cards = document.createElement("div");
-  cards.className = "last-play-cards";
-  for (const code of state.lastPlay.cards) cards.append(cardElement(code, { small: true }));
-  elements.lastPlay.append(cards);
+  const rect = target.getBoundingClientRect();
+  dom.bulb.style.setProperty("--pool-x", `${Math.round(rect.left + rect.width / 2)}px`);
+  dom.bulb.style.setProperty("--pool-y", `${Math.round(rect.top + rect.height / 2)}px`);
+  dom.bulb.dataset.on = "true";
+}
+
+/* ---------- Human hand ---------- */
+
+function human() {
+  return state.players.find((player) => player.isHuman) ?? null;
 }
 
 function renderHand() {
-  elements.handCards.replaceChildren();
-  const human = state.players.find((player) => player.isHuman);
-  if (!human || human.hand.length === 0) {
-    elements.handDock.classList.add("hidden");
-    return;
+  const me = human();
+  const show = Boolean(me) && state.gameMode !== "arena";
+  dom.handDock.hidden = !show;
+  if (!show) return;
+  dom.handTitle.textContent = me.name;
+  dom.handRole.textContent = state.landlordSeat === null ? "" : me.isLandlord ? "地主 Landlord" : "农民 Farmer";
+  dom.handDock.dataset.team = state.landlordSeat === null ? "" : me.isLandlord ? "landlord" : "farmer";
+  $("hand-cap").hidden = !me.isLandlord;
+  dom.handDock.dataset.active = String(state.currentActorSeat === me.seat && state.phase !== "complete");
+  dom.handMug.querySelector("b").textContent = String(me.cardCount);
+  const dealing = seen.hand !== state.handNumber;
+  const signature = `${state.handNumber}:${me.hand.join(",")}`;
+  if (dom.hand.dataset.signature !== signature) {
+    dom.hand.dataset.signature = signature;
+    dom.hand.style.setProperty("--n", me.hand.length);
+    dom.hand.replaceChildren(...me.hand.map((code, index) => {
+      const card = cardFace(code, { size: "lg", tag: "button" });
+      card.type = "button";
+      card.style.setProperty("--i", index);
+      if (dealing) card.classList.add("deal-in");
+      card.addEventListener("click", () => toggleCard(code, card));
+      return card;
+    }));
+    if (dealing && !prefersReducedMotion()) {
+      for (let index = 0; index < 8; index += 1) setTimeout(() => sfx.play("cardFlick"), index * 90);
+    }
   }
-  elements.handDock.classList.remove("hidden");
-  elements.handTitle.textContent = `${human.isLandlord ? "地主 Landlord — " : ""}Your hand · ${human.hand.length} cards`;
-  for (const code of human.hand) {
-    const card = cardElement(code, { selectable: true, selected: selectedCards.has(code) });
-    card.addEventListener("click", () => {
-      if (!state.humanCanAct || state.phase !== "playing" || actionBusy) return;
-      if (selectedCards.has(code)) selectedCards.delete(code);
-      else selectedCards.add(code);
-      renderHand();
-      renderControls();
-    });
-    elements.handCards.append(card);
+  for (const card of dom.hand.children) {
+    const isSelected = selected.has(card.dataset.code);
+    card.classList.toggle("is-selected", isSelected);
+    card.setAttribute("aria-pressed", String(isSelected));
   }
-  elements.selectedCount.classList.toggle("hidden", selectedCards.size === 0);
-  elements.selectedCount.textContent = `${selectedCards.size} selected`;
+}
+
+function toggleCard(code) {
+  if (!state?.humanCanAct || state.phase !== "playing" || busy) return;
+  if (selected.has(code)) selected.delete(code);
+  else selected.add(code);
+  sfx.play("cardFlick");
+  renderHand();
+  renderControls();
 }
 
 function renderControls() {
-  const human = state.players.find((player) => player.isHuman);
-  const bidding = state.phase === "bidding";
-  const playing = state.phase === "playing";
-  const canAct = Boolean(state.humanCanAct) && !actionBusy;
-  elements.bidActions.classList.toggle("hidden", !bidding);
-  elements.playActions.classList.toggle("hidden", !playing);
-  elements.arenaToggle.classList.toggle("hidden", state.gameMode !== "arena" || state.phase === "complete");
-  if (state.arena) elements.arenaToggle.textContent = state.arena.paused ? "Resume arena" : "Pause arena";
-
-  if (bidding) {
-    for (const score of [1, 2, 3]) {
-      const button = elements[`bid${score}`];
-      button.disabled = !canAct || score <= state.highestBid;
-    }
-    elements.bidPass.disabled = !canAct;
-    elements.hintLabel.textContent = state.aiError
-      ? "Model request paused — retry to continue."
-      : canAct && state.currentActorSeat === human.seat
-        ? "Your bid: pass, or beat the current bid (3 wins immediately)."
-        : state.aiThinking
-          ? `${state.aiThinking.playerName} is considering a bid…`
-          : "Bidding is open.";
-  } else if (playing) {
-    const isHumanTurn = canAct && state.currentActorSeat === human?.seat;
-    const leading = state.leaderSeat === human?.seat || !state.lastPlay;
-    elements.playButton.disabled = !isHumanTurn || selectedCards.size === 0;
-    elements.passButton.disabled = !isHumanTurn || leading;
-    elements.hintLabel.textContent = state.aiError
-      ? "Model request paused — retry to continue."
-      : isHumanTurn
-        ? leading ? "You lead — play any legal combo." : "Beat the last play, or pass."
-        : state.aiThinking
-          ? `${state.aiThinking.playerName} is choosing cards…`
-          : "Waiting for the next player.";
-  } else {
-    elements.hintLabel.textContent = state.aiError ? "Model request paused — retry to continue." : "The hand is settled.";
+  const me = human();
+  const humanTable = Boolean(me) && state.gameMode !== "arena";
+  const myTurn = humanTable && state.humanCanAct && state.currentActorSeat === me.seat && !busy;
+  dom.bidStrips.hidden = !(humanTable && state.phase === "bidding");
+  dom.playButtons.hidden = !(humanTable && state.phase === "playing");
+  for (const button of dom.bidStrips.querySelectorAll("button")) {
+    const score = Number(button.dataset.score);
+    button.disabled = !myTurn || (score > 0 && score <= state.highestBid);
   }
+  const leading = !state.lastPlay || state.leaderSeat === me?.seat;
+  dom.playButton.disabled = !myTurn || selected.size === 0;
+  dom.passButton.disabled = !myTurn || leading;
+  dom.clearButton.disabled = selected.size === 0;
+  let hint = "";
+  if (state.aiError) hint = "A model request is paused. Retry it on the table.";
+  else if (state.phase === "complete") hint = "The hand is settled.";
+  else if (myTurn && state.phase === "bidding") hint = state.highestBid ? `Beat ${state.highestBid} or pass. A bid of 3 takes the seat at once.` : "Bid for the landlord seat, or pass. A bid of 3 takes it at once.";
+  else if (myTurn) hint = leading ? "You lead: tap cards for any legal combo." : `Beat ${state.lastPlay ? `${describe(state.lastPlay)} ${state.lastPlay.cards.map(cardLabel).join(" ")}` : "the play"}, or pass.`;
+  else if (state.aiThinking) hint = `${state.aiThinking.playerName} is ${state.phase === "bidding" ? "weighing a bid" : "choosing cards"}…`;
+  else if (humanTable) hint = "Waiting for the next player.";
+  if (myTurn && selected.size) hint = `${selected.size} selected: ${[...selected].map(rankWord).join(" ")}`;
+  dom.hint.textContent = hint;
 }
 
-function renderScoreDock() {
-  elements.baseScore.textContent = state.phase === "bidding" && !state.landlordSeat ? `${state.highestBid || "—"}` : String(state.highestBid);
-  elements.bombCount.textContent = String(state.bombsPlayed ?? 0);
-  elements.multiplier.textContent = String(state.multiplier ?? 1);
-  elements.resultLabel.textContent = state.result
-    ? state.result.winner === "landlord"
-      ? `地主胜 × ${state.result.score}`
-      : `农民胜 × ${state.result.score}`
-    : "—";
-}
+/* ---------- Notices: AI pause and the settled hand ---------- */
 
-function renderBidStatus() {
-  if (state.phase === "bidding") {
-    elements.bidStatus.textContent = state.highestBidderSeat !== null
-      ? `最高叫分 ${state.highestBid} · ${state.players[state.highestBidderSeat].name}`
-      : "无人叫分 · 三家不叫则重发";
-  } else {
-    elements.bidStatus.textContent = `地主 ${state.players[state.landlordSeat].name} · 叫 ${state.highestBid} 分`;
-  }
-}
-
-function renderOverlay() {
-  elements.gameOverlay.classList.add("hidden");
+function renderNotice() {
+  dom.notice.replaceChildren();
+  dom.notice.hidden = true;
+  dom.notice.dataset.kind = "";
   if (state.aiError) {
-    elements.overlayEyebrow.textContent = "Model request paused";
-    elements.overlayTitle.textContent = `${state.aiError.playerName} needs a retry`;
-    elements.overlayCopy.textContent = state.aiError.message;
-    elements.overlayAction.textContent = "Retry model";
-    elements.overlayAction.dataset.action = "retry";
-    elements.gameOverlay.classList.remove("hidden");
-  } else if (state.phase === "complete") {
-    const result = state.result;
-    elements.overlayEyebrow.textContent = "Hand complete";
-    elements.overlayTitle.textContent = result.winner === "landlord" ? "The landlord takes it" : "The farmers take it";
-    const springText = result.spring === "spring" ? " Spring: the farmers never played a card." : result.spring === "anti_spring" ? " Anti-spring: the landlord managed only one play." : "";
-    elements.overlayCopy.textContent = `${state.players[state.landlordSeat].name} was the landlord for ${state.highestBid}. ${state.bombsPlayed} bomb${state.bombsPlayed === 1 ? "" : "s"} doubled the pot.${springText} Total: ${state.highestBid} × ${state.multiplier} = ${result.score}.`;
-    elements.overlayAction.textContent = "Deal a new hand";
-    elements.overlayAction.dataset.action = "new";
-    elements.gameOverlay.classList.remove("hidden");
+    dom.notice.hidden = false;
+    dom.notice.dataset.kind = "error";
+    const retry = el("button", "lane-button primary", "Retry the model");
+    retry.type = "button";
+    retry.addEventListener("click", () => act("/api/doudizhu/retry-ai", {}));
+    dom.notice.append(
+      el("span", "notice-mark", "停"),
+      el("strong", null, `${state.aiError.playerName}'s request is paused`),
+      el("p", null, state.aiError.message),
+      retry,
+    );
+    return;
   }
+  if (state.phase !== "complete" || !state.result) return;
+  const result = state.result;
+  dom.notice.hidden = false;
+  dom.notice.dataset.kind = result.winner;
+  const me = human();
+  const iWon = me && result.winningSeats.includes(me.seat);
+  const headline = result.winner === "landlord" ? "地主胜" : "农民胜";
+  const sub = me && state.gameMode !== "arena" ? (iWon ? "You win the hand" : "You lose the hand") : result.winner === "landlord" ? "The landlord takes it" : "The farmers take it";
+  const breakdown = `Bid ${result.bid} × ${result.multiplier} = ${result.score}` + (result.bombsPlayed ? ` · ${result.bombsPlayed} bomb${result.bombsPlayed === 1 ? "" : "s"}` : "");
+  const again = el("button", "lane-button primary", "再来一局 Deal again");
+  again.type = "button";
+  again.addEventListener("click", dealAgain);
+  const change = el("button", "lane-button ghost", "Change the table");
+  change.type = "button";
+  change.addEventListener("click", () => setup.open());
+  const buttons = el("div", "notice-buttons");
+  buttons.append(again, change);
+  dom.notice.append(el("span", "notice-headline", headline), el("strong", null, sub), el("p", null, breakdown));
+  if (result.spring !== "none") dom.notice.append(el("span", "spring-stamp", result.spring === "spring" ? "春天" : "反春"));
+  dom.notice.append(buttons, reviewPanel());
+  const resultKey = `${state.handNumber}:${result.winner}:${result.score}`;
+  if (seen.resultKey !== null && seen.resultKey !== resultKey) {
+    sfx.play(iWon || !me || state.gameMode === "arena" ? "win" : "error");
+    if (result.spring !== "none") laneSfx.firecrackers(22);
+  }
+  seen.resultKey = resultKey;
 }
 
-function updateElapsedLabel() {
-  if (state?.aiThinking) {
-    const seconds = Math.max(0, Math.round((Date.now() - state.aiThinking.startedAt) / 1000));
-    elements.thinkingElapsed.textContent = `${seconds}s`;
-    elements.thinkingElapsed.classList.remove("hidden");
+/* ---------- Post-game review by a character ---------- */
+
+const reviews = new Map(); // `${handNumber}:${seat}` -> { status: "loading" | "done", text }
+
+function reviewPanel() {
+  const panel = el("div", "reviews");
+  const asks = el("div", "review-asks");
+  for (const player of state.players.filter((candidate) => !candidate.isHuman)) {
+    const key = `${state.handNumber}:${player.seat}`;
+    const entry = reviews.get(key);
+    const ask = el("button", "review-ask", entry?.status === "loading" ? `${player.character?.shortName ?? player.name} is thinking…` : `Ask ${player.character?.shortName ?? player.name} to review this game`);
+    ask.type = "button";
+    ask.disabled = Boolean(entry);
+    ask.style.setProperty("--seat-color", player.character?.color ?? "#e0a43c");
+    ask.addEventListener("click", () => askReview(player.seat));
+    asks.append(ask);
+    if (entry?.status === "done") {
+      const note = el("blockquote", "review");
+      note.style.setProperty("--seat-color", player.character?.color ?? "#e0a43c");
+      note.append(el("strong", null, player.name), el("p", null, entry.text));
+      panel.append(note);
+    }
+  }
+  panel.prepend(asks);
+  return panel;
+}
+
+async function askReview(seat) {
+  const key = `${state.handNumber}:${seat}`;
+  reviews.set(key, { status: "loading" });
+  renderNotice();
+  try {
+    const result = await api("/api/doudizhu/review", { seat });
+    reviews.set(key, { status: "done", text: result.review });
+    record.add({ who: `${result.playerName} reviews`, text: result.review, kind: "reasoning" });
+  } catch (error) {
+    reviews.delete(key);
+    sfx.play("error");
+    toast(error.message, { tone: "error" });
+  }
+  if (state?.phase === "complete") renderNotice();
+}
+
+/* ---------- Stakes, elapsed time, ledger ---------- */
+
+function renderStakes() {
+  dom.bidValue.textContent = state.highestBid ? String(state.highestBid) : "—";
+  dom.bombValue.textContent = String(state.bombsPlayed ?? 0);
+  const multiplier = state.result?.multiplier ?? state.multiplier ?? 1;
+  dom.multiplierValue.replaceChildren(el("span", "times", "x"), String(multiplier));
+  dom.stakeMultiplier.dataset.hot = String(multiplier > 1);
+}
+
+function updateElapsed() {
+  const thinking = state?.aiThinking;
+  dom.elapsed.hidden = !thinking;
+  document.body.dataset.strain = "0";
+  if (!thinking) return;
+  const seconds = Math.max(0, Math.round((Date.now() - thinking.startedAt) / 1000));
+  dom.elapsed.textContent = `${seconds}s`;
+  // The bulb strains harder the longer a model thinks: the room's turn timer.
+  document.body.dataset.strain = seconds > 45 ? "2" : seconds > 15 ? "1" : "0";
+}
+setInterval(updateElapsed, 1000);
+
+function renderLens() {
+  const thinking = state.aiThinking;
+  dom.liveIndicator.dataset.live = String(Boolean(thinking));
+  dom.liveIndicator.lastChild.textContent = thinking ? " Live" : " Idle";
+  if (thinking) {
+    const player = state.players[thinking.seat];
+    dom.lensWho.textContent = `${player.name} · ${modelLabel(player.aiConfig)}`;
+    dom.lensStatus.textContent = thinking.status ?? "Thinking…";
+    dom.lensSummary.textContent = plainText(liveSummary) || "Waiting for a reasoning summary…";
   } else {
-    elements.thinkingElapsed.classList.add("hidden");
+    dom.lensWho.textContent = state.aiError ? `${state.aiError.playerName} is paused` : "No one is thinking";
+    dom.lensStatus.textContent = state.aiError ? state.aiError.message : "The room waits for the selected model. Illegal plays retry twice; API errors pause for an explicit retry.";
+    dom.lensSummary.textContent = "";
   }
+  const signature = state.aiInsights.map((insight) => insight.id).slice(0, 14).join(",");
+  if (dom.insights.dataset.signature === signature) return;
+  dom.insights.dataset.signature = signature;
+  dom.insights.replaceChildren(...state.aiInsights.slice(0, 14).map((insight) => {
+    const item = el("li", "insight");
+    item.style.setProperty("--who", insight.characterColor ?? "#e0a43c");
+    const head = el("div", "insight-head");
+    head.append(el("strong", null, insight.playerName), el("span", null, `${insight.action} · ${(insight.latencyMs / 1000).toFixed(1)}s`));
+    item.append(head, el("p", null, plainText(insight.summary || insight.explanation)));
+    return item;
+  }));
 }
 
-setInterval(updateElapsedLabel, 1000);
+const record = transcript({ title: "Lane record 牌局记录", limit: 160 });
+$("record").append(record.el);
 
-function renderInsight() {
-  const actor = state.players.find((player) => player.seat === (state.aiThinking?.seat ?? state.currentActorSeat));
-  const thinking = Boolean(state.aiThinking);
-  elements.liveIndicator.classList.toggle("active", thinking);
-  elements.liveIndicator.innerHTML = `<i></i> ${thinking ? "Live" : "Idle"}`;
-  elements.thinkerProfile.replaceChildren();
-  const mark = document.createElement("span");
-  mark.className = "profile-stone black";
-  const copy = document.createElement("div");
-  const name = document.createElement("strong");
-  name.textContent = actor?.name ?? "No active player";
-  const meta = document.createElement("span");
-  meta.textContent = actor?.isHuman ? "Human player" : `${modelLabel(actor?.aiConfig.model)} · ${actor?.aiConfig.reasoningEffort} reasoning`;
-  copy.append(name, meta);
-  elements.thinkerProfile.append(mark, copy);
-  elements.reasoningStatus.textContent = state.aiThinking?.status ?? "No model request is active.";
-  elements.reasoningText.textContent = thinking ? liveSummary || "Waiting for a supported reasoning summary…" : "Completed summaries remain in the transcript below.";
-
-  elements.reasoningCount.textContent = `${state.aiInsights.length} ${state.aiInsights.length === 1 ? "entry" : "entries"}`;
-  elements.reasoningFeed.replaceChildren();
-  for (const insight of state.aiInsights) {
-    const item = document.createElement("li");
-    item.className = "reasoning-entry";
-    item.style.setProperty("--entry-color", insight.characterColor);
-    const heading = document.createElement("div");
-    const insightName = document.createElement("strong");
-    insightName.textContent = insight.playerName;
-    const info = document.createElement("span");
-    info.textContent = `Hand ${insight.handNumber} · ${insight.model?.replace(/^gpt-6(\.1)?-/, "")} · ${(insight.latencyMs / 1000).toFixed(1)}s · ${insight.action}`;
-    heading.append(insightName, info);
-    const summary = document.createElement("p");
-    summary.textContent = insight.summary || insight.explanation;
-    item.append(heading, summary);
-    elements.reasoningFeed.append(item);
-  }
+function renderRecord() {
+  const entries = [
+    ...[...state.logs].reverse().map((entry) => ({ at: Date.parse(entry.at), kind: entry.kind === "play" || entry.kind === "bid" || entry.kind === "pass" ? "move" : "system", text: entry.text, who: "" })),
+    ...(state.tableTalk ?? []).map((talk) => ({ at: talk.at, kind: "talk", text: talk.text, who: talk.playerName })),
+  ].sort((left, right) => left.at - right.at).slice(-120);
+  const key = `${entries.length}:${entries.at(-1)?.at}:${entries.at(-1)?.text}`;
+  if (seen.recordKey === key) return;
+  seen.recordKey = key;
+  record.clear();
+  for (const entry of entries) record.add(entry);
 }
 
-function renderHistory() {
-  elements.historyList.replaceChildren();
-  state.logs.slice(0, 80).forEach((entry, index) => {
-    const item = document.createElement("li");
-    item.className = `history-entry ${entry.kind}`;
-    const number = document.createElement("span");
-    number.textContent = String(state.logs.length - index).padStart(2, "0");
-    const text = document.createElement("span");
-    text.textContent = entry.text;
-    item.append(number, text);
-    elements.historyList.append(item);
-  });
+/* ---------- Render ---------- */
+
+function applyState(next) {
+  state = next;
+  if (!state) return;
+  if (state.phase !== "playing") selected.clear();
+  const me = human();
+  if (me) selected = new Set([...selected].filter((code) => me.hand.includes(code)));
+  if (!state.aiThinking) liveSummary = "";
+  render();
 }
 
 function render() {
   if (!state) return;
-  elements.handNumber.textContent = state.handNumber;
-  elements.modelPill.innerHTML = `<i></i> ${state.model === "mixed" ? "Mixed models" : modelLabel(state.model)}`;
-  elements.reasoningPill.textContent = `Reasoning · ${state.reasoningEffort}`;
-  const phaseText = { bidding: "叫地主 Bidding", playing: "出牌 Playing", complete: "牌局结束 Hand complete" }[state.phase] ?? state.phase;
-  elements.turnLabel.textContent = state.phase === "complete" ? "Hand complete" : phaseText;
-  const actor = state.players.find((player) => player.seat === state.currentActorSeat);
-  elements.turnDetail.textContent = state.phase === "bidding"
-    ? `${actor?.name ?? "…"} to bid`
-    : state.phase === "playing"
-      ? `${actor?.name ?? "…"} ${actor?.seat === state.leaderSeat || !state.lastPlay ? "leads" : "to follow"}`
-      : "The hand is settled";
-  elements.ribbonMark.textContent = state.phase === "bidding" ? "叫" : state.phase === "playing" ? "出" : "胜";
-  renderBidStatus();
+  document.body.dataset.mode = state.gameMode;
+  document.body.dataset.phase = state.phase;
+  if (seen.hand !== state.handNumber) {
+    dom.drift.replaceChildren();
+    seen.revealed = Boolean(state.bottomRevealed);
+  }
+  renderPhase();
+  state.players.forEach((_player, index) => renderSeat(index));
   renderBottomCards();
-  renderLastPlay();
-  state.players.forEach((player) => renderPlayerSlot(player.seat, player));
+  renderHand();
+  renderTrick();
+  syncPaperDrift();
+  seen.bombs = state.bombsPlayed ?? 0;
+  seen.hand = state.handNumber;
+  renderControls();
+  renderStakes();
+  renderNotice();
+  renderLens();
+  renderRecord();
+  updateElapsed();
+  requestAnimationFrame(moveBulb);
+}
+
+/* ---------- Setup drawer ---------- */
+
+const setup = drawer({ title: "Set the table 摆桌", open: false });
+setup.toggleButton.textContent = "Set the table";
+setup.toggleButton.classList.add("couplet-toggle");
+$("bar-left").prepend(backToLobby({ label: "Lobby" }));
+$("bar-right").append(ambienceButton(), sfx.muteButton(), setup.toggleButton);
+
+/** Optional distant firecrackers from the next lanes; off by default, remembered per viewer. */
+function ambienceButton() {
+  const key = "playground.doudizhu.ambience";
+  let on = false;
+  try { on = localStorage.getItem(key) === "1"; } catch { /* storage unavailable */ }
+  const button = el("button", "lane-button ghost small ambience-toggle");
+  button.type = "button";
+  const sync = () => {
+    button.textContent = on ? "Lane noise on" : "Lane noise off";
+    button.setAttribute("aria-pressed", String(on));
+    laneSfx.setAmbience(on);
+  };
+  button.addEventListener("click", () => {
+    on = !on;
+    try { localStorage.setItem(key, on ? "1" : "0"); } catch { /* storage unavailable */ }
+    sync();
+  });
+  sync();
+  return button;
+}
+
+let cast = null;
+let seatModels = [];
+const form = el("form", "lane-setup");
+form.noValidate = true;
+
+function buildSetup(characters) {
+  form.innerHTML = `
+    <fieldset class="mode-pick">
+      <legend>Who plays</legend>
+      <label><input type="radio" name="mode" value="human" checked /><span><b lang="zh">人机</b><strong>Play vs AI</strong><small>You and two neighbours</small></span></label>
+      <label><input type="radio" name="mode" value="arena" /><span><b lang="zh">观战</b><strong>AI arena</strong><small>Three AI seats, all hands shown</small></span></label>
+    </fieldset>
+    <label class="field" data-human-only><span>Your name</span><input class="kit-input" name="humanName" maxlength="18" value="Player" autocomplete="nickname" /></label>
+    <section class="setup-section"><h3>Who sits down <small>Random by default: reroll a seat or choose anyone</small></h3><div data-cast></div></section>
+    <section class="setup-section"><h3>Models <small>Each seat picks its own model and reasoning depth</small></h3><div class="seat-models" data-models></div>
+      <button class="lane-button ghost small" type="button" data-same>Use the first seat's model everywhere</button></section>
+    <button class="lane-button primary deal" type="submit"><span lang="zh">发牌</span> Deal the cards</button>`;
+  setup.body.append(form);
+  cast = characterPicker({ characters, seats: 2, onChange: renderSeatModels });
+  form.querySelector("[data-cast]").append(cast.el);
+  form.addEventListener("change", (event) => {
+    if (event.target.name !== "mode") return;
+    const arena = event.target.value === "arena";
+    form.querySelector("[data-human-only]").hidden = arena;
+    cast.setSeats(arena ? 3 : 2);
+  });
+  form.querySelector("[data-same]").addEventListener("click", () => {
+    const first = seatModels[0]?.value;
+    if (!first) return;
+    renderSeatModels(cast.value, Array(seatModels.length).fill(first));
+  });
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    deal(collectSetup());
+  });
+  renderSeatModels(cast.value);
+}
+
+function renderSeatModels(ids, values = seatModels.map((picker) => picker.value)) {
+  const host = form.querySelector("[data-models]");
+  const characters = cast.characters;
+  seatModels = ids.map((_id, index) => modelPicker({ registry, value: values[index] ?? registry.defaultConfig, label: characters[index]?.name ?? `Seat ${index + 1}` }));
+  host.replaceChildren(...seatModels.map((picker, index) => {
+    const row = el("div", "seat-model-row");
+    row.style.setProperty("--seat-color", characters[index]?.color ?? "#e0a43c");
+    row.append(el("span", "seat-model-name", characters[index]?.shortName ?? characters[index]?.name ?? `Seat ${index + 1}`), picker.el);
+    return row;
+  }));
+}
+
+function collectSetup() {
+  const data = new FormData(form);
+  const gameMode = data.get("mode") === "arena" ? "arena" : "human";
+  return {
+    gameMode,
+    humanName: String(data.get("humanName") ?? "Player"),
+    aiPlayers: cast.value.map((characterId, index) => ({ ...seatModels[index].value, characterId })),
+  };
+}
+
+async function deal(payload) {
+  const submit = form.querySelector("button[type=submit]");
+  if (submit) submit.disabled = true;
+  try {
+    const next = await api("/api/doudizhu/game", payload);
+    lastPayload = payload;
+    selected.clear();
+    liveSummary = "";
+    setup.close();
+    applyState(next);
+  } catch (error) {
+    sfx.play("error");
+    toast(error.message, { tone: "error" });
+  } finally {
+    if (submit) submit.disabled = false;
+  }
+}
+
+function dealAgain() {
+  if (lastPayload) return deal(lastPayload);
+  // After a reload: keep the same cast and models that are sitting at the table.
+  const ai = state.players.filter((player) => !player.isHuman);
+  deal({
+    gameMode: state.gameMode,
+    humanName: human()?.name ?? "Player",
+    aiPlayers: ai.map((player) => ({ ...player.aiConfig, characterId: player.character?.id })),
+  });
+}
+
+setup.toggleButton.addEventListener("click", async () => {
+  // Opening the setup in the middle of an arena hand pauses it, as before the redesign.
+  if (setup.el.dataset.open === "true" && state?.gameMode === "arena" && state.phase !== "complete" && !state.arena?.paused) {
+    try { applyState(await api("/api/doudizhu/arena/pause", {})); } catch (error) { toast(error.message, { tone: "error" }); }
+  }
+});
+
+/* ---------- Wiring ---------- */
+
+for (const button of dom.bidStrips.querySelectorAll("button")) {
+  button.addEventListener("click", () => {
+    sfx.play("chipClack");
+    act("/api/doudizhu/bid", { score: Number(button.dataset.score) });
+  });
+}
+dom.playButton.addEventListener("click", () => act("/api/doudizhu/action", { action: "play", cards: [...selected] }));
+dom.passButton.addEventListener("click", () => act("/api/doudizhu/action", { action: "pass", cards: null }));
+dom.clearButton.addEventListener("click", () => {
+  selected.clear();
   renderHand();
   renderControls();
-  renderScoreDock();
-  renderOverlay();
-  renderInsight();
-  renderHistory();
-}
-
-async function performBid(score) {
-  if (actionBusy) return;
-  actionBusy = true;
-  renderControls();
-  try {
-    state = await request("/api/doudizhu/bid", { method: "POST", body: JSON.stringify({ score }) });
-    liveSummary = "";
-    selectedCards.clear();
-    render();
-  } catch (error) {
-    showToast(error.message);
-  } finally {
-    actionBusy = false;
-    renderControls();
-  }
-}
-
-async function performPlay(action, cards = null) {
-  if (actionBusy) return;
-  actionBusy = true;
-  renderControls();
-  try {
-    state = await request("/api/doudizhu/action", { method: "POST", body: JSON.stringify({ action, cards }) });
-    liveSummary = "";
-    selectedCards.clear();
-    render();
-  } catch (error) {
-    showToast(error.message);
-  } finally {
-    actionBusy = false;
-    renderControls();
-  }
-}
-
-function selectedMode() {
-  return new FormData(elements.setupForm).get("gameMode") === "arena" ? "arena" : "human";
-}
-
-function addRosterRow(character, existing = {}) {
-  const row = document.createElement("div");
-  row.className = "ai-roster-row";
-  const block = document.createElement("div");
-  block.className = "roster-character";
-  const avatar = document.createElement("span");
-  avatar.className = "roster-avatar";
-  avatar.style.setProperty("--character-color", character.color);
-  avatar.textContent = character.initials;
-  const copy = document.createElement("span");
-  const name = document.createElement("strong");
-  name.textContent = character.name;
-  const title = document.createElement("small");
-  title.textContent = character.title;
-  copy.append(name, title);
-  block.append(avatar, copy);
-  const model = document.createElement("select");
-  model.className = "seat-model";
-  model.setAttribute("aria-label", `${character.name} model`);
-  for (const [value, label] of MODEL_OPTIONS) model.add(new Option(label, value));
-  model.value = existing.model ?? "gpt-6-luna";
-  const reasoning = document.createElement("select");
-  reasoning.className = "seat-reasoning";
-  reasoning.setAttribute("aria-label", `${character.name} reasoning effort`);
-  for (const effort of REASONING_OPTIONS) reasoning.add(new Option(`Reasoning: ${effort}`, effort));
-  reasoning.value = existing.reasoningEffort ?? "low";
-  row.append(block, model, reasoning);
-  elements.aiRoster.append(row);
-}
-
-function updateSetup() {
-  const mode = selectedMode();
-  const existing = [...elements.aiRoster.querySelectorAll(".ai-roster-row")].map((row) => ({
-    model: row.querySelector(".seat-model").value,
-    reasoningEffort: row.querySelector(".seat-reasoning").value,
-  }));
-  elements.humanNameField.classList.toggle("hidden", mode === "arena");
-  elements.setupSubmit.textContent = mode === "arena" ? "Deal for three AI" : "Deal the cards";
-  elements.setupLede.textContent = mode === "arena"
-    ? "Three public characters, three independently selected models, one authoritative deck."
-    : "One landlord against two farmers. Bombs and the rocket double the score.";
-  elements.aiRoster.replaceChildren();
-  const roster = mode === "arena" ? CHARACTERS : CHARACTERS.slice(1);
-  roster.forEach((character, index) => addRosterRow(character, existing[index]));
-}
-
-elements.bid1.addEventListener("click", () => performBid(1));
-elements.bid2.addEventListener("click", () => performBid(2));
-elements.bid3.addEventListener("click", () => performBid(3));
-elements.bidPass.addEventListener("click", () => performBid(0));
-elements.playButton.addEventListener("click", () => performPlay("play", [...selectedCards]));
-elements.passButton.addEventListener("click", () => performPlay("pass"));
-elements.modeOptions.addEventListener("change", updateSetup);
-elements.applyRoster.addEventListener("click", () => {
-  const first = elements.aiRoster.querySelector(".ai-roster-row");
-  if (!first) return;
-  for (const row of elements.aiRoster.querySelectorAll(".ai-roster-row")) {
-    row.querySelector(".seat-model").value = first.querySelector(".seat-model").value;
-    row.querySelector(".seat-reasoning").value = first.querySelector(".seat-reasoning").value;
-  }
 });
-elements.setupForm.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const data = new FormData(elements.setupForm);
-  const payload = {
-    gameMode: selectedMode(),
-    humanName: data.get("humanName"),
-    aiPlayers: [...elements.aiRoster.querySelectorAll(".ai-roster-row")].map((row) => ({
-      model: row.querySelector(".seat-model").value,
-      reasoningEffort: row.querySelector(".seat-reasoning").value,
-    })),
-  };
-  elements.setupSubmit.disabled = true;
-  elements.setupSubmit.textContent = "Dealing…";
-  try {
-    state = await request("/api/doudizhu/game", { method: "POST", body: JSON.stringify(payload) });
-    elements.setupModal.classList.add("hidden");
-    elements.cancelSetup.classList.remove("hidden");
-    liveSummary = "";
-    selectedCards.clear();
-    render();
-  } catch (error) {
-    showToast(error.message);
-  } finally {
-    elements.setupSubmit.disabled = false;
-    updateSetup();
-  }
-});
-
-async function openSetup() {
-  if (state?.gameMode === "arena" && !state.arena.paused && state.phase !== "complete") {
-    try {
-      state = await request("/api/doudizhu/arena/pause", { method: "POST", body: "{}" });
-      render();
-    } catch (error) { showToast(error.message); }
-  }
-  elements.setupModal.classList.remove("hidden");
-}
-
-elements.newGameButton.addEventListener("click", openSetup);
-elements.cancelSetup.addEventListener("click", () => elements.setupModal.classList.add("hidden"));
-elements.arenaToggle.addEventListener("click", async () => {
-  try {
-    const path = state.arena.paused ? "/api/doudizhu/arena/resume" : "/api/doudizhu/arena/pause";
-    state = await request(path, { method: "POST", body: "{}" });
-    render();
-  } catch (error) { showToast(error.message); }
-});
-elements.overlayAction.addEventListener("click", async () => {
-  if (elements.overlayAction.dataset.action === "new") return openSetup();
-  try {
-    state = await request("/api/doudizhu/retry-ai", { method: "POST", body: "{}" });
-    render();
-  } catch (error) { showToast(error.message); }
-});
+dom.arenaToggle.addEventListener("click", () => act(state.arena?.paused ? "/api/doudizhu/arena/resume" : "/api/doudizhu/arena/pause", {}));
+addEventListener("resize", () => requestAnimationFrame(moveBulb));
+addEventListener("scroll", () => requestAnimationFrame(moveBulb), { passive: true });
 
 const events = new EventSource("/api/doudizhu/events");
-events.onmessage = (event) => {
-  const message = JSON.parse(event.data);
-  if (message.type === "state" && requestInFlight === 0) {
-    state = message.payload;
-    if (!state.aiThinking) liveSummary = "";
-    if (state.phase === "playing" || state.phase === "complete") {
-      selectedCards = new Set([...selectedCards].filter((code) => state.players.find((player) => player.isHuman)?.hand.includes(code)));
-    }
-    render();
+events.addEventListener("message", (event) => {
+  let message;
+  try { message = JSON.parse(event.data); } catch { return; }
+  if (message.type === "state") {
+    if (requestsInFlight === 0) applyState(message.payload);
   } else if (message.type === "ai_stream") {
-    if (message.payload.phase === "started") liveSummary = "";
-    if (message.payload.phase === "summary_delta") liveSummary += message.payload.delta;
-    if (message.payload.phase === "completed") liveSummary = message.payload.summary || liveSummary;
-    if (state) renderInsight();
+    const payload = message.payload;
+    if (payload.phase === "started") liveSummary = "";
+    if (payload.phase === "summary_delta") liveSummary += payload.delta;
+    if (payload.phase === "completed") liveSummary = payload.summary || liveSummary;
+    if (payload.phase === "error") sfx.play("error");
+    if (state) renderLens();
   }
-};
-events.onerror = () => showToast("Live Dou Dizhu updates disconnected. Reconnecting…");
+});
+events.addEventListener("error", () => toast("Live updates dropped. Reconnecting…", { tone: "error", duration: 2500 }));
+// Table talk rises from the seat like steam: below the top seats, above the bottom one.
+bindTableTalk(events, () => null, {
+  onTalk(talk) {
+    const anchor = dom.seats[talk.speaker]?.querySelector(".seat-card");
+    if (!anchor || anchor.closest("[hidden]")) return;
+    speak(anchor, talk.text, { placement: talk.speaker === 0 ? "top" : "bottom" });
+  },
+});
 
 async function bootstrap() {
-  updateSetup();
   try {
-    state = await request("/api/doudizhu/state");
-    if (state) {
-      elements.setupModal.classList.add("hidden");
-      elements.cancelSetup.classList.remove("hidden");
-      render();
-    }
-  } catch (error) { showToast(error.message); }
+    const [characters, models, current] = await Promise.all([loadCharacters(), loadModels(), api("/api/doudizhu/state")]);
+    registry = models;
+    buildSetup(characters);
+    if (current) applyState(current);
+    else setup.open();
+  } catch (error) {
+    toast(error.message, { tone: "error" });
+  }
 }
 
 bootstrap();
+
+// Effect preview for visual checks: /games/doudizhu/?fx-preview exposes the bomb and rocket effects.
+if (new URLSearchParams(location.search).has("fx-preview")) {
+  globalThis.laneFx = { bomb: () => celebrateCombo("bomb", 4), rocket: () => celebrateCombo("rocket", 2) };
+}

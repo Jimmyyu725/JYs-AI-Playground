@@ -1,149 +1,98 @@
 <!doctype html>
-<html lang="zh">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#1a0d06" />
-    <title>斗地主 Dou Dizhu — JYs AI Playground</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#1c1f2b" />
+    <title>Dou Dizhu 斗地主 — JYs AI Playground</title>
     <link rel="icon" href="data:," />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@400;600;700&family=Limelight&family=ZCOOL+XiaoWei&display=swap" />
+    <link rel="preload" as="image" href="/assets/rooms/doudizhu/hero-desktop.webp" media="(min-width: 761px)" />
+    <link rel="preload" as="image" href="/assets/rooms/doudizhu/hero-phone.webp" media="(max-width: 760px)" />
+    <link rel="stylesheet" href="/shared/kit.css" />
     <link rel="stylesheet" href="/games/doudizhu/doudizhu.css" />
   </head>
   <body>
-    <div class="room-backdrop" aria-hidden="true"></div>
-    <div class="noise" aria-hidden="true"></div>
+    <div class="lane-backdrop" aria-hidden="true"></div>
+    <div class="lane-lanterns" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+    <div class="lane-smoke" aria-hidden="true"></div>
+    <div class="bulb-pool" id="bulb-pool" aria-hidden="true"></div>
+    <div class="paper-drift" id="paper-drift" aria-hidden="true"></div>
+    <div class="flash" id="flash" aria-hidden="true"></div>
 
-    <header class="topbar">
-      <div class="room-branding">
-        <a class="lobby-return" href="/">← Playground</a>
-        <button class="brand" id="new-game-button" type="button" aria-label="Open Dou Dizhu setup">
-          <span class="brand-mark dou-mark">斗</span>
-          <span><strong>The Landlord Room</strong><small>斗地主 · One landlord, two farmers</small></span>
-        </button>
+    <header class="lane-bar">
+      <div class="bar-left" id="bar-left">
+        <h1 class="room-title"><span class="title-zh" lang="zh">斗地主</span><span class="title-en">The Landlord Room</span></h1>
       </div>
-      <div class="table-status">
-        <span class="status-pill model" id="model-pill"><i></i> GPT-6 Luna</span>
-        <span class="status-pill" id="reasoning-pill">Reasoning · Medium</span>
-        <span class="status-pill rules">Freestyle · Bombs double the pot</span>
+      <div class="stakes" aria-label="Stakes">
+        <div class="stake"><small><span lang="zh">底</span> Bid</small><strong id="bid-value">—</strong></div>
+        <div class="stake"><small><span lang="zh">炸</span> Bombs</small><strong id="bomb-value">0</strong></div>
+        <div class="stake stake-multiplier" id="stake-multiplier"><small><span lang="zh">倍</span> Stake</small><strong id="multiplier-value">x1</strong></div>
       </div>
-      <div class="move-meta"><span>Hand</span><strong id="hand-number">0</strong></div>
+      <div class="bar-right" id="bar-right"></div>
     </header>
 
-    <main class="doudizhu-shell">
-      <section class="table-column">
-        <div class="turn-ribbon">
-          <span class="ribbon-mark" id="ribbon-mark">叫</span>
-          <strong id="turn-label">Bidding opens</strong>
-          <span id="turn-detail">Open a game to deal</span>
-          <span class="elapsed hidden" id="thinking-elapsed"></span>
+    <main class="lane-main">
+      <section class="table" id="table" aria-label="Card table">
+        <div class="seat-zone seat-left" id="seat-1"></div>
+        <div class="seat-zone seat-right" id="seat-2"></div>
+
+        <div class="table-center">
+          <div class="phase-banner" id="phase-banner">
+            <span class="phase-mark" id="phase-mark" lang="zh">叫</span>
+            <span class="phase-copy"><strong id="phase-text">Waiting for a deal</strong><small id="phase-detail">Open the setup to seat the neighbours</small></span>
+            <time class="elapsed" id="elapsed" hidden></time>
+            <button class="lane-button small" id="arena-toggle" type="button" hidden>Pause arena</button>
+          </div>
+          <div class="bottom-cards" id="bottom-cards" aria-label="Bottom cards"></div>
+          <div class="trick" id="trick" aria-live="polite"></div>
+          <div class="table-notice" id="table-notice" hidden></div>
         </div>
 
-        <div class="table-stage" id="table-stage">
-          <div class="player-slot top-left" id="player-slot-1"></div>
-          <div class="player-slot top-right" id="player-slot-2"></div>
+        <div class="seat-zone seat-me" id="seat-0"></div>
+      </section>
 
-          <div class="table-center">
-            <div class="bottom-row">
-              <span class="center-label">底牌 Bottom cards</span>
-              <div class="bottom-cards" id="bottom-cards"></div>
-            </div>
-            <div class="last-play" id="last-play"><span>No play yet</span></div>
-            <div class="bid-status" id="bid-status">最高叫分 —</div>
-          </div>
-
-          <div class="player-slot bottom" id="player-slot-0"></div>
-
-          <div class="game-overlay hidden" id="game-overlay">
-            <div class="overlay-card">
-              <span class="eyebrow" id="overlay-eyebrow">Hand complete</span>
-              <h2 id="overlay-title">The landlord takes it</h2>
-              <p id="overlay-copy"></p>
-              <button class="gold-button" id="overlay-action" type="button">New game</button>
-            </div>
-          </div>
+      <section class="hand-dock" id="hand-dock" hidden aria-label="Your hand">
+        <div class="hand-head">
+          <img class="hand-cap" id="hand-cap" src="/assets/rooms/doudizhu/landlord-badge.webp" alt="Landlord" hidden />
+          <span class="hand-title" id="hand-title">Your hand</span>
+          <span class="hand-role" id="hand-role"></span>
+          <span class="mug mug-small" id="hand-mug"><b>0</b></span>
         </div>
-
-        <div class="hand-dock" id="hand-dock">
-          <div class="hand-heading">
-            <span id="hand-title">Your hand</span>
-            <span class="selected-count hidden" id="selected-count">0 selected</span>
-            <button class="gold-button compact hidden" id="arena-toggle" type="button">Pause arena</button>
+        <div class="hand" id="hand"></div>
+        <div class="actions">
+          <div class="bid-strips" id="bid-strips" hidden>
+            <button class="couplet" data-score="1" type="button"><span lang="zh">叫一分</span><small>Bid 1</small></button>
+            <button class="couplet" data-score="2" type="button"><span lang="zh">叫二分</span><small>Bid 2</small></button>
+            <button class="couplet" data-score="3" type="button"><span lang="zh">叫三分</span><small>Bid 3</small></button>
+            <button class="couplet couplet-pass" data-score="0" type="button"><span lang="zh">不叫</span><small>Pass</small></button>
           </div>
-          <div class="hand-cards" id="hand-cards"></div>
-          <div class="action-row">
-            <div class="bid-actions" id="bid-actions">
-              <button class="bid-button" id="bid-1" type="button">叫 1 分</button>
-              <button class="bid-button" id="bid-2" type="button">叫 2 分</button>
-              <button class="bid-button" id="bid-3" type="button">叫 3 分</button>
-              <button class="quiet-button" id="bid-pass" type="button">不叫</button>
-            </div>
-            <div class="play-actions hidden" id="play-actions">
-              <button class="quiet-button danger" id="pass-button" type="button" disabled>不出 Pass</button>
-              <button class="gold-button" id="play-button" type="button" disabled>出牌 Play</button>
-            </div>
-            <span class="hint-label" id="hint-label">Waiting for the deal…</span>
+          <div class="play-buttons" id="play-buttons" hidden>
+            <button class="lane-button ghost" id="pass-button" type="button"><span lang="zh">不出</span> Pass</button>
+            <button class="lane-button ghost" id="clear-button" type="button">Clear</button>
+            <button class="lane-button primary" id="play-button" type="button"><span lang="zh">出牌</span> Play</button>
           </div>
-        </div>
-
-        <div class="score-dock">
-          <div class="score-cell"><span class="score-mark">底</span><small>叫分 Base</small><strong id="base-score">—</strong></div>
-          <div class="score-cell"><span class="score-mark">炸</span><small>炸弹 Bombs</small><strong id="bomb-count">0</strong></div>
-          <div class="score-cell"><span class="score-mark">倍</span><small>倍数 Multiplier</small><strong id="multiplier">—</strong></div>
-          <div class="score-cell wide"><span class="score-mark">胜</span><small>结果 Result</small><strong id="result-label">—</strong></div>
+          <p class="hint" id="hint"></p>
         </div>
       </section>
 
-      <aside class="insight-rail">
-        <section class="rail-panel decision-panel">
-          <div class="panel-heading">
-            <div><span class="eyebrow">Model lens</span><h2>Reading the table</h2></div>
-            <span class="live-indicator" id="live-indicator"><i></i> Idle</span>
-          </div>
-          <div class="thinker-profile" id="thinker-profile">
-            <span class="profile-stone black"></span>
-            <div><strong>No active player</strong><span>Public rationale and supported summaries</span></div>
-          </div>
-          <div class="reasoning-terminal" aria-live="polite">
-            <div class="terminal-line"><span>MODEL /</span><span id="reasoning-status">No model request is active.</span></div>
-            <p class="live-summary" id="reasoning-text">Completed summaries remain in the transcript below.</p>
-            <div class="transcript-heading"><span>Persistent decision log</span><strong id="reasoning-count">0 entries</strong></div>
-            <ol class="reasoning-feed" id="reasoning-feed"></ol>
-          </div>
+      <aside class="ledger" id="ledger" aria-label="Table record">
+        <section class="lens" aria-live="polite">
+          <header class="ledger-head">
+            <span class="ledger-kicker">Model lens</span>
+            <span class="live" id="live-indicator"><i></i> Idle</span>
+          </header>
+          <div class="lens-who" id="lens-who">No one is thinking</div>
+          <p class="lens-status" id="lens-status">The room waits for the selected model. Illegal plays retry twice; API errors pause for an explicit retry.</p>
+          <p class="lens-summary" id="lens-summary"></p>
+          <ol class="insights" id="insights"></ol>
         </section>
-        <section class="rail-panel history-panel">
-          <div class="panel-heading compact"><div><span class="eyebrow">Table record</span><h2>Play history</h2></div></div>
-          <ol class="history-list" id="history-list"></ol>
-        </section>
-        <section class="rail-panel house-note">
-          <span>斗</span>
-          <div><strong>No artificial turn timer</strong>
-          <p>The room waits for the selected model. Illegal plays retry automatically twice; API errors pause the hand for an explicit retry. Reasoning models can take a minute or more per move — the turn ribbon counts the wait.</p></div>
-        </section>
+        <section class="record" id="record"></section>
       </aside>
     </main>
 
-    <div class="modal-backdrop" id="setup-modal">
-      <form class="setup-card" id="setup-form">
-        <div class="setup-ornament"><i></i><span>斗</span><i></i></div>
-        <span class="eyebrow">The Landlord Room</span>
-        <h1>Deal a hand of Dou Dizhu</h1>
-        <p class="setup-lede" id="setup-lede">One landlord against two farmers. Bombs and the rocket double the score.</p>
-        <fieldset class="mode-field">
-          <legend>Game mode</legend>
-          <div class="mode-options" id="mode-options">
-            <label><input type="radio" name="gameMode" value="human" checked /><span><b>●</b><strong>Play vs AI</strong><small>You and two AI rivals</small></span></label>
-            <label><input type="radio" name="gameMode" value="arena" /><span><b>∞</b><strong>AI vs AI</strong><small>Watch three minds</small></span></label>
-          </div>
-        </fieldset>
-        <label class="field" id="human-name-field"><span>Your name</span><input name="humanName" maxlength="18" value="Player" autocomplete="nickname" /></label>
-        <section class="ai-roster-section">
-          <div class="roster-heading"><div><span>AI roster</span><small>Every seat can use a different model and depth</small></div><button class="text-button" id="apply-roster" type="button">Apply first to all</button></div>
-          <div class="ai-roster" id="ai-roster"></div>
-        </section>
-        <button class="gold-button enter-button" id="setup-submit" type="submit">Deal the cards</button>
-        <button class="text-button cancel-button hidden" id="cancel-setup" type="button">Return to current hand</button>
-      </form>
-    </div>
-    <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script type="module" src="/games/doudizhu/doudizhu.js"></script>
   </body>
 </html>

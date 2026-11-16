@@ -1,7 +1,7 @@
-import { requestDoudizhuBid, requestDoudizhuPlayWithRetry } from "../games/doudizhu-ai.js";
+import { requestDoudizhuBidWithRetry, requestDoudizhuPlayWithRetry, requestDoudizhuReview } from "../games/doudizhu-ai.js";
 import { DouDizhuGame } from "../games/doudizhu-game.js";
 import { pushTableTalk } from "../platform/table-talk.js";
-import { createMatchRecorder, participantFrom, publicError, sendSSE } from "../platform/room-kit.js";
+import { createMatchRecorder, httpError, participantFrom, publicError, sendSSE } from "../platform/room-kit.js";
 
 export const id = "doudizhu";
 export const defaults = { model: "gpt-6-luna", reasoningEffort: "low" };
@@ -85,37 +85,36 @@ async function runDoudizhuAIChain(version) {
       };
 
       try {
+        const retryOptions = {
+          snapshotFactory: () => table.aiSnapshot(),
+          modelConfig: actor.aiConfig,
+          callbacks,
+          shouldContinue: () => doudizhuGame === table && version === doudizhuGameVersion,
+          onRetry({ error, retryNumber, maxRetries }) {
+            if (doudizhuGame !== table || version !== doudizhuGameVersion) return;
+            const message = publicError(error);
+            const status = `${message}. Retrying automatically (${retryNumber}/${maxRetries})…`;
+            table.recordAIRetry(seat, message, retryNumber, maxRetries);
+            table.aiThinking = { ...table.aiThinking, status };
+            broadcastDoudizhu("ai_stream", {
+              phase: "started",
+              seat,
+              playerName: actor.name,
+              summary: "",
+              automaticRetry: true,
+              retryNumber,
+              maxRetries,
+            });
+            broadcastDoudizhuState();
+          },
+        };
         let decision;
         let insightAction;
         if (table.phase === "bidding") {
-          const snapshot = table.aiSnapshot();
-          decision = await requestDoudizhuBid(snapshot, actor.aiConfig, callbacks);
+          ({ decision } = await requestDoudizhuBidWithRetry(retryOptions));
           insightAction = decision.action === "bid" ? `bid ${decision.score}` : "pass bid";
         } else {
-          const { decision: playDecision } = await requestDoudizhuPlayWithRetry({
-            snapshotFactory: () => table.aiSnapshot(),
-            modelConfig: actor.aiConfig,
-            callbacks,
-            shouldContinue: () => doudizhuGame === table && version === doudizhuGameVersion,
-            onRetry({ error, retryNumber, maxRetries }) {
-              if (doudizhuGame !== table || version !== doudizhuGameVersion) return;
-              const message = publicError(error);
-              const status = `${message}. Retrying automatically (${retryNumber}/${maxRetries})…`;
-              table.recordAIRetry(seat, message, retryNumber, maxRetries);
-              table.aiThinking = { ...table.aiThinking, status };
-              broadcastDoudizhu("ai_stream", {
-                phase: "started",
-                seat,
-                playerName: actor.name,
-                summary: "",
-                automaticRetry: true,
-                retryNumber,
-                maxRetries,
-              });
-              broadcastDoudizhuState();
-            },
-          });
-          decision = playDecision;
+          ({ decision } = await requestDoudizhuPlayWithRetry(retryOptions));
           insightAction = decision.action === "play" ? `play ${decision.cards.join(" ")}` : "pass";
         }
 
@@ -249,6 +248,28 @@ export function register(app, ctx) {
       response.json(table.publicState());
       broadcastDoudizhuState();
       scheduleDoudizhuAITurn(doudizhuGameVersion);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Post-game review: one AI seat looks back over the public record of the settled hand.
+  app.post("/api/doudizhu/review", async (request, response, next) => {
+    try {
+      const table = requireDoudizhuGame();
+      if (table.phase !== "complete") throw httpError(409, "The hand is still being played");
+      const seat = Number(request.body?.seat);
+      if (!Number.isInteger(seat) || !table.players[seat] || table.players[seat].isHuman) throw httpError(400, "Choose an AI seat to review the hand");
+      table.reviews ??= {};
+      const key = `${table.handNumber}:${seat}`;
+      if (!table.reviews[key]) {
+        try {
+          table.reviews[key] = await requestDoudizhuReview(table, seat);
+        } catch (error) {
+          throw httpError(502, publicError(error));
+        }
+      }
+      response.json({ seat, playerName: table.players[seat].name, characterId: table.players[seat].character?.id ?? null, review: table.reviews[key] });
     } catch (error) {
       next(error);
     }

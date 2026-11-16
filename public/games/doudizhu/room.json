@@ -1,0 +1,17 @@
+{
+  "pitch": "An old Shanghai lane on New Year's Eve: bid for the landlord seat, then hold off two farmers who work together.",
+  "world": "A 弄堂 lane under red lanterns, a folding table beneath one bare bulb, a 1930s calendar-poster deck.",
+  "hero": "/assets/rooms/doudizhu/hero-desktop.webp",
+  "heroPortrait": "/assets/rooms/doudizhu/hero-phone.webp",
+  "palette": {
+    "background": "#1C1F2B",
+    "surface": "#3A343D",
+    "paper": "#F2E2C4",
+    "ink": "#141014",
+    "accent": "#B9120B",
+    "highlight": "#E0A43C",
+    "secondary": "#2F5E4E",
+    "danger": "#F0582A"
+  },
+  "fonts": { "display": "Limelight", "displayZh": "ZCOOL XiaoWei", "body": "Josefin Sans" }
+}
