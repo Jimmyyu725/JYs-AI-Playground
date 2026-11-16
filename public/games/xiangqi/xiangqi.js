@@ -543,8 +543,24 @@ async function act(path, body) {
 
 const retryAI = () => act("/api/xiangqi/retry-ai");
 const toggleArena = () => act(state.arenaPaused ? "/api/xiangqi/arena/resume" : "/api/xiangqi/arena/pause");
-function resign() {
-  if (!confirm("Resign this game?")) return;
+// Resigning takes two clicks: the first arms the button for a few seconds.
+let resignArmedUntil = 0;
+function resign(event) {
+  const node = event?.currentTarget;
+  if (Date.now() > resignArmedUntil) {
+    resignArmedUntil = Date.now() + 4000;
+    if (node) {
+      node.textContent = "Click again to resign";
+      node.classList.add("is-armed");
+      setTimeout(() => {
+        if (!node.isConnected) return;
+        node.textContent = "Resign";
+        node.classList.remove("is-armed");
+      }, 4000);
+    }
+    return;
+  }
+  resignArmedUntil = 0;
   act("/api/xiangqi/action", { type: "resign" });
 }
 
