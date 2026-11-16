@@ -126,6 +126,7 @@ export async function requestOpenAIStructuredDecision({
   maxOutputTokens = 65_536,
 }, callbacks = {}) {
   const { envName, value: apiKey } = apiKeyFor("openai", gameId);
+  if (!apiKey) throw new AIDecisionError(`${envName} is not configured`, "missing_api_key");
   const label = modelMetadata(config.model)?.label ?? config.model;
   callbacks.onStatus?.(`Connecting to ${label}…`);
 
