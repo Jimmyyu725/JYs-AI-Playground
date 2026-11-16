@@ -1,4 +1,4 @@
-import { requestGoDecisionWithRetry } from "../games/go-ai.js";
+import { requestGoDecisionWithRetry, requestGoReview } from "../games/go-ai.js";
 import { GoGame } from "../games/go-game.js";
 import { GoSaveStore } from "../games/go-save-store.js";
 import { pushTableTalk } from "../platform/table-talk.js";

@@ -5,6 +5,7 @@ import {
   loadCharacters,
   loadModels,
   modelPicker,
+  portraitUrl,
   prefersReducedMotion,
   seat,
   setSeatExpression,
@@ -381,8 +382,24 @@ function renderSeat(color) {
   if (state.phase === "complete" && state.result) {
     expression = !state.result.winner ? "neutral" : state.result.winner === color ? "triumphant" : "defeated";
   }
-  if (!player.isHuman) setSeatExpression(portrait, expression);
+  if (!player.isHuman) swapExpression(portrait, expression);
   else portrait.dataset.expression = expression === "thinking" ? "neutral" : expression;
+}
+
+// Paint a new expression only once its image has loaded, so a missing one keeps the current face.
+const missingExpressions = new Set();
+function swapExpression(portrait, expression) {
+  const id = portrait.dataset.characterId;
+  if (!id || portrait.dataset.wanted === expression) return;
+  portrait.dataset.wanted = expression;
+  const url = portraitUrl(id, expression);
+  if (missingExpressions.has(url)) return;
+  const probe = new Image();
+  probe.onload = () => {
+    if (portrait.dataset.wanted === expression) setSeatExpression(portrait, expression);
+  };
+  probe.onerror = () => missingExpressions.add(url);
+  probe.src = url;
 }
 
 /* ---------- Status, notice, reading ---------- */
@@ -486,7 +503,8 @@ function renderNotice() {
     for (const player of state.players.filter((candidate) => !candidate.isHuman)) {
       if (state.review?.color === player.color) continue;
       const pending = state.reviewPending === player.color;
-      const ask = button(pending ? `${player.name} is writing…` : `Ask ${player.name} to review this game`, "act", () => askReview(player.color));
+      const name = player.character?.shortName ?? player.name;
+      const ask = button(pending ? `${name} is writing a review…` : `Ask ${name} to review this game`, "act", () => askReview(player.color));
       ask.disabled = Boolean(state.reviewPending);
       row.append(ask);
     }
@@ -522,7 +540,7 @@ function syncRecord(reset) {
     recorded.clear();
   }
   const entries = [
-    ...state.logs.map((entry) => ({ id: `log-${entry.id}`, at: Date.parse(entry.at), who: "", text: entry.text, kind: entry.kind === "move" ? "move" : "system" })),
+    ...[...state.logs].reverse().map((entry) => ({ id: `log-${entry.id}`, at: Date.parse(entry.at), who: "", text: entry.text, kind: entry.kind === "move" ? "move" : "system" })),
     ...(state.tableTalk ?? []).map((line) => ({ id: `talk-${line.id}`, at: line.at, who: line.playerName, text: line.text, kind: "talk" })),
     ...state.aiInsights.map((insight) => ({ id: `ai-${insight.id}`, at: Date.parse(insight.at) - 1, who: insight.playerName, text: insight.explanation || insight.summary, kind: "reasoning" })),
   ].filter((entry) => !recorded.has(entry.id));
@@ -530,6 +548,10 @@ function syncRecord(reset) {
   for (const entry of entries) {
     recorded.add(entry.id);
     record.add(entry);
+  }
+  if (reset) {
+    const list = record.el.querySelector(".kit-transcript-list");
+    list.scrollTop = list.scrollHeight;
   }
 }
 
@@ -557,11 +579,12 @@ function render(previous = null) {
   lastSeen = { moveNumber: state.moveNumber, phase: state.phase, castKey, humanTurn: state.humanCanAct };
 }
 
+let ready = false; // Rendering waits for the roster and model registry so labels are right the first time.
 function accept(next) {
   const previous = state;
   state = next;
   if (!state?.aiThinking) liveSummary = "";
-  render(previous);
+  if (ready) render(previous);
 }
 
 /* ---------- Actions ---------- */
@@ -802,6 +825,8 @@ async function boot() {
   } catch (error) {
     toast(`The guest list did not load: ${error.message}`, { tone: "error" });
   }
+  ready = true;
+  if (state) render(null);
   try {
     const current = await request("/api/go/state");
     if (current) accept(current);

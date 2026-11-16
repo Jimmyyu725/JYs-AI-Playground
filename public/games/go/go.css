@@ -446,8 +446,9 @@ body:has(.kit-drawer[data-open="true"]) .room-art {
   inline-size: calc(var(--cell) * 1.25);
   aspect-ratio: 1;
   border-radius: 50%;
-  border: max(2px, calc(var(--cell) * 0.06)) solid var(--amber);
-  box-shadow: 0 0 18px var(--amber);
+  border: max(3px, calc(var(--cell) * 0.08)) solid var(--amber);
+  box-shadow: 0 0 0 1px var(--sumi), 0 0 22px 2px var(--amber), inset 0 0 0 1px var(--sumi);
+  z-index: 2;
   animation: ring 1.6s ease-in-out infinite;
   pointer-events: none;
 }
