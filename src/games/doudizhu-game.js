@@ -1,4 +1,4 @@
-import { AI_CHARACTERS } from "../platform/characters.js";
+import { seatCharacters } from "../platform/seating.js";
 import { normalizeModelConfig } from "../platform/model-registry.js";
 
 const RANKS = Object.freeze(["3", "4", "5", "6", "7", "8", "9", "T", "J", "Q", "K", "A", "2"]);
@@ -274,6 +274,7 @@ export class DouDizhuGame {
     this.aiError = null;
 
     const requestedAI = Array.isArray(config.aiPlayers) ? config.aiPlayers : [];
+    const cast = seatCharacters(this.gameMode === "human" ? 2 : 3, requestedAI.map((player) => player?.characterId));
     let aiIndex = 0;
     this.players = [0, 1, 2].map((seat) => {
       const isHuman = this.gameMode === "human" && seat === 0;
@@ -289,7 +290,7 @@ export class DouDizhuGame {
           lastAction: "",
         };
       }
-      const character = AI_CHARACTERS[this.gameMode === "arena" ? [0, 1, 4][seat] : seat === 1 ? 1 : 4];
+      const character = cast[aiIndex];
       const player = {
         seat,
         name: character.name,
@@ -538,6 +539,7 @@ export class DouDizhuGame {
       seat,
       playerName: player.name,
       characterColor: player.character?.color ?? "#d7b66a",
+      characterId: player.character?.id ?? null,
       model: player.aiConfig?.model ?? "human",
       reasoningEffort: player.aiConfig?.reasoningEffort ?? "",
       summary: String(summary ?? "").trim(),
@@ -582,6 +584,7 @@ export class DouDizhuGame {
         name: actor.name,
         title: actor.character.title,
         personality: actor.character.personality,
+        voice: actor.character.voice ?? "",
         hand: [...actor.hand],
         handByRank: handByRankSummary(actor.hand),
         exampleLeads: this.phase === "playing" ? exampleLeads(actor.hand) : [],
@@ -639,6 +642,7 @@ export class DouDizhuGame {
     const efforts = new Set(aiConfigs.map((config) => config.reasoningEffort));
     const actor = this.currentActor;
     return {
+      tableTalk: this.tableTalk ?? [],
       gameId: "doudizhu",
       gameMode: this.gameMode,
       phase: this.phase,

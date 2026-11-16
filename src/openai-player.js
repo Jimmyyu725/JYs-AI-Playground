@@ -50,6 +50,7 @@ export async function requestHoldemDecision(snapshot, requestedConfig = {}, call
   const result = await requestStructuredDecision({
     gameId: "holdem",
     modelConfig: requestedConfig,
+    tableTalk: { voice: snapshot.actor?.voice ?? "" },
     instructions: systemInstructions(snapshot),
     input: snapshot,
     schemaName: "holdem_decision",
@@ -61,8 +62,9 @@ export async function requestHoldemDecision(snapshot, requestedConfig = {}, call
     reasoningSummary: result.reasoningSummary,
     reasoningSource: result.reasoningSource,
     responseId: result.responseId,
+    tableTalk: result.tableTalk ?? null,
   };
 }
 
 export const requestLunaDecision = (snapshot, callbacks = {}) =>
-  requestHoldemDecision(snapshot, { model: "gpt-5.6-luna", reasoningEffort: "medium" }, callbacks);
+  requestHoldemDecision(snapshot, { model: "gpt-6-luna", reasoningEffort: "low" }, callbacks);

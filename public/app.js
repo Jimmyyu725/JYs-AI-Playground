@@ -7,11 +7,12 @@ const BOT_PREVIEW = [
 ];
 
 const MODEL_OPTIONS = [
-  ["gpt-5.6-sol", "GPT-5.6 Sol"],
-  ["gpt-5.6-terra", "GPT-5.6 Terra"],
-  ["gpt-5.6-luna", "GPT-5.6 Luna"],
+  ["gpt-6.1-sol", "GPT-6.1 Sol"],
+  ["gpt-6.1-terra", "GPT-6.1 Terra"],
+  ["gpt-6-luna", "GPT-6 Luna"],
+  ["gpt-6-astra", "GPT-6 Astra"],
   ["deepseek-v4-pro", "DeepSeek V4 Pro"],
-  ["deepseek-v4-flash", "DeepSeek V4 Flash"],
+  ["deepseek-flash", "DeepSeek Flash"],
 ];
 const REASONING_OPTIONS = ["none", "low", "medium", "high", "xhigh", "max"];
 const SUMMARY_SOURCE_LABELS = {
@@ -232,7 +233,7 @@ function renderControls() {
     } else if (state.aiThinking) {
       elements.actionContextTitle.textContent = `${state.aiThinking.playerName} is considering the room`;
       elements.actionContextCopy.textContent = state.model === "mixed"
-        ? "The AI seats are using individual GPT-5.6 model configurations."
+        ? "The AI seats are using individual model configurations."
         : `Every AI seat uses ${state.model} with ${state.reasoningEffort} reasoning.`;
     } else {
       elements.actionContextTitle.textContent = state.phase === "hand_over" ? "Preparing the next hand" : "AI Arena is live";
@@ -414,7 +415,7 @@ function render() {
   elements.blindLabel.textContent = `${chips(state.smallBlind)} / ${chips(state.bigBlind)}`;
   elements.phaseLabel.textContent = phaseName(state.phase);
   elements.potValue.textContent = chips(state.pot);
-  elements.tableModel.innerHTML = `<i></i> ${state.model === "mixed" ? "Mixed GPT-5.6" : MODEL_OPTIONS.find(([id]) => id === state.model)?.[1] ?? state.model}`;
+  elements.tableModel.innerHTML = `<i></i> ${state.model === "mixed" ? "Mixed models" : MODEL_OPTIONS.find(([id]) => id === state.model)?.[1] ?? state.model}`;
   elements.tableReasoning.textContent = `Reasoning · ${state.reasoningEffort}`;
   const actor = state.players.find((player) => player.seat === state.currentActorSeat);
   elements.turnLabel.textContent = state.gameMode === "arena" && state.arena.paused
@@ -475,12 +476,12 @@ function updateCharacterPreview() {
     model.className = "seat-model";
     model.setAttribute("aria-label", `${character.name} model`);
     for (const [value, label] of MODEL_OPTIONS) model.add(new Option(label, value));
-    model.value = existing[index]?.model ?? "gpt-5.6-luna";
+    model.value = existing[index]?.model ?? "gpt-6-luna";
     const reasoning = document.createElement("select");
     reasoning.className = "seat-reasoning";
     reasoning.setAttribute("aria-label", `${character.name} reasoning effort`);
     for (const effort of REASONING_OPTIONS) reasoning.add(new Option(`Reasoning: ${effort}`, effort));
-    reasoning.value = existing[index]?.reasoningEffort ?? "medium";
+    reasoning.value = existing[index]?.reasoningEffort ?? "low";
     row.append(characterBlock, model, reasoning);
     elements.aiRoster.append(row);
 
@@ -504,7 +505,7 @@ function updateSetupMode() {
   elements.playerCountLegend.textContent = isArena ? "Choose AI seats" : "Choose your opponents";
   elements.setupLede.textContent = isArena
     ? "An all-OpenAI table. See every card, follow every decision, and pause the action whenever you like."
-    : "One human. Distinct characters. Choose the GPT-5.6 model behind every opponent.";
+    : "One human. Distinct characters. Choose the model behind every opponent.";
   elements.setupSubmit.textContent = isArena ? "Start AI Arena" : "Take your seat";
   for (const label of elements.opponentOptions.querySelectorAll("small")) {
     label.textContent = isArena ? label.dataset.arena : label.dataset.human;

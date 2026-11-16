@@ -12,7 +12,7 @@ const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
 dotenv.config({ path: path.join(rootDir, ".env.local") });
 
 const gameId = process.argv[2];
-const modelConfig = { model: process.env.CHECK_MODEL || "gpt-5.6-luna", reasoningEffort: process.env.CHECK_EFFORT || "medium" };
+const modelConfig = { model: process.env.CHECK_MODEL || "gpt-6-luna", reasoningEffort: process.env.CHECK_EFFORT || "medium" };
 let decision;
 if (gameId === "go") {
   const game = new GoGame({ gameMode: "arena", arenaPaused: true, boardSize: 9, aiPlayers: [modelConfig, modelConfig] });

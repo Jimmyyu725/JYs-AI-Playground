@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { AI_CHARACTERS } from "../src/platform/characters.js";
 import test from "node:test";
 import { WuziqiGame } from "../src/games/wuziqi-game.js";
 
@@ -60,8 +61,8 @@ test("AI Arena retains per-seat model configuration and public characters", () =
     gameMode: "arena",
     arenaPaused: true,
     aiPlayers: [
-      { model: "gpt-5.6-sol", reasoningEffort: "high" },
-      { model: "gpt-5.6-terra", reasoningEffort: "low" },
+      { model: "gpt-6.1-sol", reasoningEffort: "high", characterId: AI_CHARACTERS[0].id },
+      { model: "gpt-6.1-terra", reasoningEffort: "low", characterId: AI_CHARACTERS[1].id },
     ],
   });
   const state = game.publicState();
@@ -69,5 +70,5 @@ test("AI Arena retains per-seat model configuration and public characters", () =
   assert.equal(state.players.every((player) => !player.isHuman), true);
   const snapshot = game.aiSnapshot();
   assert.equal(snapshot.legalPlacements.length, 225);
-  assert.match(snapshot.players[1].personality, /Creative/i);
+  assert.equal(snapshot.players[1].personality, AI_CHARACTERS[1].personality);
 });

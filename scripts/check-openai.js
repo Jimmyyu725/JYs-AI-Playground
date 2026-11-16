@@ -49,7 +49,7 @@ const decision = await requestLunaDecision(snapshot);
 console.log(
   JSON.stringify({
     ok: true,
-    model: "gpt-5.6-luna",
+    model: "gpt-6-luna",
     reasoningEffort: "medium",
     action: decision.action,
     hasReasoningSummary: Boolean(decision.reasoningSummary),

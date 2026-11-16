@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { AI_CHARACTERS } from "../src/platform/characters.js";
 import test from "node:test";
 import { GoGame } from "../src/games/go-game.js";
 
@@ -66,8 +67,8 @@ test("AI vs AI exposes both model configurations and public personas", () => {
     gameMode: "arena",
     arenaPaused: true,
     aiPlayers: [
-      { model: "gpt-5.6-sol", reasoningEffort: "max" },
-      { model: "gpt-5.6-luna", reasoningEffort: "none" },
+      { model: "gpt-6.1-sol", reasoningEffort: "max", characterId: AI_CHARACTERS[0].id },
+      { model: "gpt-6-luna", reasoningEffort: "none", characterId: AI_CHARACTERS[2].id },
     ],
   });
   const state = game.publicState();
@@ -75,7 +76,7 @@ test("AI vs AI exposes both model configurations and public personas", () => {
   assert.equal(state.players.every((player) => !player.isHuman), true);
   const snapshot = game.aiSnapshot();
   assert.equal(snapshot.players.length, 2);
-  assert.match(snapshot.players[1].personality, /Analytical/i);
+  assert.equal(snapshot.players[1].personality, AI_CHARACTERS[2].personality);
   assert.equal(snapshot.legalPlacements.length, 81);
 });
 
@@ -85,8 +86,8 @@ test("serializes and restores a complete authoritative Go game", () => {
     arenaPaused: true,
     boardSize: 9,
     aiPlayers: [
-      { model: "gpt-5.6-luna", reasoningEffort: "low" },
-      { model: "gpt-5.6-terra", reasoningEffort: "medium" },
+      { model: "gpt-6-luna", reasoningEffort: "low" },
+      { model: "gpt-6.1-terra", reasoningEffort: "medium" },
     ],
   });
   play(game, "black", 0, 0);
@@ -106,7 +107,7 @@ test("serializes and restores a complete authoritative Go game", () => {
   assert.equal(state.moveNumber, 2);
   assert.deepEqual(state.board, game.publicState().board);
   assert.deepEqual(state.captures, game.captures);
-  assert.equal(state.players[0].aiConfig.model, "gpt-5.6-luna");
+  assert.equal(state.players[0].aiConfig.model, "gpt-6-luna");
   assert.equal(state.players[1].aiConfig.reasoningEffort, "medium");
   assert.equal(state.aiInsights.length, 1);
   assert.equal(state.aiThinking, null);

@@ -216,7 +216,7 @@ test("still routes OpenAI models to the OpenAI Responses endpoint", async () => 
   try {
     await assert.rejects(requestStructuredDecision({
       gameId: "holdem",
-      modelConfig: { model: "gpt-5.6-luna" },
+      modelConfig: { model: "gpt-6-luna" },
       instructions: "Play.",
       input: {},
       schemaName: "holdem_decision",

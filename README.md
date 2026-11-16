@@ -15,25 +15,26 @@ Every AI seat independently selects one model from either provider:
 
 | Model | Provider | API |
 | --- | --- | --- |
-| `gpt-5.6-sol` | OpenAI | Responses API, strict `json_schema` |
-| `gpt-5.6-terra` | OpenAI | Responses API, strict `json_schema` |
-| `gpt-5.6-luna` | OpenAI | Responses API, strict `json_schema` |
+| `gpt-6.1-sol` | OpenAI | Responses API, strict `json_schema`, vision |
+| `gpt-6.1-terra` | OpenAI | Responses API, strict `json_schema`, vision |
+| `gpt-6-luna` | OpenAI | Responses API, strict `json_schema`, vision (default, low effort) |
+| `gpt-6-astra` | OpenAI | Responses API, strict `json_schema`, vision |
 | `deepseek-v4-pro` | DeepSeek | Chat Completions, `json_object` |
-| `deepseek-v4-flash` | DeepSeek | Chat Completions, `json_object` |
+| `deepseek-flash` | DeepSeek | Chat Completions, `json_object` |
 
 Available reasoning efforts are `none`, `low`, `medium`, `high`, `xhigh`, and `max`. Every model above accepts all six. The server validates the model and the effort against an allowlist before any request leaves the machine.
 
 Create an ignored `.env.local` from `.env.example`:
 
 ```dotenv
-OPENAI_API_KEY=your_holdem_key
+OPENAI_API_KEY=your_shared_key
 OPENAI_GO_API_KEY=your_go_key
 OPENAI_WUZIQI_API_KEY=your_wuziqi_key
 DEEPSEEK_API_KEY=your_deepseek_key
 PORT=4173
 ```
 
-OpenAI credentials stay separate per game so a leaked key cannot reach the other rooms. DeepSeek seats use `DEEPSEEK_API_KEY` unless `DEEPSEEK_GO_API_KEY` or `DEEPSEEK_WUZIQI_API_KEY` is set, in which case the per-game key wins.
+Each room uses `OPENAI_<ROOM>_API_KEY` / `DEEPSEEK_<ROOM>_API_KEY` (for example `OPENAI_GO_API_KEY`, `OPENAI_LIARS_DICE_API_KEY`) when it is set, and otherwise falls back to the shared `OPENAI_API_KEY` / `DEEPSEEK_API_KEY`.
 
 Keys are read only by the local Express server. They are never returned by `/api/health`, included in browser JavaScript, or committed to Git.
 
@@ -116,7 +117,7 @@ npm run api:check         # one live Hold’em structured decision
 npm run go:api:check      # one live Go decision using the Go key
 npm run wuziqi:api:check  # one live Wuziqi decision using the Wuziqi key
 npm run doudizhu:api:check # one live Dou Dizhu bid using the Dou Dizhu key
-CHECK_MODEL=deepseek-v4-flash npm run wuziqi:api:check   # one live DeepSeek decision
+CHECK_MODEL=deepseek-flash npm run wuziqi:api:check   # one live DeepSeek decision
 npm run ds:api:check      # one live DeepSeek V4 Pro decision in Hold'em, Go, and Wuziqi
                           # optional: node scripts/check-deepseek.js <game> <reasoningEffort>
 npm run flow:check        # live multi-character Hold’em turn chain
@@ -167,8 +168,8 @@ The shared casino backdrop at `public/assets/casino-ambient.png` was generated w
 
 ## OpenAI references
 
-- [Using GPT-5.6](https://developers.openai.com/api/docs/guides/model-guidance?model=gpt-5.6)
-- [GPT-5.6 models](https://developers.openai.com/api/docs/models)
+- [OpenAI models](https://developers.openai.com/api/docs/models)
+- [Room contract](docs/ROOMS.md)
 - [Reasoning summaries](https://developers.openai.com/api/docs/guides/reasoning#reasoning-summaries)
 - [Streaming Responses](https://developers.openai.com/api/docs/guides/streaming-responses)
 - [Structured Outputs](https://developers.openai.com/api/docs/guides/structured-outputs)

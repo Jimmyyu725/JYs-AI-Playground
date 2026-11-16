@@ -1,9 +1,10 @@
 const MODEL_OPTIONS = [
-  ["gpt-5.6-sol", "GPT-5.6 Sol"],
-  ["gpt-5.6-terra", "GPT-5.6 Terra"],
-  ["gpt-5.6-luna", "GPT-5.6 Luna"],
+  ["gpt-6.1-sol", "GPT-6.1 Sol"],
+  ["gpt-6.1-terra", "GPT-6.1 Terra"],
+  ["gpt-6-luna", "GPT-6 Luna"],
+  ["gpt-6-astra", "GPT-6 Astra"],
   ["deepseek-v4-pro", "DeepSeek V4 Pro"],
-  ["deepseek-v4-flash", "DeepSeek V4 Flash"],
+  ["deepseek-flash", "DeepSeek Flash"],
 ];
 const REASONING_OPTIONS = ["none", "low", "medium", "high", "xhigh", "max"];
 const CHARACTERS = [
@@ -283,7 +284,7 @@ function renderInsight() {
     const insightName = document.createElement("strong");
     insightName.textContent = insight.playerName;
     const info = document.createElement("span");
-    info.textContent = `Hand ${insight.handNumber} · ${insight.model?.replace("gpt-5.6-", "")} · ${(insight.latencyMs / 1000).toFixed(1)}s · ${insight.action}`;
+    info.textContent = `Hand ${insight.handNumber} · ${insight.model?.replace(/^gpt-6(\.1)?-/, "")} · ${(insight.latencyMs / 1000).toFixed(1)}s · ${insight.action}`;
     heading.append(insightName, info);
     const summary = document.createElement("p");
     summary.textContent = insight.summary || insight.explanation;
@@ -390,7 +391,7 @@ function addRosterRow(character, existing = {}) {
   model.className = "seat-model";
   model.setAttribute("aria-label", `${character.name} model`);
   for (const [value, label] of MODEL_OPTIONS) model.add(new Option(label, value));
-  model.value = existing.model ?? "gpt-5.6-luna";
+  model.value = existing.model ?? "gpt-6-luna";
   const reasoning = document.createElement("select");
   reasoning.className = "seat-reasoning";
   reasoning.setAttribute("aria-label", `${character.name} reasoning effort`);

@@ -1,4 +1,4 @@
-import { AI_CHARACTERS } from "../platform/characters.js";
+import { seatCharacters } from "../platform/seating.js";
 import { normalizeModelConfig } from "../platform/model-registry.js";
 
 const COLORS = Object.freeze(["black", "white"]);
@@ -32,6 +32,7 @@ export class WuziqiGame {
     this.aiError = null;
 
     const requestedAI = Array.isArray(config.aiPlayers) ? config.aiPlayers : [];
+    const cast = seatCharacters(this.gameMode === "human" ? 1 : 2, requestedAI.map((player) => player?.characterId));
     let aiIndex = 0;
     this.players = COLORS.map((color, colorIndex) => {
       const isHuman = this.gameMode === "human" && color === this.humanColor;
@@ -45,7 +46,7 @@ export class WuziqiGame {
           lastAction: "",
         };
       }
-      const character = AI_CHARACTERS[colorIndex === 0 ? 1 : 4];
+      const character = cast[aiIndex];
       const player = {
         color,
         name: character.name,
@@ -164,6 +165,7 @@ export class WuziqiGame {
       color,
       playerName: player.name,
       characterColor: player.character.color,
+      characterId: player.character?.id ?? null,
       model: player.aiConfig.model,
       reasoningEffort: player.aiConfig.reasoningEffort,
       summary: String(summary ?? "").trim(),
@@ -214,7 +216,7 @@ export class WuziqiGame {
         this.board.slice(row * this.boardSize, (row + 1) * this.boardSize).map((cell) => cell === "black" ? "B" : cell === "white" ? "W" : ".").join(""),
       ),
       legalPlacements: this.legalPlacements().map(([row, column]) => [row, column, wuziqiCoordinate(row, column, this.boardSize)]),
-      actor: { color: actor.color, name: actor.name, title: actor.character.title, personality: actor.character.personality },
+      actor: { color: actor.color, name: actor.name, title: actor.character.title, personality: actor.character.personality, voice: actor.character.voice ?? "" },
       players: this.players.map((player) => ({
         color: player.color,
         name: player.name,
@@ -231,6 +233,7 @@ export class WuziqiGame {
     const models = new Set(aiConfigs.map((config) => config.model));
     const efforts = new Set(aiConfigs.map((config) => config.reasoningEffort));
     return {
+      tableTalk: this.tableTalk ?? [],
       gameId: "wuziqi",
       gameMode: this.gameMode,
       boardSize: this.boardSize,

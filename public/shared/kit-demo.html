@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Room Kit Gallery</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="/shared/kit.css" />
+    <style>
+      :root {
+        --kit-bg: #1b1410;
+        --kit-accent: #e9a15c;
+        --kit-accent-ink: #20120a;
+      }
+      body {
+        margin: 0;
+        min-height: 100dvh;
+        background: radial-gradient(circle at 30% 20%, #3a2a20, var(--kit-bg));
+        color: var(--kit-ink);
+        font-family: var(--kit-font-body);
+        overflow-x: hidden;
+      }
+      .demo-bar { display: flex; gap: 8px; padding: 16px; flex-wrap: wrap; }
+      .demo-table { display: flex; flex-wrap: wrap; gap: 48px; padding: 96px 16px 24px; justify-content: center; }
+      .demo-log { padding: 16px; max-width: 520px; }
+    </style>
+  </head>
+  <body>
+    <nav class="demo-bar"></nav>
+    <main class="demo-table"></main>
+    <div class="demo-log"></div>
+    <script type="module">
+      import { backToLobby, characterPicker, drawer, loadCharacters, loadModels, modelPicker, seat, setSeatExpression, toast, transcript } from "/shared/kit.js";
+      import { sfx, SFX_NAMES } from "/shared/sfx.js";
+      import { speak } from "/shared/speech.js";
+
+      const [characters, registry] = await Promise.all([loadCharacters(), loadModels()]);
+      const bar = document.querySelector(".demo-bar");
+      const setup = drawer({ title: "Table setup" });
+      bar.append(backToLobby(), sfx.muteButton(), setup.toggleButton);
+      for (const name of SFX_NAMES) {
+        const button = document.createElement("button");
+        button.className = "kit-button";
+        button.textContent = name;
+        button.addEventListener("click", () => sfx.play(name));
+        bar.append(button);
+      }
+
+      const log = transcript({ title: "Table talk" });
+      document.querySelector(".demo-log").append(log.el);
+      const picker = characterPicker({ characters, seats: 3 });
+      const model = modelPicker({ registry });
+      setup.body.append(picker.el, model.el);
+
+      const table = document.querySelector(".demo-table");
+      function render() {
+        table.replaceChildren(...picker.characters.map((character) => seat({ character, size: "lg" })));
+      }
+      render();
+      const first = () => table.firstElementChild;
+      setSeatExpression(first(), "thinking");
+      speak(table.children[1], "Your move. Take your time; I already know what you'll do.", { duration: 60000 });
+      log.add({ who: picker.characters[0].shortName, text: "Your move.", kind: "talk" });
+      log.add({ text: "Hand 1 begins.", kind: "system" });
+      toast("Kit loaded", { tone: "success" });
+    </script>
+  </body>
+</html>

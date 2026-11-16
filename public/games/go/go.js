@@ -1,9 +1,10 @@
 const MODEL_OPTIONS = [
-  ["gpt-5.6-sol", "GPT-5.6 Sol"],
-  ["gpt-5.6-terra", "GPT-5.6 Terra"],
-  ["gpt-5.6-luna", "GPT-5.6 Luna"],
+  ["gpt-6.1-sol", "GPT-6.1 Sol"],
+  ["gpt-6.1-terra", "GPT-6.1 Terra"],
+  ["gpt-6-luna", "GPT-6 Luna"],
+  ["gpt-6-astra", "GPT-6 Astra"],
   ["deepseek-v4-pro", "DeepSeek V4 Pro"],
-  ["deepseek-v4-flash", "DeepSeek V4 Flash"],
+  ["deepseek-flash", "DeepSeek Flash"],
 ];
 const REASONING_OPTIONS = ["none", "low", "medium", "high", "xhigh", "max"];
 const SUMMARY_SOURCE_LABELS = {
@@ -38,7 +39,7 @@ function modelLabel(id) {
 }
 
 function shortModelLabel(id) {
-  return String(id).replace(/^gpt-5\.6-/, "").replace(/^deepseek-/, "");
+  return String(id).replace(/^gpt-6(\.1)?-/, "").replace(/^deepseek-/, "");
 }
 
 function showToast(message, tone = "error") {
@@ -231,7 +232,7 @@ function render() {
   elements.blackCaptures.textContent = state.captures.black;
   elements.whiteCaptures.textContent = state.captures.white;
   elements.komiValue.textContent = state.komi;
-  elements.modelPill.innerHTML = `<i></i> ${state.model === "mixed" ? "Mixed GPT-5.6" : modelLabel(state.model)}`;
+  elements.modelPill.innerHTML = `<i></i> ${state.model === "mixed" ? "Mixed models" : modelLabel(state.model)}`;
   elements.reasoningPill.textContent = `Reasoning · ${state.reasoningEffort}`;
   elements.turnStone.className = `turn-stone ${state.currentColor}`;
   elements.turnLabel.textContent = state.phase === "complete" ? "Game complete" : `${state.currentColor[0].toUpperCase()}${state.currentColor.slice(1)} to play`;
@@ -291,12 +292,12 @@ function addRosterRow(character, existing = {}) {
   model.className = "seat-model";
   model.setAttribute("aria-label", `${character.name} model`);
   for (const [value, label] of MODEL_OPTIONS) model.add(new Option(label, value));
-  model.value = existing.model ?? "gpt-5.6-terra";
+  model.value = existing.model ?? "gpt-6-luna";
   const reasoning = document.createElement("select");
   reasoning.className = "seat-reasoning";
   reasoning.setAttribute("aria-label", `${character.name} reasoning effort`);
   for (const effort of REASONING_OPTIONS) reasoning.add(new Option(`Reasoning: ${effort}`, effort));
-  reasoning.value = existing.reasoningEffort ?? "medium";
+  reasoning.value = existing.reasoningEffort ?? "low";
   row.append(characterBlock, model, reasoning);
   elements.aiRoster.append(row);
 }

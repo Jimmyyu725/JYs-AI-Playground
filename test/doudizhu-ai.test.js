@@ -75,7 +75,7 @@ test("retries a rejected play and accepts the corrected decision", async () => {
   let calls = 0;
   const { decision, attempts } = await requestDoudizhuPlayWithRetry({
     snapshotFactory: () => snapshot,
-    modelConfig: { model: "gpt-5.6-luna", reasoningEffort: "none" },
+    modelConfig: { model: "gpt-6-luna", reasoningEffort: "none" },
     onRetry: ({ retryNumber }) => retries.push(retryNumber),
     requestDecision: async () => {
       calls += 1;
@@ -98,7 +98,7 @@ test("does not retry non-retryable errors", async () => {
   await assert.rejects(
     () => requestDoudizhuPlayWithRetry({
       snapshotFactory: () => snapshot,
-      modelConfig: { model: "gpt-5.6-luna", reasoningEffort: "none" },
+      modelConfig: { model: "gpt-6-luna", reasoningEffort: "none" },
       requestDecision: async () => {
         calls += 1;
         throw new AIDecisionError("connection failed", "connection_error");

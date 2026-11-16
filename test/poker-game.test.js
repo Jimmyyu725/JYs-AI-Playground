@@ -1,4 +1,5 @@
 import test from "node:test";
+import { AI_CHARACTERS } from "../src/platform/characters.js";
 import assert from "node:assert/strict";
 import { PokerGame } from "../src/poker-game.js";
 
@@ -27,8 +28,8 @@ test("moves action clockwise after the human calls", () => {
 test("never advertises a local policy fallback", () => {
   const game = new PokerGame({ opponentCount: 3 });
   const state = game.publicState();
-  assert.equal(state.model, "gpt-5.6-luna");
-  assert.equal(state.reasoningEffort, "medium");
+  assert.equal(state.model, "gpt-6-luna");
+  assert.equal(state.reasoningEffort, "low");
   assert.equal(state.noLocalFallback, true);
 });
 
@@ -113,16 +114,16 @@ test("stores an independent allowlisted model configuration for every AI seat", 
     opponentCount: 2,
     arenaPaused: true,
     aiPlayers: [
-      { model: "gpt-5.6-sol", reasoningEffort: "max" },
-      { model: "gpt-5.6-terra", reasoningEffort: "low" },
+      { model: "gpt-6.1-sol", reasoningEffort: "max" },
+      { model: "gpt-6.1-terra", reasoningEffort: "low" },
     ],
   });
   const state = game.publicState();
   assert.equal(state.model, "mixed");
   assert.equal(state.reasoningEffort, "mixed");
   assert.deepEqual(state.players.map((player) => player.aiConfig), [
-    { model: "gpt-5.6-sol", reasoningEffort: "max" },
-    { model: "gpt-5.6-terra", reasoningEffort: "low" },
+    { model: "gpt-6.1-sol", reasoningEffort: "max" },
+    { model: "gpt-6.1-terra", reasoningEffort: "low" },
   ]);
 });
 
@@ -143,8 +144,9 @@ test("caps the persistent AI insight transcript", () => {
 });
 
 test("shares public opponent characters with the acting AI but no opponent cards", () => {
-  const game = new PokerGame({ gameMode: "arena", opponentCount: 2, arenaPaused: true });
+  const [first, second] = AI_CHARACTERS;
+  const game = new PokerGame({ gameMode: "arena", opponentCount: 2, arenaPaused: true, aiPlayers: [{ characterId: first.id }, { characterId: second.id }] });
   const snapshot = game.aiSnapshot();
-  assert.match(snapshot.table.players[1].personality, /aggressive/i);
+  assert.equal(snapshot.table.players[1].personality, second.personality);
   assert.equal("holeCards" in snapshot.table.players[1], false);
 });

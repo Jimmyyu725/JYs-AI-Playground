@@ -1,6 +1,7 @@
 import { createDeck, shuffleDeck } from "./cards.js";
 import { resolveSidePots } from "./hand-evaluator.js";
 import { AI_CHARACTERS } from "./platform/characters.js";
+import { seatCharacters } from "./platform/seating.js";
 import { normalizeModelConfig } from "./platform/model-registry.js";
 
 export const BOT_CHARACTERS = AI_CHARACTERS;
@@ -30,16 +31,17 @@ export class PokerGame {
 
     const configuredAIPlayers = Array.isArray(config.aiPlayers) ? config.aiPlayers : [];
     const aiConfigAt = (index) => normalizeModelConfig("holdem", configuredAIPlayers[index] ?? config);
+    const cast = seatCharacters(opponentCount, configuredAIPlayers.map((player) => player?.characterId));
 
     if (this.gameMode === "arena") {
-      this.players = BOT_CHARACTERS.slice(0, opponentCount).map((character, index) =>
+      this.players = cast.map((character, index) =>
         this._makePlayer(index, character.name, false, character, aiConfigAt(index)),
       );
     } else {
       const humanName = String(config.humanName ?? "You").trim().slice(0, 18) || "You";
       this.players = [
         this._makePlayer(0, humanName, true, null),
-        ...BOT_CHARACTERS.slice(0, opponentCount).map((character, index) =>
+        ...cast.map((character, index) =>
           this._makePlayer(index + 1, character.name, false, character, aiConfigAt(index)),
         ),
       ];
@@ -503,6 +505,7 @@ export class PokerGame {
       seat,
       playerName: player.name,
       characterColor: player.character?.color ?? "#d7b66a",
+      characterId: player.character?.id ?? null,
       action: String(action ?? ""),
       summary: player.lastReasoningSummary,
       summarySource: player.lastSummarySource,
@@ -535,6 +538,7 @@ export class PokerGame {
         name: actor.name,
         title: actor.character.title,
         personality: actor.character.personality,
+        voice: actor.character.voice ?? "",
         model: actor.aiConfig.model,
         reasoningEffort: actor.aiConfig.reasoningEffort,
         stack: actor.stack,
@@ -575,6 +579,7 @@ export class PokerGame {
     const modelNames = new Set(aiConfigs.map((config) => config.model));
     const efforts = new Set(aiConfigs.map((config) => config.reasoningEffort));
     return {
+      tableTalk: this.tableTalk ?? [],
       model: modelNames.size === 1 ? aiConfigs[0].model : "mixed",
       reasoningEffort: efforts.size === 1 ? aiConfigs[0].reasoningEffort : "mixed",
       noLocalFallback: true,

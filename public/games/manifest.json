@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "games": [
+    { "id": "holdem", "name": "Texas Hold'em", "nameZh": "德州扑克", "route": "/games/holdem/", "pitch": "No-limit poker against a table of characters who bluff, needle, and fold in their own voices.", "players": { "min": 2, "max": 6 }, "modes": ["human-vs-ai", "arena"], "status": "live" },
+    { "id": "go", "name": "Go", "nameZh": "围棋", "route": "/games/go/", "pitch": "Chinese-rules Go on 9, 13, or 19 lines against a patient, reading opponent.", "players": { "min": 2, "max": 2 }, "modes": ["human-vs-ai", "arena"], "status": "live" },
+    { "id": "wuziqi", "name": "Wuziqi", "nameZh": "五子棋", "route": "/games/wuziqi/", "pitch": "Freestyle five-in-a-row: fast threats, faster blocks.", "players": { "min": 2, "max": 2 }, "modes": ["human-vs-ai", "arena"], "status": "live" },
+    { "id": "doudizhu", "name": "Dou Dizhu", "nameZh": "斗地主", "route": "/games/doudizhu/", "pitch": "Bid for the landlord seat, then hold off two farmers who are working together.", "players": { "min": 3, "max": 3 }, "modes": ["human-vs-ai", "arena"], "status": "live" },
+    { "id": "liars-dice", "name": "Liar's Dice", "nameZh": "大话骰", "route": "/games/liars-dice/", "pitch": "Hidden dice under every cup: raise the bid or call the liar.", "players": { "min": 2, "max": 6 }, "modes": ["human-vs-ai", "arena"], "status": "opening" },
+    { "id": "xiangqi", "name": "Xiangqi", "nameZh": "象棋", "route": "/games/xiangqi/", "pitch": "Chinese chess across the river, with generals confined to their palaces.", "players": { "min": 2, "max": 2 }, "modes": ["human-vs-ai", "arena"], "status": "opening" },
+    { "id": "coup", "name": "Coup", "nameZh": "政变", "route": "/games/coup/", "pitch": "Claim any role, bluff your way to power, and challenge the characters who lie.", "players": { "min": 2, "max": 6 }, "modes": ["human-vs-ai", "arena"], "status": "opening" },
+    { "id": "draw-guess", "name": "Draw & Guess", "nameZh": "你画我猜", "route": "/games/draw-guess/", "pitch": "Sketch a secret word for vision models to guess, or guess what they draw.", "players": { "min": 2, "max": 6 }, "modes": ["human-vs-ai", "arena"], "status": "opening" },
+    { "id": "taiwan-mahjong", "name": "Taiwan Mahjong", "nameZh": "台湾麻将", "route": "/games/taiwan-mahjong/", "pitch": "Sixteen-tile Taiwanese mahjong at a four-seat table of sharp-eyed regulars.", "players": { "min": 4, "max": 4 }, "modes": ["human-vs-ai", "arena"], "status": "opening" }
+  ]
+}

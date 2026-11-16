@@ -94,6 +94,27 @@ async function readResponseStream(response, callbacks) {
 
 export { readResponseStream };
 
+const IMAGE_DATA_URL = /^data:image\/(png|jpeg|webp|gif);base64,[a-z0-9+/=]+$/i;
+const MAX_IMAGE_DATA_URL_LENGTH = 4_000_000;
+
+/** Text-only requests keep the plain string input; an optional image (data URL) becomes a multimodal user message. */
+export function buildInput(input, image) {
+  const text = typeof input === "string" ? input : JSON.stringify(input);
+  if (!image) return text;
+  if (typeof image !== "string" || image.length > MAX_IMAGE_DATA_URL_LENGTH || !IMAGE_DATA_URL.test(image)) {
+    throw new AIDecisionError("The decision image must be a PNG, JPEG, WebP, or GIF data URL under 4 MB", "invalid_image");
+  }
+  return [
+    {
+      role: "user",
+      content: [
+        { type: "input_text", text },
+        { type: "input_image", image_url: image },
+      ],
+    },
+  ];
+}
+
 export async function requestOpenAIStructuredDecision({
   config,
   gameId,
@@ -101,6 +122,7 @@ export async function requestOpenAIStructuredDecision({
   input,
   schemaName,
   schema,
+  image = null,
   maxOutputTokens = 65_536,
 }, callbacks = {}) {
   const { envName, value: apiKey } = apiKeyFor("openai", gameId);
@@ -119,7 +141,7 @@ export async function requestOpenAIStructuredDecision({
         model: config.model,
         reasoning: { effort: config.reasoningEffort, summary: "auto" },
         instructions,
-        input: typeof input === "string" ? input : JSON.stringify(input),
+        input: buildInput(input, image),
         text: {
           format: {
             type: "json_schema",

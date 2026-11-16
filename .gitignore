@@ -2,7 +2,8 @@
 .env.*
 !.env.example
 *.textClipping
-node_modules/
+node_modules
+.claude/
 .imagegen-venv/
 .DS_Store
 coverage/

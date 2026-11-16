@@ -1,0 +1,387 @@
+/* Shared room kit. Each room themes it by overriding these tokens on :root or a room wrapper. */
+@view-transition {
+  navigation: auto;
+}
+
+:root {
+  --kit-bg: #10131a;
+  --kit-surface: color-mix(in oklab, var(--kit-bg) 82%, white 18%);
+  --kit-surface-strong: color-mix(in oklab, var(--kit-bg) 70%, white 30%);
+  --kit-ink: #f4f1ea;
+  --kit-muted: color-mix(in oklab, var(--kit-ink) 62%, transparent);
+  --kit-line: color-mix(in oklab, var(--kit-ink) 16%, transparent);
+  --kit-accent: #7cc4ff;
+  --kit-accent-ink: #08131d;
+  --kit-danger: #ff6b6b;
+  --kit-success: #6be3a4;
+  --kit-radius: 14px;
+  --kit-shadow: 0 18px 50px -20px rgb(0 0 0 / 0.65);
+  --kit-font-body: system-ui, sans-serif;
+  --kit-font-display: var(--kit-font-body);
+  --kit-drawer-width: min(420px, 92vw);
+  --kit-speech-bg: var(--kit-ink);
+  --kit-speech-ink: var(--kit-bg);
+  --kit-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* Drawer: side panel on wide screens, bottom sheet under 720px. Never blocks the room behind it. */
+.kit-drawer {
+  position: fixed;
+  z-index: 40;
+  inset-block: 0;
+  inset-inline-end: 0;
+  inline-size: var(--kit-drawer-width);
+  display: grid;
+  grid-template-rows: auto 1fr;
+  background: color-mix(in oklab, var(--kit-surface) 88%, transparent);
+  backdrop-filter: blur(18px) saturate(1.2);
+  color: var(--kit-ink);
+  font-family: var(--kit-font-body);
+  border-inline-start: 1px solid var(--kit-line);
+  box-shadow: var(--kit-shadow);
+  transition: translate 0.38s var(--kit-ease), opacity 0.3s;
+  container: kit-drawer / inline-size;
+}
+.kit-drawer[data-open="false"] {
+  translate: 104% 0;
+  opacity: 0;
+  pointer-events: none;
+}
+.kit-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px 8px;
+}
+.kit-drawer-title {
+  margin: 0;
+  font: 600 1.15rem/1.2 var(--kit-font-display);
+}
+.kit-drawer-body {
+  overflow: auto;
+  padding: 8px 18px 24px;
+  display: grid;
+  gap: 16px;
+  align-content: start;
+}
+@media (max-width: 720px) {
+  .kit-drawer {
+    inset-block: auto 0;
+    inset-inline: 0;
+    inline-size: auto;
+    max-block-size: 78dvh;
+    border-inline-start: 0;
+    border-block-start: 1px solid var(--kit-line);
+    border-radius: var(--kit-radius) var(--kit-radius) 0 0;
+  }
+  .kit-drawer[data-open="false"] {
+    translate: 0 104%;
+  }
+}
+.kit-drawer-toggle,
+.kit-button {
+  font: 600 0.9rem/1 var(--kit-font-body);
+  color: var(--kit-accent-ink);
+  background: var(--kit-accent);
+  border: 0;
+  border-radius: 999px;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: transform 0.15s var(--kit-ease), filter 0.15s;
+}
+.kit-button:hover,
+.kit-drawer-toggle:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+.kit-icon-button {
+  inline-size: 34px;
+  block-size: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid var(--kit-line);
+  background: transparent;
+  color: var(--kit-ink);
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+.kit-icon-button:hover {
+  background: var(--kit-surface-strong);
+}
+.kit-button:focus-visible,
+.kit-icon-button:focus-visible,
+.kit-drawer-toggle:focus-visible,
+.kit-grid-option:focus-visible,
+.kit-select:focus-visible,
+.kit-input:focus-visible {
+  outline: 2px solid var(--kit-accent);
+  outline-offset: 2px;
+}
+
+/* Seat + portrait. data-size: xs | sm | md | lg. Initials sit under the image and show when it fails. */
+.kit-seat {
+  --seat-size: 72px;
+  position: relative;
+  margin: 0;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  color: var(--kit-ink);
+  font-family: var(--kit-font-body);
+  text-align: center;
+}
+.kit-seat[data-size="xs"] { --seat-size: 44px; }
+.kit-seat[data-size="sm"] { --seat-size: 56px; }
+.kit-seat[data-size="lg"] { --seat-size: 112px; }
+.kit-portrait {
+  position: relative;
+  inline-size: var(--seat-size);
+  block-size: var(--seat-size);
+  border-radius: 50%;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at 30% 25%, color-mix(in oklab, var(--seat-color) 70%, white 30%), var(--seat-color));
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--seat-color) 60%, transparent), 0 8px 22px -10px var(--seat-color);
+  transition: transform 0.25s var(--kit-ease), box-shadow 0.25s;
+}
+.kit-portrait img {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+}
+.kit-initials {
+  font: 700 calc(var(--seat-size) * 0.34) / 1 var(--kit-font-display);
+  color: color-mix(in oklab, var(--seat-color) 25%, black 75%);
+}
+.kit-seat[data-expression="thinking"] .kit-portrait {
+  box-shadow: 0 0 0 3px var(--kit-accent), 0 0 24px -4px var(--kit-accent);
+  animation: kit-pulse 1.6s ease-in-out infinite;
+}
+.kit-seat[data-active="true"] .kit-portrait {
+  transform: scale(1.06);
+}
+.kit-seat-label {
+  display: grid;
+  gap: 2px;
+  max-inline-size: calc(var(--seat-size) * 2.2);
+}
+.kit-seat-name {
+  font-size: 0.85rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.kit-seat-caption {
+  font-size: 0.72rem;
+  color: var(--kit-muted);
+}
+.kit-seat[data-size="xs"] .kit-seat-caption { display: none; }
+@keyframes kit-pulse {
+  50% { box-shadow: 0 0 0 5px color-mix(in oklab, var(--kit-accent) 40%, transparent), 0 0 30px -2px var(--kit-accent); }
+}
+
+/* Character picker */
+.kit-character-picker {
+  display: grid;
+  gap: 10px;
+}
+.kit-pick-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--kit-line);
+  border-radius: var(--kit-radius);
+}
+.kit-pick-row .kit-seat {
+  grid-template-columns: auto 1fr;
+  justify-items: start;
+  text-align: start;
+}
+.kit-grid-panel {
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+  border-radius: var(--kit-radius);
+  background: var(--kit-surface-strong);
+}
+.kit-character-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(78px, 1fr));
+  gap: 8px;
+  max-block-size: 300px;
+  overflow: auto;
+}
+.kit-grid-option {
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: transparent;
+  padding: 6px 2px;
+  cursor: pointer;
+  color: inherit;
+}
+.kit-grid-option:hover,
+.kit-grid-option[aria-pressed="true"] {
+  border-color: var(--kit-accent);
+  background: color-mix(in oklab, var(--kit-accent) 12%, transparent);
+}
+.kit-grid-option .kit-seat-name { font-size: 0.72rem; }
+
+/* Model picker + inputs */
+.kit-model-picker {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 8px;
+}
+@container kit-drawer (max-width: 300px) {
+  .kit-model-picker { grid-template-columns: 1fr; }
+}
+.kit-select,
+.kit-input {
+  inline-size: 100%;
+  min-inline-size: 0;
+  font: 500 0.88rem/1.2 var(--kit-font-body);
+  color: var(--kit-ink);
+  background: var(--kit-surface-strong);
+  border: 1px solid var(--kit-line);
+  border-radius: 10px;
+  padding: 9px 10px;
+}
+
+/* Speech bubble (speech.js). data-placement: top | bottom | left | right. */
+.kit-speech {
+  position: absolute;
+  z-index: 30;
+  inline-size: max-content;
+  max-inline-size: min(260px, 70vw);
+  padding: 8px 12px;
+  border-radius: 14px;
+  background: var(--kit-speech-bg);
+  color: var(--kit-speech-ink);
+  font: 500 0.86rem/1.35 var(--kit-font-body);
+  box-shadow: var(--kit-shadow);
+  cursor: pointer;
+  margin-inline-start: var(--kit-speech-shift, 0px);
+  animation: kit-speech-in 0.32s var(--kit-ease) both;
+}
+.kit-speech::after {
+  content: "";
+  position: absolute;
+  inline-size: 12px;
+  block-size: 12px;
+  background: inherit;
+  rotate: 45deg;
+}
+.kit-speech[data-placement="top"] { inset-block-end: calc(100% + 10px); inset-inline-start: 50%; translate: -50% 0; }
+.kit-speech[data-placement="top"]::after { inset-block-end: -5px; inset-inline-start: calc(50% - 6px - var(--kit-speech-shift, 0px)); }
+.kit-speech[data-placement="bottom"] { inset-block-start: calc(100% + 10px); inset-inline-start: 50%; translate: -50% 0; }
+.kit-speech[data-placement="bottom"]::after { inset-block-start: -5px; inset-inline-start: calc(50% - 6px - var(--kit-speech-shift, 0px)); }
+.kit-speech[data-placement="right"] { inset-inline-start: calc(100% + 10px); inset-block-start: 10%; }
+.kit-speech[data-placement="right"]::after { inset-inline-start: -5px; inset-block-start: 12px; }
+.kit-speech[data-placement="left"] { inset-inline-end: calc(100% + 10px); inset-block-start: 10%; }
+.kit-speech[data-placement="left"]::after { inset-inline-end: -5px; inset-block-start: 12px; }
+.kit-speech.is-leaving { animation: kit-speech-out 0.3s ease both; }
+@keyframes kit-speech-in { from { opacity: 0; scale: 0.85; } }
+@keyframes kit-speech-out { to { opacity: 0; scale: 0.92; } }
+
+/* Toasts */
+.kit-toasts {
+  position: fixed;
+  z-index: 60;
+  inset-block-start: 16px;
+  inset-inline: 16px;
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  pointer-events: none;
+}
+.kit-toast {
+  max-inline-size: min(480px, 100%);
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: var(--kit-surface-strong);
+  color: var(--kit-ink);
+  font: 500 0.9rem/1.3 var(--kit-font-body);
+  border-inline-start: 4px solid var(--kit-accent);
+  box-shadow: var(--kit-shadow);
+  animation: kit-toast-in 0.3s var(--kit-ease) both;
+}
+.kit-toast[data-tone="error"] { border-color: var(--kit-danger); }
+.kit-toast[data-tone="success"] { border-color: var(--kit-success); }
+.kit-toast.is-leaving { opacity: 0; translate: 0 -8px; transition: opacity 0.3s, translate 0.3s; }
+@keyframes kit-toast-in { from { opacity: 0; translate: 0 -12px; } }
+
+/* Transcript */
+.kit-transcript {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-block-size: 0;
+  color: var(--kit-ink);
+  font-family: var(--kit-font-body);
+}
+.kit-transcript-title {
+  margin: 0 0 8px;
+  font: 600 0.8rem/1 var(--kit-font-display);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--kit-muted);
+}
+.kit-transcript-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  display: grid;
+  gap: 6px;
+  align-content: start;
+  max-block-size: 40dvh;
+}
+.kit-transcript-item {
+  font-size: 0.85rem;
+  line-height: 1.4;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.kit-transcript-item[data-kind="talk"] span { font-style: italic; }
+.kit-transcript-item[data-kind="talk"] span::before { content: "“"; }
+.kit-transcript-item[data-kind="talk"] span::after { content: "”"; }
+.kit-transcript-item[data-kind="system"],
+.kit-transcript-item[data-kind="reasoning"] { color: var(--kit-muted); }
+
+/* Back to lobby + mute */
+.kit-back,
+.kit-mute {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--kit-line);
+  background: color-mix(in oklab, var(--kit-surface) 70%, transparent);
+  backdrop-filter: blur(10px);
+  color: var(--kit-ink);
+  font: 600 0.85rem/1 var(--kit-font-body);
+  text-decoration: none;
+  cursor: pointer;
+  view-transition-name: kit-back;
+}
+.kit-mute { view-transition-name: none; }
+.kit-back:hover,
+.kit-mute:hover { background: var(--kit-surface-strong); }
+
+@media (prefers-reduced-motion: reduce) {
+  @view-transition { navigation: none; }
+  .kit-drawer,
+  .kit-portrait,
+  .kit-button,
+  .kit-toast,
+  .kit-speech { transition: none; animation: none; }
+  .kit-seat[data-expression="thinking"] .kit-portrait { animation: none; }
+}

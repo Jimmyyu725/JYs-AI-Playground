@@ -42,6 +42,7 @@ export async function requestGoDecision(snapshot, modelConfig, callbacks = {}) {
   const response = await requestStructuredDecision({
     gameId: "go",
     modelConfig,
+    tableTalk: { voice: snapshot.actor?.voice ?? "" },
     instructions: instructions(snapshot),
     input: snapshot,
     schemaName: "go_decision",
@@ -73,6 +74,7 @@ export async function requestGoDecision(snapshot, modelConfig, callbacks = {}) {
     reasoningSummary: response.reasoningSummary,
     reasoningSource: response.reasoningSource,
     responseId: response.responseId,
+    tableTalk: response.tableTalk ?? null,
   };
 }
 

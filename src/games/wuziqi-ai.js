@@ -26,6 +26,7 @@ export async function requestWuziqiDecision(snapshot, modelConfig, callbacks = {
   const response = await requestStructuredDecision({
     gameId: "wuziqi",
     modelConfig,
+    tableTalk: { voice: snapshot.actor?.voice ?? "" },
     instructions: instructions(snapshot),
     input: snapshot,
     schemaName: "wuziqi_decision",
@@ -47,5 +48,6 @@ export async function requestWuziqiDecision(snapshot, modelConfig, callbacks = {
     reasoningSummary: response.reasoningSummary,
     reasoningSource: response.reasoningSource,
     responseId: response.responseId,
+    tableTalk: response.tableTalk ?? null,
   };
 }

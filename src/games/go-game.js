@@ -1,4 +1,4 @@
-import { AI_CHARACTERS } from "../platform/characters.js";
+import { seatCharacters } from "../platform/seating.js";
 import { normalizeModelConfig } from "../platform/model-registry.js";
 
 const COLORS = Object.freeze(["black", "white"]);
@@ -56,6 +56,7 @@ export class GoGame {
     this.saveStatus = { savedAt: null, error: null, restored: false };
 
     const requestedAI = Array.isArray(config.aiPlayers) ? config.aiPlayers : [];
+    const cast = seatCharacters(this.gameMode === "human" ? 1 : 2, requestedAI.map((player) => player?.characterId));
     let aiIndex = 0;
     this.players = COLORS.map((color, colorIndex) => {
       const isHuman = this.gameMode === "human" && color === this.humanColor;
@@ -69,7 +70,7 @@ export class GoGame {
           lastAction: "",
         };
       }
-      const character = AI_CHARACTERS[colorIndex === 0 ? 0 : 2];
+      const character = cast[aiIndex];
       const player = {
         color,
         name: character.name,
@@ -345,6 +346,7 @@ export class GoGame {
       color,
       playerName: player.name,
       characterColor: player.character.color,
+      characterId: player.character?.id ?? null,
       model: player.aiConfig.model,
       reasoningEffort: player.aiConfig.reasoningEffort,
       summary: String(summary ?? "").trim(),
@@ -450,6 +452,7 @@ export class GoGame {
         name: actor.name,
         title: actor.character.title,
         personality: actor.character.personality,
+        voice: actor.character.voice ?? "",
       },
       players: this.players.map((player) => ({
         color: player.color,
@@ -467,6 +470,7 @@ export class GoGame {
     const models = new Set(aiConfigs.map((config) => config.model));
     const efforts = new Set(aiConfigs.map((config) => config.reasoningEffort));
     return {
+      tableTalk: this.tableTalk ?? [],
       gameId: "go",
       gameMode: this.gameMode,
       boardSize: this.boardSize,

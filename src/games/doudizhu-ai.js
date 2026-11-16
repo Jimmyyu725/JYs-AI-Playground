@@ -85,6 +85,7 @@ export async function requestDoudizhuBid(snapshot, modelConfig, callbacks = {}) 
   const response = await requestStructuredDecision({
     gameId: "doudizhu",
     modelConfig,
+    tableTalk: { voice: snapshot.actor?.voice ?? "" },
     instructions: bidInstructions(snapshot),
     input: snapshot,
     schemaName: "doudizhu_bid",
@@ -107,6 +108,7 @@ export async function requestDoudizhuBid(snapshot, modelConfig, callbacks = {}) 
     explanation: String(decision.explanation ?? "Bid decided.").slice(0, 420),
     reasoningSummary: response.reasoningSummary,
     responseId: response.responseId,
+    tableTalk: response.tableTalk ?? null,
   };
 }
 
@@ -171,6 +173,7 @@ export async function requestDoudizhuPlay(snapshot, modelConfig, callbacks = {})
   const response = await requestStructuredDecision({
     gameId: "doudizhu",
     modelConfig,
+    tableTalk: { voice: snapshot.actor?.voice ?? "" },
     instructions: playInstructions(snapshot),
     input: snapshot,
     schemaName: "doudizhu_play",
@@ -182,6 +185,7 @@ export async function requestDoudizhuPlay(snapshot, modelConfig, callbacks = {})
     explanation: String(response.output.explanation ?? "Decision complete.").slice(0, 420),
     reasoningSummary: response.reasoningSummary,
     responseId: response.responseId,
+    tableTalk: response.tableTalk ?? null,
   };
 }
 
