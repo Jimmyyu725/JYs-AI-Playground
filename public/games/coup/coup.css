@@ -1073,6 +1073,22 @@ body[data-mode="arena"] .stage {
   pointer-events: none;
 }
 
+.mask-seat[data-claimant="true"] {
+  border-color: var(--gilt);
+  box-shadow: 0 0 0 2px var(--gilt-deep), 0 0 0 5px rgb(22 12 7 / 0.8), 0 0 0 6px var(--gilt), 0 0 44px -4px rgb(217 160 70 / 0.7), var(--kit-shadow);
+  animation: mirror-glow 2.8s ease-in-out infinite;
+}
+
+@keyframes mirror-glow {
+  50% { box-shadow: 0 0 0 2px var(--gilt-deep), 0 0 0 5px rgb(22 12 7 / 0.8), 0 0 0 6px var(--gilt-light), 0 0 60px -2px rgb(217 160 70 / 0.85), var(--kit-shadow); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mask-seat[data-claimant="true"] {
+    animation: none;
+  }
+}
+
 .reveal-layer:has(.reveal:not(.leaving)) {
   background: radial-gradient(60% 70% at 50% 50%, rgb(10 5 2 / 0.72), rgb(10 5 2 / 0.25) 70%, transparent);
   animation: reveal-in 0.4s var(--kit-ease);

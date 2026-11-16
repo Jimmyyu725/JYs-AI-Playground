@@ -153,6 +153,9 @@ function renderCourt() {
     const player = state.players[entry.seat];
     node.dataset.alive = String(player.alive);
     node.dataset.active = String(state.activeSeat === entry.seat && !state.over);
+    // The gilded mirror: whoever's claim is open to challenge right now.
+    const claimant = state.phase === "challenge_action" ? state.pendingAction?.actor : state.phase === "challenge_block" ? state.block?.seat : null;
+    node.dataset.claimant = String(claimant === entry.seat);
     const awaited = state.awaitingSeats.includes(entry.seat) && !state.over;
     if (node.dataset.awaited !== String(awaited)) node.dataset.awaited = String(awaited);
     bumpPurse(node.parts.purse, entry.seat, player.coins);
