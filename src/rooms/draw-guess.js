@@ -6,7 +6,7 @@ import express from "express";
 
 import { applyAction, fromSave, createDrawGuessGame, guesserIsActive, guesserSeats, imageRequestFor, revealAt, seatKnowsWord, systemActions, toSave, validateAction, viewFor, visionInputFor } from "../games/draw-guess/engine.js";
 import { blurredPngDataUrl } from "../games/draw-guess/png-blur.js";
-import { generateRoundImage, requestDrawGuessDecision } from "../games/draw-guess/room-ai.js";
+import { generateRoundImage, requestDrawGuessDecision, requestGameReview } from "../games/draw-guess/room-ai.js";
 import { normalizeModelConfig } from "../platform/model-registry.js";
 import { createMatchRecorder, createSSEChannel, httpError, participantFrom, publicError } from "../platform/room-kit.js";
 import { seatCharacters } from "../platform/seating.js";
@@ -626,6 +626,47 @@ export function register(app, ctx) {
       pump();
     } catch (error) {
       next(error);
+    }
+  });
+
+  // After the game: one AI sitter reviews the whole sitting in character.
+  app.post("/api/draw-guess/review", async (request, response, next) => {
+    try {
+      const current = requireTable();
+      if (current.state.phase !== "game_over") throw httpError(409, "Reviews open once the game is over");
+      const seat = Number(request.body?.seat);
+      const player = current.players[seat];
+      if (!player || player.isHuman) throw httpError(400, "Pick an AI sitter to review the game");
+      if (current.reviewing) throw httpError(409, "A review is already being written");
+      current.reviewing = true;
+      current.thinking = { ...current.thinking, [seat]: { status: "Writing a review…", startedAt: Date.now() } };
+      broadcastState();
+      const game = {
+        players: current.players.map((entry, index) => ({ seat: index, name: entry.name, score: current.state.seats[index].score, isHuman: entry.isHuman })),
+        rounds: current.state.history.map((round) => ({
+          number: round.number,
+          drawer: nameOf(round.drawerSeat),
+          word: round.word,
+          difficulty: round.difficulty,
+          description: round.prompt ?? (round.imageRef ? "(hand sketch)" : null),
+          solvedInOrder: round.solvedOrder.map(nameOf),
+          points: Object.fromEntries(Object.entries(round.points).map(([key, value]) => [nameOf(Number(key)), value])),
+          endReason: round.endReason,
+        })),
+        reviewer: player.name,
+      };
+      try {
+        const text = await requestGameReview({ character: player.character, modelConfig: player.aiConfig, game });
+        if (table === current) addLog(text, { kind: "review", who: `${player.name} reviews the sitting` });
+        response.json({ review: text });
+      } finally {
+        current.reviewing = false;
+        const { [seat]: _done, ...rest } = current.thinking;
+        current.thinking = rest;
+        if (table === current) broadcastState();
+      }
+    } catch (error) {
+      next(error.status ? error : httpError(502, publicError(error)));
     }
   });
 

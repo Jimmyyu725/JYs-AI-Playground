@@ -93,3 +93,18 @@ export async function generateRoundImage(prompt, { quality = "low", fetchImpl = 
   if (typeof b64 !== "string" || !b64) throw new AIDecisionError("The image model returned no picture", "image_error");
   return Buffer.from(b64, "base64");
 }
+
+/** Post-game review in the character's voice. `game` is the finished, fully public table summary. */
+export async function requestGameReview({ character, modelConfig, game, request = requestStructuredDecision }) {
+  const response = await request({
+    gameId: GAME_ID,
+    modelConfig,
+    instructions: `You are ${character.name}, ${character.title}, just after a game of Draw & Guess (你画我猜). Personality: ${character.personality}\nVoice: ${character.voice}\nReview the finished game for the table in your own voice: which pictures or descriptions worked, which guesses were clever or unlucky, and one tip for next time. Refer to real rounds from the summary only; never invent events. At most 110 words, no lists.`,
+    input: game,
+    schemaName: "draw_guess_review",
+    schema: { type: "object", properties: { review: { type: "string", maxLength: 900 } }, required: ["review"], additionalProperties: false },
+  });
+  const review = String(response.output?.review ?? "").trim();
+  if (!review) throw new AIDecisionError("The model returned an empty review", "empty_output");
+  return review;
+}

@@ -387,7 +387,25 @@ function resultsPanel(view) {
   const again = el("button", "hang", "Another sitting");
   again.type = "button";
   again.addEventListener("click", () => setupDrawer.open());
-  wrap.append(list, again);
+  const reviews = el("div", "review-row");
+  for (const player of state.players.filter((entry) => !entry.isHuman)) {
+    const ask = el("button", "ghost", `Ask ${player.name} to review`);
+    ask.type = "button";
+    ask.addEventListener("click", async () => {
+      reviews.querySelectorAll("button").forEach((button) => { button.disabled = true; });
+      try {
+        const { review } = await post("/review", { seat: player.seat });
+        const node = seatNodes.get(player.seat);
+        if (node) speak(node.card, review, { placement: matchMedia("(max-width: 760px)").matches ? "bottom" : "right", duration: 14000 });
+      } catch (error) {
+        toast(error.message, { tone: "error" });
+      } finally {
+        reviews.querySelectorAll("button").forEach((button) => { button.disabled = false; });
+      }
+    });
+    reviews.append(ask);
+  }
+  wrap.append(list, reviews, again);
   return wrap;
 }
 
@@ -643,6 +661,7 @@ function render(next) {
     if (mine.length > lastOwnGuesses && mine.at(-1)?.close && !mine.at(-1).correct) toast("So close! One letter off.", { tone: "info" });
     lastOwnGuesses = mine.length;
   }
+  document.body.dataset.phase = next.view.phase;
   const phaseChanged = previous?.view?.phase !== next.view.phase || previous?.tableId !== next.tableId;
   updateSeats();
   updateSlips();
@@ -932,7 +951,7 @@ async function boot() {
   const initial = await fetch(`${API}/state`).then((response) => response.json()).catch(() => null);
   if (initial) {
     render(initial);
-    if (initial.view.phase !== "game_over") setupDrawer.close();
+    setupDrawer.close();
   } else {
     renderFrame();
   }

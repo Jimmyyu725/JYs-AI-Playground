@@ -177,7 +177,8 @@ body {
   text-shadow: 0 1px 10px rgb(61 31 20 / 0.7);
 }
 
-/* Seats: paper cards pinned to the wall. */
+/* Seats: paper cards pinned to the wall. Above the stage so speech bubbles overlap the frame. */
+.sitters { position: relative; z-index: 4; min-width: 0; }
 .seat-row { display: grid; gap: 10px; }
 
 .sitter {
@@ -218,8 +219,8 @@ body {
 .sitter-name { font: 700 1.25rem/1 var(--hand); color: var(--charcoal); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sitter-caption { font-size: 0.72rem; color: var(--kit-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sitter-caption[data-busy="true"] { color: var(--zinc); }
-.sitter-caption[data-busy="true"]::before { content: "✎ "; display: inline-block; animation: scribble 0.9s ease-in-out infinite; }
-@keyframes scribble { 50% { translate: 2px -1px; rotate: -12deg; } }
+.sitter-caption[data-busy="true"]::before { content: ""; display: inline-block; width: 6px; height: 6px; margin-right: 5px; border-radius: 50%; background: var(--amber); vertical-align: 1px; animation: scribble 0.9s ease-in-out infinite; }
+@keyframes scribble { 50% { scale: 0.5; opacity: 0.5; } }
 .sitter-score { font: 700 1.5rem/1 var(--kit-font-display); font-variant-numeric: tabular-nums; color: var(--terracotta); }
 .sitter-role { position: absolute; top: -8px; right: 10px; font: 600 0.62rem/1 var(--kit-font-body); text-transform: uppercase; letter-spacing: 0.08em; background: var(--amber); color: var(--umber); padding: 4px 6px; border-radius: 2px; }
 .sitter .kit-speech { z-index: 30; }
@@ -501,6 +502,10 @@ body {
 .slip[data-kind="system"] .slip-text { font: 500 0.82rem/1.35 var(--kit-font-body); color: var(--paper); }
 .slip[data-kind="talk"] .slip-text { font: italic 500 0.95rem/1.35 var(--kit-font-display); }
 .slip[data-kind="talk"] { background: var(--apricot); }
+.slip[data-kind="review"] { background: #fffaf0 url("/assets/rooms/draw-guess/paper-tile.webp") 0 0 / 420px; box-shadow: inset 4px 0 0 var(--zinc), 0 10px 16px -10px rgb(61 31 20 / 0.8); }
+.slip[data-kind="review"] .slip-text { font: 500 0.92rem/1.45 var(--kit-font-display); }
+.review-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-bottom: 12px; }
+.review-row .ghost { padding: 8px 12px; font-size: 0.8rem; }
 .slip[data-correct="true"] { background: color-mix(in oklab, var(--amber) 60%, #fbf5e6); }
 @keyframes pin { from { translate: 0 -10px; opacity: 0; rotate: 4deg; } }
 
@@ -541,6 +546,7 @@ body {
   .sitters { grid-column: 1 / -1; }
   .seat-row { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
   .salon { display: none; }
+  body[data-phase="game_over"] .salon { display: block; }
 }
 
 @media (max-width: 760px) {
@@ -560,7 +566,8 @@ body {
   .tools { grid-template-columns: auto 1fr; grid-template-areas: "palette brushes" "buttons buttons"; }
   .palette { width: 120px; }
   .slips { max-height: 60vh; }
-  .salon { display: block; }
+  .salon { display: none; }
+  body[data-phase="game_over"] .salon, body[data-phase="round_over"] .salon { display: block; }
 }
 
 @media (prefers-reduced-motion: reduce) {
