@@ -81,7 +81,6 @@ export function buildAiView(state, seat, options = {}) {
   const round = state.round;
   const me = state.seats[seat];
   const isDrawer = seat === round.drawerSeat;
-  const knows = seatKnowsWord(state, seat);
   const word = round.wordId ? wordById(state, round.wordId) : null;
   const view = {
     game: "Draw & Guess",
@@ -136,7 +135,6 @@ export function buildAiView(state, seat, options = {}) {
       solvedBy: round.solvedOrder.map((solvedSeat) => state.seats[solvedSeat].name),
     };
   }
-  if (knows && !view.drawing && !isDrawer) view.knownWord = word.word;
   return view;
 }
 
