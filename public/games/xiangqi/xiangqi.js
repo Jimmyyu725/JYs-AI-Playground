@@ -870,6 +870,7 @@ async function boot() {
   else {
     document.body.dataset.empty = "true";
     $("pieces").replaceChildren(...parseBoard(INITIAL_FEN).flatMap((piece, square) => (piece ? [pieceNode(piece, square)] : [])));
+    $("status-actions").append(button("Set the table", () => setup.open(), "primary"));
     setup.open();
   }
   connect();
