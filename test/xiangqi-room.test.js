@@ -154,7 +154,7 @@ test("an unparseable structured answer is retried like an illegal move", async (
     gateway: async (request) => {
       count += 1;
       if (count === 1) throw new AIDecisionError("The model's structured decision could not be parsed", "invalid_json");
-      assert.match(request.instructions, /AUTOMATIC RETRY 1\/2: The model's structured decision could not be parsed/);
+      assert.match(request.instructions, /AUTOMATIC RETRY 1\/2: your previous answer was rejected: The model's structured decision could not be parsed/);
       return reply({ move: "b0c2", choice: null, explanation: "Horse out." });
     },
   });
