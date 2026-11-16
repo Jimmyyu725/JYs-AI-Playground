@@ -512,7 +512,13 @@ export function restoreLiarsDiceState(saved) {
   requireSaved(state.game === GAME_ID, "wrong game");
   requireSaved(state.version === STATE_VERSION, "unsupported version");
   requireSaved(state.phase === "bidding" || state.phase === "complete", "phase is invalid");
-  const rules = normalizeRules(state.rules);
+  requireSaved(state.rules && typeof state.rules === "object", "rules are missing");
+  let rules;
+  try {
+    rules = normalizeRules(state.rules);
+  } catch {
+    requireSaved(false, "rules are invalid");
+  }
   requireSaved(Object.keys(DEFAULT_RULES).every((key) => rules[key] === state.rules[key]), "rules are invalid");
   requireSaved(Array.isArray(state.seats) && state.seats.length >= MIN_SEATS && state.seats.length <= MAX_SEATS, "seat count is invalid");
   state.seats.forEach((seat, index) => {
