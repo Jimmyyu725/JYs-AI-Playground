@@ -1,6 +1,6 @@
 // The corridor: one door per room from /api/games, a random trio of regulars, and the top of the ladder.
 import { entrantLabel, isOpen, numberWord, pickTrio, playersLabel, roomLight } from "/assets/lobby/house-data.js";
-import { el, getJSON, loadCast, mountHouseBar, portrait, reducedMotion, sfx, swap } from "/assets/lobby/house-ui.js";
+import { el, getJSON, loadCast, mountHouseBar, portrait, probeOptIn, reducedMotion, sfx, swap } from "/assets/lobby/house-ui.js";
 
 const doorRow = document.querySelector("#door-row");
 const trioList = document.querySelector("#trio-list");
@@ -45,7 +45,10 @@ function door(game, index) {
 
   node.append(frame, el("span", "door-spill"), plaque, pitch, foot);
   node.setAttribute("aria-label", `${game.name}${game.nameZh ? ` ${game.nameZh}` : ""}: ${open ? "enter the room" : "opening soon"}. ${game.pitch ?? ""}`);
-  if (open) node.addEventListener("click", (event) => walkThrough(event, node));
+  if (open) {
+    node.addEventListener("click", (event) => walkThrough(event, node));
+    for (const type of ["pointerenter", "focus", "touchstart"]) node.addEventListener(type, () => probeOptIn(game.route), { once: true, passive: true });
+  }
   slot.append(node);
   return slot;
 }

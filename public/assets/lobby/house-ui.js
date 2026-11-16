@@ -79,6 +79,33 @@ export async function mountHouseBar() {
   }
 }
 
+// A cross-document View Transition into a page that has not opted in (@view-transition, which
+// /shared/kit.css carries) logs an abort error on that page. Room pages are probed before the
+// walk-through (see probeOptIn), and the transition is skipped for any room not known to opt in.
+const optIn = new Map();
+
+export function probeOptIn(route) {
+  const path = new URL(route, location.href).pathname;
+  if (!optIn.has(path)) {
+    optIn.set(path, false);
+    fetch(path)
+      .then((response) => (response.ok ? response.text() : ""))
+      .then((html) => optIn.set(path, /\/shared\/kit\.css|@view-transition/.test(html)))
+      .catch(() => {});
+  }
+}
+
+function quietTransition(event) {
+  const transition = event.viewTransition;
+  if (!transition) return;
+  for (const promise of [transition.ready, transition.finished, transition.updateCallbackDone]) promise?.catch(() => {});
+  if (event.type !== "pageswap") return;
+  const path = new URL(event.activation?.entry?.url ?? location.href).pathname;
+  if (path.startsWith("/games/") && optIn.get(path) !== true) transition.skipTransition();
+}
+addEventListener("pageswap", quietTransition);
+addEventListener("pagereveal", quietTransition);
+
 /** Run a DOM swap inside a same-document View Transition when the browser supports it. */
 export function swap(update) {
   if (!document.startViewTransition || reducedMotion()) {
