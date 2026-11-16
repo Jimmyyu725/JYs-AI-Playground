@@ -718,7 +718,7 @@ function connect() {
 function say({ speaker, text }) {
   const block = seatElements[speaker]?.closest(".seat-inner");
   if (!block) return;
-  const phone = matchMedia("(max-width: 760px)").matches;
+  const phone = matchMedia("(max-width: 900px)").matches;
   const isTop = block.parentElement?.id === "seat-top";
   speak(block, text, { placement: phone ? (isTop ? "bottom" : "top") : "right" });
 }

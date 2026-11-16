@@ -1082,25 +1082,13 @@ body[data-flipped="true"] .glyph {
 
 /* ------------------------------------------------------------------ phones */
 
-@media (max-width: 760px) {
+@media (max-width: 900px) {
   body {
     font-size: 14px;
   }
-  .xq-top {
-    grid-template-columns: auto 1fr;
-    grid-template-areas: "title tools" "nav nav";
-    padding-top: 10px;
-    row-gap: 4px;
-  }
-  .xq-title { grid-area: title; }
-  .xq-tools { grid-area: tools; }
-  .xq-nav { grid-area: nav; display: none; }
-  .xq-title .brush { font-size: 2rem; }
-  .xq-title .latin { font-size: 1.1rem; }
-  .xq-title small { font-size: 0.8rem; }
-  .kit-drawer-toggle { padding: 9px 14px; }
   .xq-main {
-    --board-w: calc(100vw - 24px);
+    --board-w: min(calc(100vw - 24px), 640px);
+    justify-content: center;
     grid-template-columns: var(--board-w);
     grid-template-rows: none;
     grid-template-areas: "top" "board" "bottom" "status" "scroll";
