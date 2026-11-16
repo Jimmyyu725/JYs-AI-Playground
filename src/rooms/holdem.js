@@ -1,3 +1,5 @@
+import fs from "node:fs/promises";
+import path from "node:path";
 import { PokerGame } from "../poker-game.js";
 import { requestHoldemDecision } from "../openai-player.js";
 import { pushTableTalk } from "../platform/table-talk.js";
@@ -174,6 +176,29 @@ async function runAIChain(version) {
 
 export function register(app, ctx) {
   recordOnce = createMatchRecorder(ctx.results, id);
+
+  // Which portrait expressions exist, so the page never requests a missing one (each would log a 404).
+  let portraitCache = { at: 0, value: null };
+  app.get("/api/holdem/portraits", async (_request, response, next) => {
+    try {
+      if (!portraitCache.value || Date.now() - portraitCache.at > 60_000) {
+        const root = path.join(ctx.rootDir, "public", "assets", "characters");
+        const folders = await fs.readdir(root, { withFileTypes: true }).catch(() => []);
+        const entries = await Promise.all(
+          folders
+            .filter((entry) => entry.isDirectory())
+            .map(async (entry) => {
+              const files = await fs.readdir(path.join(root, entry.name)).catch(() => []);
+              return [entry.name, files.filter((file) => file.endsWith(".webp")).map((file) => file.slice(0, -5))];
+            }),
+        );
+        portraitCache = { at: Date.now(), value: Object.fromEntries(entries) };
+      }
+      response.json(portraitCache.value);
+    } catch (error) {
+      next(error);
+    }
+  });
   app.get("/api/state", (_request, response) => {
     response.json(game ? game.publicState() : null);
   });
