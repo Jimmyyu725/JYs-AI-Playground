@@ -200,7 +200,7 @@ test("all chows needs a two-sided wait, no honors, no flowers, and a discard win
 
 test("all pungs (碰碰胡) is chosen over the chow reading of the same tiles", () => {
   const scored = scoreHand({ ...base, concealed: t("1m 1m 1m 2m 2m 2m 3m 3m 3m 4p 4p 4p 6s 6s 6s 9s 9s"), winTile: "6s" });
-  assert.deepEqual(fanMap(scored), { concealed: 1, allPungs: 4 });
+  assert.deepEqual(fanMap(scored), { concealed: 1, allPungs: 4, fourConcealedPungs: 5 });
 });
 
 test("exposed melds: self-drawn 1, no concealed bonus; kongs count as pungs", () => {
@@ -211,7 +211,7 @@ test("exposed melds: self-drawn 1, no concealed bonus; kongs count as pungs", ()
     concealed: t("5m 5m 5m 7p 7p 7p 3s 3s 3s 9m 9m"),
     winTile: "9m",
   });
-  assert.deepEqual(fanMap(scored), { selfDraw: 1, allPungs: 4 });
+  assert.deepEqual(fanMap(scored), { selfDraw: 1, allPungs: 4, threeConcealedPungs: 2, singleWait: 1 });
 });
 
 test("a concealed kong keeps the hand concealed (門清)", () => {
@@ -238,7 +238,9 @@ test("full flush (清一色)", () => {
   const scored = scoreHand({ ...base, concealed: t("1m 1m 1m 2m 3m 4m 5m 6m 7m 8m 8m 8m 9m 9m 9m 5m 5m"), winTile: "2m" });
   assert.equal(fanMap(scored).fullFlush, 8);
   assert.equal(fanMap(scored).halfFlush, undefined);
-  assert.equal(scored.tai, 9);
+  assert.equal(fanMap(scored).threeConcealedPungs, 2);
+  assert.equal(fanMap(scored).singleWait, undefined, "3m-4m waited on 2m or 5m");
+  assert.equal(scored.tai, 11);
 });
 
 test("all honors (字一色) beats the flush checks", () => {
@@ -250,15 +252,18 @@ test("all honors (字一色) beats the flush checks", () => {
     winTile: "NW",
   });
   assert.equal(fanMap(scored).allHonors, 16);
-  assert.equal(fanMap(scored).dragonPung, 3);
+  assert.equal(fanMap(scored).dragonPung, undefined);
+  assert.equal(fanMap(scored).bigDragons, 8);
   assert.equal(fanMap(scored).allPungs, 4);
+  assert.equal(fanMap(scored).fiveConcealedPungs, 8);
+  assert.equal(fanMap(scored).singleWait, 1);
 });
 
 test("seat wind and round wind pungs stack when they are the same wind", () => {
   const hand = t("EW EW EW 1m 2m 3m 4p 5p 6p 7s 8s 9s 2s 3s 4s 9m 9m");
-  assert.deepEqual(fanMap(scoreHand({ ...base, seatWind: 0, roundWind: 0, concealed: hand, winTile: "9m" })), { concealed: 1, seatWind: 1, roundWind: 1 });
-  assert.deepEqual(fanMap(scoreHand({ ...base, seatWind: 1, roundWind: 0, concealed: hand, winTile: "9m" })), { concealed: 1, roundWind: 1 });
-  assert.deepEqual(fanMap(scoreHand({ ...base, seatWind: 2, roundWind: 1, concealed: hand, winTile: "9m" })), { concealed: 1 });
+  assert.deepEqual(fanMap(scoreHand({ ...base, seatWind: 0, roundWind: 0, concealed: hand, winTile: "9m" })), { concealed: 1, seatWind: 1, roundWind: 1, singleWait: 1 });
+  assert.deepEqual(fanMap(scoreHand({ ...base, seatWind: 1, roundWind: 0, concealed: hand, winTile: "9m" })), { concealed: 1, roundWind: 1, singleWait: 1 });
+  assert.deepEqual(fanMap(scoreHand({ ...base, seatWind: 2, roundWind: 1, concealed: hand, winTile: "9m" })), { concealed: 1, singleWait: 1 });
 });
 
 test("seat flowers (正花): flower and season matching the seat wind, 1 tai each", () => {
@@ -385,10 +390,10 @@ test("win beats pung, and the nearest seat in turn order wins a double ron", () 
   assert.equal(result.winner, 2);
   assert.equal(result.from, 0);
   assert.equal(result.winTile, "5p");
-  assert.deepEqual(fanMap(result), { concealed: 1, roundWind: 1 });
+  assert.deepEqual(fanMap(result), { concealed: 1, roundWind: 1, singleWait: 1 });
   assert.deepEqual(result.dealerFans.map((fan) => fan.key), ["dealer"]);
-  assert.deepEqual(result.payments, [{ payer: 0, tai: 3, dealerTai: 1, amount: 600 }]);
-  assert.deepEqual(state.scores, [-600, 0, 600, 0]);
+  assert.deepEqual(result.payments, [{ payer: 0, tai: 4, dealerTai: 1, amount: 700 }]);
+  assert.deepEqual(state.scores, [-700, 0, 700, 0]);
   assert.equal(state.players[2].hand.length, 17);
   assert.deepEqual(result.next, { dealer: 1, dealerStreak: 0, roundWind: 0 });
   assert.equal(totalTiles(state), 144);
@@ -401,8 +406,8 @@ test("when the nearer winner passes, the farther winner takes the tile", () => {
   state = act(state, 2, { type: "pass" });
   state = act(state, 3, { type: "win" });
   assert.equal(state.result.winner, 3);
-  assert.deepEqual(fanMap(state.result), { concealed: 1, dragonPung: 1 });
-  assert.equal(state.result.payments[0].amount, 300 + 100 * 3);
+  assert.deepEqual(fanMap(state.result), { concealed: 1, dragonPung: 1, singleWait: 1 });
+  assert.equal(state.result.payments[0].amount, 300 + 100 * 4);
 });
 
 test("when every winner passes, the pung goes through", () => {
@@ -531,16 +536,16 @@ test("dealer continuation (連莊) adds 2 tai per streak on dealer payments", ()
   let state = scripted({ hands: DEALER_WIN_HANDS, front: ["9s"] });
   assert.deepEqual(types(getLegalActions(state, 0)).slice(0, 1), ["win"], "a dealt winning hand may win at once");
   state = act(state, 0, { type: "win" });
-  assert.deepEqual(state.result.payments.map((payment) => payment.amount), [700, 700, 700]);
+  assert.deepEqual(state.result.payments.map((payment) => payment.amount), [800, 800, 800]);
   assert.deepEqual(state.result.next, { dealer: 0, dealerStreak: 1, roundWind: 0 });
   const wall = arrangeWall({ dealer: 0, hands: DEALER_WIN_HANDS, front: ["9s"] }, createSeededRng(3));
   state = startNextHand(state, { wall });
   assert.equal(state.dealerStreak, 1);
   state = act(state, 0, { type: "win" });
   assert.deepEqual(state.result.payments.map((payment) => payment.dealerTai), [3, 3, 3]);
-  assert.deepEqual(state.result.payments.map((payment) => payment.amount), [900, 900, 900]);
+  assert.deepEqual(state.result.payments.map((payment) => payment.amount), [1000, 1000, 1000]);
   assert.deepEqual(state.result.dealerFans.map((fan) => [fan.key, fan.tai]), [["dealer", 1], ["dealerStreak", 2]]);
-  assert.deepEqual(state.scores, [4800, -1600, -1600, -1600]);
+  assert.deepEqual(state.scores, [5400, -1800, -1800, -1800]);
   assert.deepEqual(state.history.map((entry) => entry.dealerStreak), [0, 1]);
 });
 
@@ -668,8 +673,8 @@ test("robbing a kong (搶槓): the waiting seat wins off the added tile", () => 
   state = act(state, 3, { type: "win" });
   assert.equal(state.result.type, "robbingKong");
   assert.equal(state.result.from, 2);
-  assert.deepEqual(fanMap(state.result), { concealed: 1, dragonPung: 1, robbingKong: 1 });
-  assert.deepEqual(state.result.payments, [{ payer: 2, tai: 3, dealerTai: 0, amount: 600 }]);
+  assert.deepEqual(fanMap(state.result), { concealed: 1, dragonPung: 1, robbingKong: 1, singleWait: 1 });
+  assert.deepEqual(state.result.payments, [{ payer: 2, tai: 4, dealerTai: 0, amount: 700 }]);
   assert.equal(state.players[2].melds[0].type, "pung", "a robbed kong stays a pung");
   assert.equal(totalTiles(state), 144);
 });
@@ -743,4 +748,82 @@ test("random play keeps 144 tiles, zero-sum scores, and always reaches game over
     for (const entry of state.history) outcomes.add(entry.type);
   }
   assert.ok(outcomes.has("exhaustiveDraw"));
+});
+
+// ---------------------------------------------------------------------------
+// Wait shape, concealed pungs, dragons and winds, all melded
+
+test("single wait (獨聽) scores 1 tai; a two-sided or double-pung wait does not", () => {
+  const edge = scoreHand({ ...base, concealed: t("1m 2m 3m 5m 6m 7m 2p 3p 4p 6p 7p 8p 3s 4s 5s 9s 9s"), winTile: "3m" });
+  assert.equal(fanMap(edge).singleWait, 1, "1-2 waiting on 3 is an edge wait");
+  const closed = scoreHand({ ...base, concealed: t("1m 2m 3m 5m 6m 7m 2p 3p 4p 6p 7p 8p 3s 4s 5s 9s 9s"), winTile: "6m" });
+  assert.equal(fanMap(closed).singleWait, 1, "5_7 waiting on 6 is a closed wait");
+  const twoSided = scoreHand({ ...base, concealed: t("1m 2m 3m 4m 5m 6m 2p 3p 4p 6p 7p 8p 3s 4s 5s 9s 9s"), winTile: "4m" });
+  assert.equal(fanMap(twoSided).singleWait, undefined);
+  const shanpon = scoreHand({ ...base, concealed: t("2m 3m 4m 5m 6m 7m 2p 3p 4p 6p 6p 6p 3s 3s 3s 9s 9s"), winTile: "3s" });
+  assert.equal(fanMap(shanpon).singleWait, undefined, "3s or 9s could complete it");
+});
+
+test("concealed pungs (暗刻): a pung finished by a discard is exposed, a self-drawn one is not", () => {
+  const hand = t("2m 2m 2m 5p 5p 5p 7s 7s 7s 1m 2m 3m 4p 5p 6p 9s 9s");
+  const discard = scoreHand({ ...base, concealed: hand, winTile: "7s" });
+  assert.equal(fanMap(discard).threeConcealedPungs, undefined, "only 2m and 5p were formed in hand");
+  const selfDraw = scoreHand({ ...base, selfDraw: true, concealed: hand, winTile: "7s" });
+  assert.equal(fanMap(selfDraw).threeConcealedPungs, 2);
+  const concealedKong = scoreHand({
+    ...base,
+    melds: [{ type: "concealedKong", tiles: t("8m 8m 8m 8m") }, { type: "pung", tiles: t("1p 1p 1p") }],
+    concealed: t("2m 2m 2m 5p 5p 5p 3s 4s 5s 9s 9s"),
+    winTile: "4s",
+  });
+  assert.equal(fanMap(concealedKong).threeConcealedPungs, 2, "a concealed kong counts; the exposed pung does not");
+});
+
+test("small and big three dragons replace the single dragon tai", () => {
+  const small = scoreHand({ ...base, concealed: t("RD RD RD GD GD GD WD WD 1m 2m 3m 4p 5p 6p 7s 8s 9s"), winTile: "1m" });
+  assert.equal(fanMap(small).smallDragons, 4);
+  assert.equal(fanMap(small).dragonPung, undefined);
+  const big = scoreHand({
+    ...base,
+    melds: [{ type: "pung", tiles: t("RD RD RD") }, { type: "pung", tiles: t("GD GD GD") }],
+    concealed: t("WD WD WD 1m 2m 3m 4p 5p 6p 9s 9s"),
+    winTile: "1m",
+  });
+  assert.equal(fanMap(big).bigDragons, 8);
+  assert.equal(fanMap(big).dragonPung, undefined);
+});
+
+test("small and big four winds replace the seat and round wind tai", () => {
+  const small = scoreHand({
+    ...base,
+    seatWind: 0,
+    melds: [{ type: "pung", tiles: t("EW EW EW") }, { type: "pung", tiles: t("SW SW SW") }],
+    concealed: t("WW WW WW NW NW 1m 2m 3m 5p 6p 7p"),
+    winTile: "1m",
+  });
+  assert.equal(fanMap(small).smallWinds, 8);
+  assert.equal(fanMap(small).seatWind, undefined);
+  assert.equal(fanMap(small).roundWind, undefined);
+  const big = scoreHand({
+    ...base,
+    melds: [{ type: "pung", tiles: t("EW EW EW") }, { type: "pung", tiles: t("SW SW SW") }, { type: "pung", tiles: t("WW WW WW") }],
+    concealed: t("NW NW NW 5p 5p 1m 2m 3m"),
+    winTile: "1m",
+  });
+  assert.equal(fanMap(big).bigWinds, 16);
+});
+
+test("all melded (全求人): five exposed melds and a discard win on the pair", () => {
+  const melds = [
+    { type: "chow", tiles: t("1m 2m 3m") },
+    { type: "pung", tiles: t("5p 5p 5p") },
+    { type: "chow", tiles: t("6s 7s 8s") },
+    { type: "pung", tiles: t("9m 9m 9m") },
+    { type: "chow", tiles: t("2p 3p 4p") },
+  ];
+  const discard = scoreHand({ ...base, melds, concealed: t("4s 4s"), winTile: "4s" });
+  assert.equal(fanMap(discard).allExposed, 2);
+  assert.equal(fanMap(discard).singleWait, undefined, "全求人 already pays for the single wait");
+  const selfDraw = scoreHand({ ...base, melds, selfDraw: true, concealed: t("4s 4s"), winTile: "4s" });
+  assert.equal(fanMap(selfDraw).allExposed, undefined);
 });

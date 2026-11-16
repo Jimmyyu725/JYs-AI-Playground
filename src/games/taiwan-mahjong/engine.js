@@ -15,9 +15,9 @@
 // Rule choices: 16 tiles are kept back as a dead wall; an exhaustive draw keeps the dealer
 // (連莊); only one player wins a discard (nearest in turn order); a seat that passes up a
 // win cannot win on another player's tile until its next turn (過水). Not implemented:
-// eight-flower instant wins (八仙過海, 七搶一), flower kongs (花槓), heavenly/earthly hands,
-// wait-shape tai (獨聽/邊張/中洞), concealed-pung tai (三暗刻 and up), big/small dragons and
-// winds, and 全求人.
+// eight-flower instant wins (八仙過海, 七搶一), flower kongs (花槓), heavenly/earthly hands
+// and 半求人. Wait shape scores one tai only as 獨聽 (exactly one winning tile kind).
+// Big/small dragons and winds replace the single dragon / wind pung tai they contain.
 
 export const SEAT_COUNT = 4;
 export const HAND_SIZE = 16;
@@ -61,6 +61,15 @@ export const TAI_NAMES = Object.freeze({
   lastTileDraw: "Last tile self-draw 海底撈月",
   lastTileDiscard: "Last discard 河底撈魚",
   kongReplacement: "Win on kong replacement 槓上開花",
+  singleWait: "Single wait 獨聽",
+  threeConcealedPungs: "Three concealed pungs 三暗刻",
+  fourConcealedPungs: "Four concealed pungs 四暗刻",
+  fiveConcealedPungs: "Five concealed pungs 五暗刻",
+  smallDragons: "Small three dragons 小三元",
+  bigDragons: "Big three dragons 大三元",
+  smallWinds: "Small four winds 小四喜",
+  bigWinds: "Big four winds 大四喜",
+  allExposed: "All melded 全求人",
 });
 
 // ---------------------------------------------------------------------------
@@ -290,9 +299,31 @@ function scoreDecomposition(decomposition, context) {
   else if (suits.size === 1) add("fullFlush", 8);
 
   const pungTiles = allSets.filter((set) => set.type === "pung").map((set) => set.tile);
-  add("dragonPung", 1, pungTiles.filter((tile) => DRAGON_CODES.includes(tile)).length);
-  add("seatWind", 1, pungTiles.filter((tile) => tile === WIND_CODES[seatWind]).length);
-  add("roundWind", 1, pungTiles.filter((tile) => tile === WIND_CODES[roundWind]).length);
+  const dragonPungs = pungTiles.filter((tile) => DRAGON_CODES.includes(tile)).length;
+  const windPungs = pungTiles.filter((tile) => WIND_CODES.includes(tile)).length;
+  if (dragonPungs === 3) add("bigDragons", 8);
+  else if (dragonPungs === 2 && DRAGON_CODES.includes(decomposition.pair)) add("smallDragons", 4);
+  else add("dragonPung", 1, dragonPungs);
+  if (windPungs === 4) add("bigWinds", 16);
+  else if (windPungs === 3 && WIND_CODES.includes(decomposition.pair)) add("smallWinds", 8);
+  else {
+    add("seatWind", 1, pungTiles.filter((tile) => tile === WIND_CODES[seatWind]).length);
+    add("roundWind", 1, pungTiles.filter((tile) => tile === WIND_CODES[roundWind]).length);
+  }
+
+  // 暗刻: pungs formed in the hand (and concealed kongs). A pung completed by another
+  // player's discard is exposed, unless this reading puts the winning tile in a chow.
+  const winInChow = decomposition.sets.some((set) => set.type === "chow" && suitOf(set.tile) === suitOf(winTile)
+    && Number(winTile[0]) >= Number(set.tile[0]) && Number(winTile[0]) <= Number(set.tile[0]) + 2);
+  const concealedPungs = melds.filter((meld) => meld.type === "concealedKong").length
+    + decomposition.sets.filter((set) => set.type === "pung" && (selfDraw || set.tile !== winTile || winInChow)).length;
+  if (concealedPungs >= 5) add("fiveConcealedPungs", 8);
+  else if (concealedPungs === 4) add("fourConcealedPungs", 5);
+  else if (concealedPungs === 3) add("threeConcealedPungs", 2);
+
+  const allExposed = melds.length === SETS_TO_WIN && melds.every((meld) => meld.type !== "concealedKong") && !selfDraw;
+  if (allExposed) add("allExposed", 2);
+  else if (context.singleWait) add("singleWait", 1);
   add("seatFlower", 1, flowers.filter((flower) => flower === FLOWER_CODES[seatWind] || flower === FLOWER_CODES[seatWind + 4]).length);
 
   if (context.robbingKong) add("robbingKong", 1);
@@ -310,9 +341,13 @@ export function scoreHand(context) {
   if (decompositions.length === 0 || context.concealed.length !== (SETS_TO_WIN - context.melds.length) * 3 + 2) {
     throw new Error("The hand is not a winning hand");
   }
+  // 獨聽: before the winning tile arrived, exactly one tile kind could complete the hand.
+  const before = [...context.concealed];
+  if (before.includes(context.winTile)) before.splice(before.indexOf(context.winTile), 1);
+  const singleWait = before.length < context.concealed.length && findWaits(before, context.melds.length).length === 1;
   let best = null;
   for (const decomposition of decompositions) {
-    const scored = scoreDecomposition(decomposition, context);
+    const scored = scoreDecomposition(decomposition, { ...context, singleWait });
     if (!best || scored.tai > best.tai) best = scored;
   }
   return best;

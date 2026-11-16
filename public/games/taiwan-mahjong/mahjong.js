@@ -531,7 +531,7 @@ function renderResult() {
     const fans = el("ul", "mj-fans");
     for (const fan of [...(result.fans ?? []), ...(result.dealerFans ?? [])]) {
       const item = el("li");
-      item.append(el("span", null, fan.count > 1 && fan.key !== "dealerStreak" ? `${fan.name} ×${fan.count}` : fan.name), el("b", null, `${fan.tai * (fan.key === "dealerStreak" ? 1 : fan.count ?? 1)} 台`));
+      item.append(el("span", null, fan.count > 1 && fan.key !== "dealerStreak" ? `${fan.name} ×${fan.count}` : fan.name), el("b", null, `${fan.tai} 台`));
       fans.append(item);
     }
     if (!fans.children.length) fans.append(el("li", null, "No tai: base payment only"));

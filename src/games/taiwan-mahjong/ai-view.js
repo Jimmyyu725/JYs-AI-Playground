@@ -159,7 +159,7 @@ export function buildSeatSnapshot(state, seat, { players = [] } = {}) {
 export const RULES_SUMMARY = `Taiwan Mahjong, 16-tile hands. A win is 5 sets (chow = 3 in a row of one suit, pung = 3 identical, kong = 4 identical) plus 1 pair, 17 tiles in total (kongs add one each).
 Tile codes: 1m-9m characters 萬, 1p-9p dots 筒, 1s-9s bamboo 條, EW SW WW NW winds, RD GD WD dragons 中發白. Flowers are set aside automatically and replaced from the back of the wall.
 Chow only from the player directly before you. Claim priority: win > pung/kong > chow; if two players win on one tile, the nearest in turn order wins.
-Tai: dealer 1 (+2 per dealer streak), self-drawn 1, concealed 1 (concealed self-draw 3), all chows 2, all pungs 4, half flush 4, full flush 8, dragon pung 1 each, seat/round wind pung 1, seat flower 1 each, robbing a kong 1, last tile 1, kong replacement win 1.
+Tai: dealer 1 (+2 per dealer streak), self-drawn 1, concealed 1 (concealed self-draw 3), single wait 1, all chows 2, all pungs 4, three/four/five concealed pungs 2/5/8, all melded 2, half flush 4, full flush 8, all honors 16, dragon pung 1 each (small/big three dragons 4/8), seat/round wind pung 1 (small/big four winds 8/16), seat flower 1 each, robbing a kong 1, last tile 1, kong replacement win 1.
 Payment = base + tai x per-tai. A discard win is paid by the discarder, a self-draw by all three others.`;
 
 // `tableTalk: false` leaves out the table-talk instruction (when the gateway adds it).
