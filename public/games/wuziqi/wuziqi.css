@@ -498,6 +498,12 @@ button {
     scale: 1;
   }
 }
+.sheet-grid[data-can-act="true"] .point.is-pending::after {
+  opacity: 0.62;
+  scale: 1;
+  outline: 2px solid var(--seal);
+  outline-offset: 1px;
+}
 .point.is-hover-bleed::before {
   content: "";
   position: absolute;

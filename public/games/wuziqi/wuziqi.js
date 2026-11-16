@@ -186,6 +186,7 @@ function renderBoard({ animate }) {
     point.disabled = !canAct || Boolean(cell);
     point.setAttribute("aria-label", `${coordinate(row, column)}, ${cell ? `${STONE_NAME[cell]} stone` : "empty"}`);
   }
+  if (pendingPoint && (pendingPoint.disabled || !pendingPoint.isConnected)) setPending(null);
   const [focusRow, focusColumn] = focusPoint;
   for (const point of ui.board.children) point.tabIndex = -1;
   const focusTarget = pointAt(Math.min(focusRow, builtSize - 1), Math.min(focusColumn, builtSize - 1));
@@ -248,13 +249,29 @@ function renderVictory(animate) {
   ui.sealLayer.append(seal);
 }
 
-function placeFromPoint(point) {
+// On touch screens the points are small, so the first tap marks a point and a second tap on it places.
+const coarsePointer = globalThis.matchMedia?.("(pointer: coarse)");
+let pendingPoint = null;
+function setPending(point) {
+  pendingPoint?.classList.remove("is-pending");
+  pendingPoint = point;
+  point?.classList.add("is-pending");
+  if (state) renderTurnLine();
+}
+
+function placeFromPoint(point, { confirm = false } = {}) {
   if (!point || point.disabled || !state?.humanCanAct) return;
+  if (confirm && pendingPoint !== point) {
+    setPending(point);
+    sfx.play("cardFlick");
+    return;
+  }
+  setPending(null);
   focusPoint = [Number(point.dataset.row), Number(point.dataset.column)];
   act({ action: "place", row: focusPoint[0], column: focusPoint[1] });
 }
 
-ui.board.addEventListener("click", (event) => placeFromPoint(event.target.closest(".point")));
+ui.board.addEventListener("click", (event) => placeFromPoint(event.target.closest(".point"), { confirm: Boolean(coarsePointer?.matches) && event.detail > 0 }));
 ui.board.addEventListener("keydown", (event) => {
   const moves = { ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] };
   if (!moves[event.key] || !builtSize) return;
@@ -482,6 +499,7 @@ function renderTurnLine() {
   const stone = STONE_NAME[state.currentColor];
   if (state.aiError) ui.turnLine.textContent = `Paused — ${state.aiError.playerName}'s request needs a retry.`;
   else if (state.arena?.paused) ui.turnLine.textContent = `Arena paused with ${stone} to move.`;
+  else if (actor?.isHuman && pendingPoint) ui.turnLine.textContent = `Tap ${coordinate(Number(pendingPoint.dataset.row), Number(pendingPoint.dataset.column))} again to place your stone.`;
   else if (actor?.isHuman) ui.turnLine.textContent = `Your move — place a${stone === "Ink" ? "n ink" : " jade"} stone.`;
   else ui.turnLine.textContent = `${stone} to move — ${actor?.name} is reading the board…`;
 }
