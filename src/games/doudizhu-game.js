@@ -556,7 +556,7 @@ export class DouDizhuGame {
     const player = this.players[seat];
     this._log(
       "system",
-      `${player.name}'s rejected model play was not made. Retrying automatically (${retryNumber}/${maxRetries}): ${message}`,
+      `${player.name}'s rejected model move was not made. Retrying automatically (${retryNumber}/${maxRetries}): ${message}`,
       { seat, retryNumber, maxRetries },
     );
   }

@@ -1,4 +1,4 @@
-import { requestDoudizhuBid, requestDoudizhuPlayWithRetry } from "../games/doudizhu-ai.js";
+import { requestDoudizhuBidWithRetry, requestDoudizhuPlayWithRetry } from "../games/doudizhu-ai.js";
 import { DouDizhuGame } from "../games/doudizhu-game.js";
 import { pushTableTalk } from "../platform/table-talk.js";
 import { createMatchRecorder, participantFrom, publicError, sendSSE } from "../platform/room-kit.js";
@@ -85,37 +85,36 @@ async function runDoudizhuAIChain(version) {
       };
 
       try {
+        const retryOptions = {
+          snapshotFactory: () => table.aiSnapshot(),
+          modelConfig: actor.aiConfig,
+          callbacks,
+          shouldContinue: () => doudizhuGame === table && version === doudizhuGameVersion,
+          onRetry({ error, retryNumber, maxRetries }) {
+            if (doudizhuGame !== table || version !== doudizhuGameVersion) return;
+            const message = publicError(error);
+            const status = `${message}. Retrying automatically (${retryNumber}/${maxRetries})…`;
+            table.recordAIRetry(seat, message, retryNumber, maxRetries);
+            table.aiThinking = { ...table.aiThinking, status };
+            broadcastDoudizhu("ai_stream", {
+              phase: "started",
+              seat,
+              playerName: actor.name,
+              summary: "",
+              automaticRetry: true,
+              retryNumber,
+              maxRetries,
+            });
+            broadcastDoudizhuState();
+          },
+        };
         let decision;
         let insightAction;
         if (table.phase === "bidding") {
-          const snapshot = table.aiSnapshot();
-          decision = await requestDoudizhuBid(snapshot, actor.aiConfig, callbacks);
+          ({ decision } = await requestDoudizhuBidWithRetry(retryOptions));
           insightAction = decision.action === "bid" ? `bid ${decision.score}` : "pass bid";
         } else {
-          const { decision: playDecision } = await requestDoudizhuPlayWithRetry({
-            snapshotFactory: () => table.aiSnapshot(),
-            modelConfig: actor.aiConfig,
-            callbacks,
-            shouldContinue: () => doudizhuGame === table && version === doudizhuGameVersion,
-            onRetry({ error, retryNumber, maxRetries }) {
-              if (doudizhuGame !== table || version !== doudizhuGameVersion) return;
-              const message = publicError(error);
-              const status = `${message}. Retrying automatically (${retryNumber}/${maxRetries})…`;
-              table.recordAIRetry(seat, message, retryNumber, maxRetries);
-              table.aiThinking = { ...table.aiThinking, status };
-              broadcastDoudizhu("ai_stream", {
-                phase: "started",
-                seat,
-                playerName: actor.name,
-                summary: "",
-                automaticRetry: true,
-                retryNumber,
-                maxRetries,
-              });
-              broadcastDoudizhuState();
-            },
-          });
-          decision = playDecision;
+          ({ decision } = await requestDoudizhuPlayWithRetry(retryOptions));
           insightAction = decision.action === "play" ? `play ${decision.cards.join(" ")}` : "pass";
         }
 
