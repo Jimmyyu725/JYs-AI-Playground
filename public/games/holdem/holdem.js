@@ -344,6 +344,7 @@ function renderBets(state, previous) {
       const { x, y } = seatPosition(player.seat, count);
       bet.style.setProperty("--x", x.toFixed(3));
       bet.style.setProperty("--y", y.toFixed(3));
+      bet.style.setProperty("--ax", (Math.abs(x) > 0.5 ? Math.abs(x) : 0).toFixed(3));
       host.append(bet);
     }
     if (Number(bet.dataset.amount) !== player.streetBet) {
@@ -433,9 +434,17 @@ function countTo(node, target) {
 
 function streetLine(state) {
   if (["hand_over", "game_over"].includes(state.phase) && state.lastShowdown) {
-    return state.lastShowdown.pots
-      .map((pot) => `${pot.winners.map((seat) => state.players[seat].name).join(" & ")} · ${fmt(pot.amount)} · ${pot.description}`)
-      .join("   ");
+    // Side pots with the same winners read as one line.
+    const merged = new Map();
+    for (const pot of state.lastShowdown.pots) {
+      const key = `${pot.winners.join(",")}|${pot.description}`;
+      const entry = merged.get(key) ?? { ...pot, amount: 0 };
+      entry.amount += pot.amount;
+      merged.set(key, entry);
+    }
+    return [...merged.values()]
+      .map((pot) => `${pot.winners.map((seat) => state.players[seat].name).join(" & ")} win${pot.winners.length === 1 ? "s" : ""} ${fmt(pot.amount)}${pot.description === "Uncontested" ? "" : ` with ${pot.description.toLowerCase()}`}`)
+      .join("\n");
   }
   return PHASE_LABELS[state.phase] ?? state.phase;
 }
@@ -545,7 +554,7 @@ function renderActions() {
     panel.dataset.mode = "between";
     const pots = state.lastShowdown?.pots ?? [];
     const humanWon = pots.some((pot) => pot.winners.includes(human?.seat));
-    setContext("Hand complete", humanWon ? "The pot is yours" : streetLine(state).split("   ")[0] || "The pot is settled", "Deal on when you are ready, or cash out to close the table.");
+    setContext("Hand complete", humanWon ? "The pot is yours" : streetLine(state).split("\n")[0] || "The pot is settled", "Deal on when you are ready, or cash out to close the table.");
     panel.append(
       button("Deal next hand", "primary", () => act("/api/next-hand"), { key: "N" }),
       button("Cash out", "ghost", () => act("/api/cash-out")),
@@ -665,6 +674,8 @@ $("transcript-slot").append(ledger.el);
 
 function syncLogs(state) {
   const fresh = [...state.logs].reverse().filter((entry) => !view.seenLogs.has(entry.id));
+  // The engine logs the blinds before "Hand N begins"; the ledger opens each hand with its header.
+  fresh.sort((a, b) => (a.handNumber - b.handNumber) || ((b.kind === "hand") - (a.kind === "hand")));
   for (const entry of fresh) {
     view.seenLogs.add(entry.id);
     const kind = entry.kind === "error" ? "system" : entry.kind === "hand" || entry.kind === "street" || entry.kind === "result" ? "system" : "move";
@@ -767,10 +778,9 @@ function onStream(payload) {
     $("lens-text").textContent = plain(view.lensText).slice(-900);
   } else if (payload.phase === "completed") {
     view.lensText = "";
-    $("lens-text").textContent = plain(payload.explanation || payload.summary || "");
-    if (payload.summary && payload.summary !== payload.explanation) {
-      ledger.add({ who: payload.playerName, text: plain(payload.summary).slice(0, 600), kind: "reasoning" });
-    }
+    $("lens-text").textContent = plain(payload.summary || payload.explanation || "").slice(0, 900);
+    // The ledger keeps the short public rationale; the longer reasoning summary stays in the lens.
+    if (payload.explanation) ledger.add({ who: payload.playerName, text: plain(payload.explanation), kind: "reasoning" });
   } else if (payload.phase === "retry") {
     toast(`${payload.playerName}: ${payload.status}`, { tone: "info" });
   }
