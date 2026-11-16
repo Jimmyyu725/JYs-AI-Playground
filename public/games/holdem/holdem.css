@@ -1041,6 +1041,22 @@ body[data-mode="arena"] .seat-model,
   box-shadow: 0 20px 50px -24px black, 0 0 0 1px rgb(157 184 217 / 0.35), 0 0 40px -12px rgb(157 184 217 / 0.45);
 }
 
+.review-control {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.review-button {
+  white-space: nowrap;
+}
+.review-select {
+  min-block-size: 46px;
+  max-inline-size: 150px;
+  border-radius: 999px;
+  background: rgb(0 0 0 / 0.25);
+  border-color: color-mix(in oklab, var(--brass) 45%, transparent);
+}
+
 /* ------------------------------------------------------------ ledger */
 
 .ledger {
@@ -1602,6 +1618,12 @@ body[data-mode="arena"] .seat-model,
   }
   .raise-label {
     display: none;
+  }
+  .review-control {
+    flex: 1 1 100%;
+  }
+  .review-control .review-button {
+    flex: 1;
   }
   .arena-meter {
     flex: 1 1 100%;

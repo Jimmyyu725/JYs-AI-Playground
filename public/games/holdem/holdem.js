@@ -13,7 +13,7 @@ import {
   transcript as kitTranscript,
 } from "/shared/kit.js";
 import { sfx } from "/shared/sfx.js";
-import { bindTableTalk } from "/shared/speech.js";
+import { bindTableTalk, speak } from "/shared/speech.js";
 
 const ART = "/assets/rooms/holdem";
 const SUIT_NAMES = { S: "spades", H: "hearts", D: "diamonds", C: "clubs" };
@@ -538,6 +538,7 @@ function renderActions() {
     if (!finished) {
       panel.append(button(paused ? "Resume arena" : "Pause arena", "primary", () => act(paused ? "/api/arena/resume" : "/api/arena/pause")));
     }
+    if ((paused || finished) && ["hand_over", "game_over"].includes(state.phase)) panel.append(reviewControl(state));
     panel.append(button("New table", "ghost", () => setup.open()));
     return;
   }
@@ -546,7 +547,7 @@ function renderActions() {
     panel.dataset.mode = "over";
     const best = leader(state);
     setContext("Table closed", best.isHuman ? "You leave with the most chips" : `${best.name} leaves with the most chips`, "The session is on the ladder.");
-    panel.append(button("New table", "primary", () => setup.open()));
+    panel.append(reviewControl(state), button("New table", "primary", () => setup.open()));
     return;
   }
 
@@ -556,6 +557,7 @@ function renderActions() {
     const humanWon = pots.some((pot) => pot.winners.includes(human?.seat));
     setContext("Hand complete", humanWon ? "The pot is yours" : streetLine(state).split("\n")[0] || "The pot is settled", "Deal on when you are ready, or cash out to close the table.");
     panel.append(
+      reviewControl(state),
       button("Deal next hand", "primary", () => act("/api/next-hand"), { key: "N" }),
       button("Cash out", "ghost", () => act("/api/cash-out")),
     );
@@ -622,6 +624,48 @@ function renderActions() {
   }
 }
 
+/** "Ask <guest> to review this hand": a select of AI guests and a button. */
+function reviewControl(state) {
+  const guests = state.players.filter((player) => !player.isHuman);
+  const wrap = el("div", "review-control");
+  const choice = el("select", "kit-select review-select");
+  choice.setAttribute("aria-label", "Guest to review the hand");
+  for (const guest of guests) choice.add(new Option(guest.character?.shortName ?? guest.name, String(guest.seat)));
+  const winners = (state.lastShowdown?.pots ?? []).flatMap((pot) => pot.winners).filter((seat) => !state.players[seat].isHuman);
+  if (winners.length) choice.value = String(winners[0]);
+  const ask = button("Ask for a review", "ghost", () => requestReview(Number(choice.value)));
+  ask.classList.add("review-button");
+  wrap.append(choice, ask);
+  return wrap;
+}
+
+async function requestReview(seatNumber) {
+  const player = view.state?.players[seatNumber];
+  if (!player || view.reviewing) return;
+  view.reviewing = true;
+  $("lens").dataset.state = "thinking";
+  $("lens-state").textContent = "Reviewing";
+  $("lens-status").textContent = `${player.name} is looking back over hand ${view.state.handNumber}…`;
+  $("lens-text").textContent = "";
+  try {
+    const result = await api("/api/review", { seat: seatNumber });
+    $("lens-status").textContent = `${result.playerName} on hand ${result.handNumber}`;
+    $("lens-text").textContent = result.review;
+    view.lensText = result.review;
+    ledger.add({ who: `${result.playerName} reviews hand ${result.handNumber}`, text: result.review, kind: "talk" });
+    const firstSentence = result.review.match(/^.{20,140}?[.!?](\s|$)/)?.[0] ?? result.review.slice(0, 120);
+    speak(view.seatEls.get(seatNumber)?.querySelector(".seat-portrait"), firstSentence.trim(), { placement: "top" });
+  } catch (error) {
+    sfx.play("error");
+    toast(`Review failed: ${error.message}`, { tone: "error" });
+    $("lens-status").textContent = "The review request failed; you can ask again.";
+  } finally {
+    view.reviewing = false;
+    $("lens").dataset.state = "idle";
+    $("lens-state").textContent = "Idle";
+  }
+}
+
 function leader(state) {
   return state.players.reduce((best, player) => (player.stack > best.stack ? player : best), state.players[0]);
 }
@@ -680,7 +724,10 @@ function syncLogs(state) {
     view.seenLogs.add(entry.id);
     const kind = entry.kind === "error" ? "system" : entry.kind === "hand" || entry.kind === "street" || entry.kind === "result" ? "system" : "move";
     // The engine still calls the room by its old name; the ledger speaks for this salon.
-    const item = ledger.add({ text: entry.text.replace(/the Luna Room/g, "Salon Riviera"), kind });
+    const text = entry.text
+      .replace(/the Luna Room/g, "Salon Riviera")
+      .replace(/\b([2-9TJQKA])([CDHS])\b/g, (_, rank, suit) => `${RANK_LABELS[rank] ?? rank}${{ C: "♣", D: "♦", H: "♥", S: "♠" }[suit]}`);
+    const item = ledger.add({ text, kind });
     item.dataset.logKind = entry.kind;
   }
 }

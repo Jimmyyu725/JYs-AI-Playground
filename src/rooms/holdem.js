@@ -5,6 +5,7 @@ import { requestHoldemDecision } from "../openai-player.js";
 import { pushTableTalk } from "../platform/table-talk.js";
 import { createMatchRecorder, participantFrom, publicError, sendSSE } from "../platform/room-kit.js";
 import { decideWithRetries } from "../games/holdem/ai-retry.js";
+import { requestHandReview } from "../games/holdem/review.js";
 
 export const id = "holdem";
 export const defaults = { model: "gpt-6-luna", reasoningEffort: "low" };
@@ -295,6 +296,27 @@ export function register(app, ctx) {
       table._log("result", `The table closes after ${table.completedHands} hand${table.completedHands === 1 ? "" : "s"}. ${leader.name} leaves with the most chips (${leader.stack}).`);
       response.json(table.publicState());
       broadcastState();
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // "Ask <character> to review this hand": one in-character look back at the last finished hand.
+  let reviewing = false;
+  app.post("/api/review", async (request, response, next) => {
+    try {
+      const table = requireGame();
+      if (!["hand_over", "game_over"].includes(table.phase)) throw Object.assign(new Error("Ask for a review once the hand is over"), { status: 409 });
+      const reviewer = table.players[Number(request.body?.seat)];
+      if (!reviewer || reviewer.isHuman) throw Object.assign(new Error("Choose an AI guest to review the hand"), { status: 400 });
+      if (reviewing) throw Object.assign(new Error("A review is already being written"), { status: 409 });
+      reviewing = true;
+      try {
+        const review = await requestHandReview(table, reviewer);
+        response.json({ seat: reviewer.seat, playerName: reviewer.name, handNumber: table.handNumber, ...review });
+      } finally {
+        reviewing = false;
+      }
     } catch (error) {
       next(error);
     }

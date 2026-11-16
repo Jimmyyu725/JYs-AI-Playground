@@ -104,6 +104,19 @@ if (play) {
     talk: await desktop.evaluate(() => document.querySelectorAll('.kit-transcript-item[data-kind="talk"]').length),
   };
   await desktop.screenshot({ path: `${shots}/desktop-hand-over.png` });
+  if (results.play.mode === "between") {
+    // Ask a guest to review the hand, then cash out so the session lands on the ladder.
+    await desktop.click(".review-button");
+    await desktop.waitForFunction(() => /reviews hand/.test(document.querySelector(".kit-transcript-list")?.textContent ?? ""), null, { timeout: 180_000 });
+    results.play.review = await desktop.textContent("#lens-text");
+    await desktop.screenshot({ path: `${shots}/desktop-review.png` });
+    const before = (await (await fetch(`${baseURL}/api/ladder/holdem`)).json());
+    await desktop.click("#action-panel button:has-text('Cash out')");
+    await desktop.waitForFunction(() => document.getElementById("action-panel").dataset.mode === "over", null, { timeout: 10_000 });
+    const after = (await (await fetch(`${baseURL}/api/ladder/holdem`)).json());
+    results.play.ladder = { before: JSON.stringify(before).length, after: JSON.stringify(after).length, sample: JSON.stringify(after).slice(0, 300) };
+    await desktop.screenshot({ path: `${shots}/desktop-cashed-out.png` });
+  }
   await phone.reload();
   await phone.waitForTimeout(2000);
   await phone.screenshot({ path: `${shots}/phone-hand-over.png` });
