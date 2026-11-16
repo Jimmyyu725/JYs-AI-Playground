@@ -841,7 +841,8 @@ form.addEventListener("submit", async (event) => {
   }
 });
 
-async function openSetup() {
+// Opening the setup pauses a running arena, as it always has, so nothing moves while you choose.
+async function pauseArenaForSetup() {
   if (state?.gameMode === "arena" && state.phase === "active" && !state.arena.paused) {
     try {
       accept(await request("/api/go/arena/pause", {}));
@@ -849,12 +850,18 @@ async function openSetup() {
       toast(error.message, { tone: "error" });
     }
   }
+}
+
+function openSetup() {
   setup.open();
   sound.tok();
+  pauseArenaForSetup();
 }
 
 setup.toggleButton.addEventListener("click", () => {
-  if (setup.el.dataset.open === "true") sound.tok();
+  if (setup.el.dataset.open !== "true") return;
+  sound.tok();
+  pauseArenaForSetup();
 });
 
 /* ---------- Live updates ---------- */
