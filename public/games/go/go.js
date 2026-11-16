@@ -789,12 +789,32 @@ function syncSetup() {
       row.dataset.color = colors[index];
     });
   }
+  renderPreview();
   form.querySelector(".start").textContent = mode() === "arena" ? "Open the arena" : `Sit down as ${form.elements.humanColor.value === "white" ? "White" : "Black"}`;
 }
 
 form.addEventListener("change", (event) => {
   if (event.target.name === "gameMode" || event.target.name === "humanColor") syncSetup();
+  else renderPreview();
 });
+
+// Before the first game, the seats show who the setup drawer is about to seat.
+function renderPreview() {
+  if (state || !cast || !ready) return;
+  const colors = seatColors();
+  const players = COLORS.map((color) => {
+    const index = colors.indexOf(color);
+    if (index < 0) return { color, isHuman: true, name: form.elements.humanName.value.trim() || "Player", character: null, aiConfig: null };
+    const character = cast.characters[index];
+    return { color, isHuman: false, name: character.name, character, aiConfig: seatModels[index]?.value ?? registry.defaultConfig };
+  });
+  state = { players, captures: { black: 0, white: 0 }, phase: "setup", currentColor: "black", aiThinking: null, result: null };
+  try {
+    for (const color of COLORS) renderSeat(color);
+  } finally {
+    state = null;
+  }
+}
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -882,6 +902,7 @@ async function boot() {
   }
   ready = true;
   if (state) render(null);
+  else renderPreview();
   try {
     const current = await request("/api/go/state");
     if (current) accept(current);
