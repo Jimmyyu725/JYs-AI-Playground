@@ -65,7 +65,7 @@ function buildTable(body = {}) {
   return freshTable({ mode, players, state, imageQuality: body.imageQuality === "medium" ? "medium" : "low" });
 }
 
-function freshTable({ mode, players, state, imageQuality, log = [], tableTalk = [] }) {
+function freshTable({ mode, players, state, imageQuality, log = [], tableTalk = [], heldTalk = [] }) {
   return {
     tableId: randomUUID(),
     mode,
@@ -74,6 +74,7 @@ function freshTable({ mode, players, state, imageQuality, log = [], tableTalk = 
     state,
     imageQuality,
     tableTalk,
+    heldTalk,
     log,
     aiError: null,
     paused: false,
@@ -195,13 +196,28 @@ function logEvents(events) {
   }
 }
 
+function publishTalk(event) {
+  // A drawer often says the same line when choosing and again when describing; show it once.
+  const last = table.tableTalk.at(-1);
+  if (last && last.speaker === event.seat && last.text === event.text) return;
+  const player = table.players[event.seat];
+  const entry = pushTableTalk(table, { speaker: event.seat, playerName: player.name, characterId: player.character?.id ?? null, text: event.text });
+  if (entry) channel.broadcast("table_talk", entry);
+}
+
+/** Whoever watches this table (arena spectators, or the human seat) may read held talk now. */
+function viewerKnowsWord() {
+  return table.mode === "arena" || (table.humanSeat >= 0 && seatKnowsWord(table.state, table.humanSeat));
+}
+
+/** Talk from seats that know the word waits until the viewer knows it too (solved, or round over). */
 function talkFromEvents(events) {
   for (const event of events) {
     if (event.type !== "table_talk") continue;
-    const player = table.players[event.seat];
-    const entry = pushTableTalk(table, { speaker: event.seat, playerName: player.name, characterId: player.character?.id ?? null, text: event.text });
-    if (entry) channel.broadcast("table_talk", entry);
+    if (event.held && !viewerKnowsWord()) table.heldTalk.push({ seat: event.seat, text: event.text });
+    else publishTalk(event);
   }
+  if (table.heldTalk.length && viewerKnowsWord()) table.heldTalk.splice(0).forEach(publishTalk);
 }
 
 // ---------------------------------------------------------------------------
@@ -470,6 +486,7 @@ function persist() {
       players: table.players.map((player) => ({ isHuman: player.isHuman, name: player.name, characterId: player.character?.id ?? null, aiConfig: player.aiConfig })),
       log: table.log.slice(-80),
       tableTalk: table.tableTalk,
+      heldTalk: table.heldTalk,
     };
     fs.mkdirSync(path.dirname(saveFile), { recursive: true });
     fs.writeFileSync(`${saveFile}.tmp`, JSON.stringify(payload));
@@ -491,7 +508,7 @@ function restore() {
     const players = payload.players.map((player) => (player.isHuman
       ? { isHuman: true, name: player.name, character: null, aiConfig: null }
       : { isHuman: false, name: player.name, character: cast[next++], aiConfig: normalizeModelConfig(id, player.aiConfig) }));
-    const restored = freshTable({ mode: payload.mode === "arena" ? "arena" : "human-vs-ai", players, state, imageQuality: payload.imageQuality, log: payload.log ?? [], tableTalk: payload.tableTalk ?? [] });
+    const restored = freshTable({ mode: payload.mode === "arena" ? "arena" : "human-vs-ai", players, state, imageQuality: payload.imageQuality, log: payload.log ?? [], tableTalk: payload.tableTalk ?? [], heldTalk: Array.isArray(payload.heldTalk) ? payload.heldTalk : [] });
     // Time stood still while the server was down: give the current phase its remaining time back.
     const round = restored.state.round;
     if (round && Number.isFinite(round.deadlineAt) && round.deadlineAt < Date.now() + 5000) {

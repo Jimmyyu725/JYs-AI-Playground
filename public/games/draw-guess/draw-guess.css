@@ -523,6 +523,7 @@ body {
 .setup fieldset { border: 0; margin: 0; padding: 0; display: grid; gap: 8px; }
 .setup legend, .setup label > span { font: 600 0.72rem/1.2 var(--kit-font-body); text-transform: uppercase; letter-spacing: 0.1em; color: var(--terracotta); margin-bottom: 4px; padding: 0; }
 .setup label { display: grid; gap: 4px; }
+.setup [hidden] { display: none; }
 .setup input[type="text"], .setup select {
   width: 100%;
   padding: 9px 11px;
@@ -552,7 +553,7 @@ body {
 
 @media (max-width: 760px) {
   .topbar { grid-template-columns: 1fr auto; padding-top: 10px; }
-  .room-title { grid-column: 1 / -1; grid-row: 1; justify-content: center; }
+  .room-title { grid-column: 1 / -1; grid-row: 1; justify-content: center; text-shadow: 0 1px 2px rgb(61 31 20 / 0.9), 0 2px 16px rgb(61 31 20 / 0.8); }
   .topbar-left { grid-row: 2; }
   .topbar-right { grid-row: 2; }
   .round-chip { display: none; }

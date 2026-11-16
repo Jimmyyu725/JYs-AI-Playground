@@ -1,4 +1,4 @@
-import { backToLobby, characterPicker, drawer, loadCharacters, loadModels, modelPicker, seat as seatFigure, setSeatExpression, toast } from "/shared/kit.js";
+import { backToLobby, characterPicker, drawer, loadCharacters, loadModels, modelPicker, portraitUrl, seat as seatFigure, setSeatExpression, toast } from "/shared/kit.js";
 import { sfx } from "/shared/sfx.js";
 import { atelier } from "/games/draw-guess/atelier-sfx.js";
 import { speak } from "/shared/speech.js";
@@ -124,9 +124,11 @@ function buildSetup() {
     }));
   }
 
+  let countTouched = false;
   function syncCount() {
     const [min, max] = mode === "arena" ? [2, 6] : [1, 5];
-    const previous = Number(countSelect.value) || (mode === "arena" ? 3 : 2);
+    // Until the player picks a count, each mode gets its own default (3 painters make a livelier arena).
+    const previous = (countTouched && Number(countSelect.value)) || (mode === "arena" ? 3 : 2);
     countSelect.replaceChildren(...Array.from({ length: max - min + 1 }, (_, index) => {
       const option = el("option", "", String(min + index));
       option.value = String(min + index);
@@ -137,6 +139,7 @@ function buildSetup() {
     syncModels(Number(countSelect.value));
   }
   countSelect.addEventListener("change", () => {
+    countTouched = true;
     cast.setSeats(Number(countSelect.value));
     syncModels(Number(countSelect.value));
   });
@@ -209,7 +212,7 @@ function buildSeats() {
     }
     const text = el("div", "sitter-text");
     const name = el("span", "sitter-name", player.name);
-    const caption = el("span", "sitter-caption", player.isHuman ? "You" : modelLabel(player.aiConfig));
+    const caption = el("span", "sitter-caption", player.isHuman ? "Your seat" : modelLabel(player.aiConfig));
     text.append(name, caption);
     const score = el("span", "sitter-score", "0");
     const role = el("span", "sitter-role", "Drawing");
@@ -219,6 +222,11 @@ function buildSeats() {
     seatNodes.set(player.seat, { card, figure, caption, score, role, player });
     return card;
   }));
+  // Warm every expression now, so a swap later is instant.
+  for (const player of state.players) {
+    if (!player.character) continue;
+    for (const expression of ["thinking", "triumphant", "defeated"]) new Image().src = portraitUrl(player.character.id, expression);
+  }
 }
 
 function updateSeats() {
@@ -238,7 +246,7 @@ function updateSeats() {
     node.card.dataset.drawer = String(isDrawer);
     node.card.dataset.solved = String(Boolean(solved));
     node.role.hidden = !isDrawer;
-    let caption = node.player.isHuman ? "You" : modelLabel(node.player.aiConfig);
+    let caption = node.player.isHuman ? "Your seat" : modelLabel(node.player.aiConfig);
     if (thinking) caption = thinking.status || "Thinking…";
     else if (solved) caption = "Guessed it!";
     else if (passed) caption = "Passed";
@@ -251,8 +259,19 @@ function updateSeats() {
     if (over) expression = view.result?.winners.includes(seatIndex) ? "triumphant" : "defeated";
     else if (solved) expression = "triumphant";
     else if (thinking) expression = "thinking";
-    if (node.figure.dataset.expression !== expression) setSeatExpression(node.figure, expression);
+    if (node.expression !== expression) showExpression(node, expression);
   }
+}
+
+/** Swaps the portrait only once the new expression has loaded, so the initials never flash through. */
+function showExpression(node, expression) {
+  node.expression = expression;
+  const id = node.player.character?.id;
+  if (!id) return setSeatExpression(node.figure, expression);
+  const image = new Image();
+  image.src = portraitUrl(id, expression);
+  const swap = () => { if (node.expression === expression) setSeatExpression(node.figure, expression); };
+  image.decode().then(swap, swap);
 }
 
 // ------------------------------------------------------------------ the wall of slips
@@ -470,7 +489,8 @@ function renderFrame() {
       break;
     case "rendering":
       setPainting(null);
-      panel(waitingPanel("The easel is painting", null, round.prompt ? `“${round.prompt}”` : "Wet paint. Nobody peek."));
+      if (state.aiError?.kind === "image") panel(waitingPanel("The easel stopped", "Retry the picture or skip this round below."));
+      else panel(waitingPanel("The easel is painting", null, round.prompt ? `“${round.prompt}”` : "Wet paint. Nobody peek."));
       break;
     case "guessing": {
       panel();
@@ -669,7 +689,7 @@ function render(next) {
   const me = humanSeat();
   if (me >= 0) {
     const mine = round.guesses.filter((guess) => guess.seat === me);
-    if (mine.length > lastOwnGuesses && mine.at(-1)?.close && !mine.at(-1).correct) toast("So close! One letter off.", { tone: "info" });
+    if (mine.length > lastOwnGuesses && mine.at(-1)?.close && !mine.at(-1).correct) toast("So close! Check the spelling.", { tone: "info" });
     lastOwnGuesses = mine.length;
   }
   document.body.dataset.phase = next.view.phase;
@@ -688,7 +708,7 @@ function render(next) {
 function needsFrameRefresh(previous, next) {
   const a = previous?.view?.round;
   const b = next.view.round;
-  return !a || a.number !== b.number || a.promptAttemptsLeft !== b.promptAttemptsLeft
+  return !a || previous.aiError?.kind !== next.aiError?.kind || a.number !== b.number || a.promptAttemptsLeft !== b.promptAttemptsLeft
     || a.solvedOrder.length !== b.solvedOrder.length || a.passedSeats.length !== b.passedSeats.length
     || a.guesses.length !== b.guesses.length || a.image?.imageRef !== b.image?.imageRef || a.prompt !== b.prompt;
 }

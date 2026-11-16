@@ -429,6 +429,25 @@ test("table talk is stored, capped at 140 characters and may not leak the word",
   assert.deepEqual(validateAction(prompting, { type: "submit_prompt", seat: 0, prompt: "a thing", tableTalk: word.word }, { now: 1 }).code, "talk_leak");
 });
 
+test("talk from seats that know the word is held from seats still guessing until the round ends", () => {
+  const state = toGuessing(newGame({ seatCount: 4 }), "apple");
+  const solved = act(state, { type: "guess", seat: 1, text: "apple", tableTalk: "Crisp and red, obviously." }, 200);
+  assert.ok(solved.events.some((event) => event.type === "table_talk" && event.held === true));
+  assert.equal(solved.state.phase, "guessing");
+  assert.deepEqual(viewFor(solved.state, 2, { now: 201 }).round.talk, []);
+  assert.equal(viewFor(solved.state, 1, { now: 201 }).round.talk.length, 1);
+  assert.equal(viewFor(solved.state, 0, { now: 201 }).round.talk.length, 1);
+  assert.equal(viewFor(solved.state, null, { now: 201, revealSecret: true }).round.talk.length, 1);
+  const wrong = act(solved.state, { type: "guess", seat: 2, text: "pear", tableTalk: "Fruit?" }, 300);
+  assert.ok(wrong.events.some((event) => event.type === "table_talk" && !event.held));
+  assert.equal(viewFor(wrong.state, 3, { now: 301 }).round.talk.length, 1);
+  const over = act(wrong.state, { type: "tick" }, 100 + DEFAULT_CONFIG.roundDurationMs);
+  assert.equal(viewFor(over.state, 3, { now: 99999 }).round.talk.length, 2);
+
+  const prompting = act(newGame(), { type: "choose_word", seat: 0, optionIndex: 0, tableTalk: "Here we go." }).state;
+  assert.deepEqual(viewFor(prompting, 1, { now: 2 }).round.talk, []);
+});
+
 test("the drawer rotates every round and the game ends after every seat drew each rotation", () => {
   let state = newGame({ rotations: 2, firstDrawerSeat: 1, wordBank: undefined });
   assert.equal(state.totalTurns, 6);

@@ -677,10 +677,24 @@ function checkTableTalk(state, action) {
   return talk;
 }
 
+/**
+ * Records a table-talk line. As in skribbl-style play, a seat that knows the word (the drawer,
+ * or a guesser who just solved it) cannot talk to those still guessing: its line is `held` and
+ * only shown to seats that know the word until the round ends.
+ */
 function addTalk(state, seat, talk, now, events) {
   if (!talk) return;
-  state.round.talk.push({ seat, text: talk, at: now });
-  events.push({ type: "table_talk", seat, text: talk });
+  const held = ["choosing", "prompting", "rendering", "guessing"].includes(state.phase) && seatKnowsWord(state, seat);
+  state.round.talk.push({ seat, text: talk, at: now, ...(held ? { held: true } : {}) });
+  events.push({ type: "table_talk", seat, text: talk, ...(held ? { held: true } : {}) });
+}
+
+/** Talk lines a seat may read now: held lines only once it knows the word. */
+export function visibleTalk(state, seat, { omniscient = false } = {}) {
+  const round = state.round;
+  if (!round) return [];
+  const knows = omniscient || (seat !== null && seat !== undefined && seatKnowsWord(state, seat));
+  return round.talk.filter((item) => !item.held || knows);
 }
 
 function validateInPlace(state, action, now) {
@@ -1035,7 +1049,7 @@ export function viewFor(state, seat = null, options = {}) {
       })),
       solvedOrder: [...round.solvedOrder],
       passedSeats: [...round.passedSeats],
-      talk: round.talk.map((item) => ({ ...item })),
+      talk: visibleTalk(state, seat, { omniscient }).map((item) => ({ ...item })),
       points: roundEnded ? { ...round.points } : null,
       endReason: round.endReason,
     } : null,

@@ -17,6 +17,7 @@ import {
   revealAt,
   seatKnowsWord,
   validateAction,
+  visibleTalk,
   wordById,
 } from "./engine.js";
 
@@ -93,7 +94,7 @@ export function buildAiView(state, seat, options = {}) {
       secondsLeft: round.deadlineAt === null ? null : Math.max(0, Math.ceil((round.deadlineAt - now) / 1000)),
     },
     seats: seatSummary(state, seat),
-    tableTalk: round.talk.slice(-12).map((item) => ({ name: state.seats[item.seat].name, text: item.text })),
+    tableTalk: visibleTalk(state, seat).slice(-12).map((item) => ({ name: state.seats[item.seat].name, text: item.text })),
     legalActions: actions.map(({ number, type, label, needsText }) => ({ number, type, label, needsText })),
   };
 
@@ -177,7 +178,7 @@ export function decisionInstructions(view) {
   }
   lines.push(
     "Pick exactly one action by its number in legalActions. Put the prompt or guess in text when the action needs it, otherwise text is null.",
-    `tableTalk is an optional in-character line (at most ${MAX_TABLE_TALK} characters, or null) shown to the table. It must never contain the secret word or a guess.`,
+    `tableTalk is an optional in-character line (at most ${MAX_TABLE_TALK} characters, or null) shown to the table. It must never contain the secret word or a guess. Once you know the word (as the drawer, or when this guess turns out right), seats still guessing see your line only after the round, so never hint at the answer in it.`,
   );
   return lines.join("\n");
 }
