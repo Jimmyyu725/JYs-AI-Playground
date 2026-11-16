@@ -142,6 +142,11 @@ function nameOf(seat) {
   return table.players[seat]?.name ?? `Seat ${seat + 1}`;
 }
 
+/** Third-person verb, except for a human who kept the default name "You". */
+function verb(seat, base) {
+  return nameOf(seat) === "You" ? base : `${base}s`;
+}
+
 function addLog(text, { kind = "move", who = "", audience = "all" } = {}) {
   table.log.push({ id: randomUUID().slice(0, 8), round: table.state.round?.number ?? 0, kind, who, text, audience, at: Date.now() });
   if (table.log.length > 200) table.log.splice(0, table.log.length - 200);
@@ -179,10 +184,10 @@ function logEvents(events) {
         addLog(event.word ? `The word was “${event.word}” (${event.zh}).` : "The round ended before a word was chosen.", { kind: "system" });
         break;
       case "round_started":
-        addLog(`Round ${event.number}: ${nameOf(event.drawerSeat)} draws.`, { kind: "system" });
+        addLog(`Round ${event.number}: ${nameOf(event.drawerSeat)} ${verb(event.drawerSeat, "draw")}.`, { kind: "system" });
         break;
       case "game_over":
-        addLog(`Game over. ${event.result.winners.map(nameOf).join(" & ")} win${event.result.winners.length === 1 ? "s" : ""}.`, { kind: "system" });
+        addLog(`Game over. ${event.result.winners.map(nameOf).join(" & ")} ${event.result.winners.length === 1 ? verb(event.result.winners[0], "win") : "win"}.`, { kind: "system" });
         break;
       default:
         break;
@@ -555,7 +560,7 @@ export function register(app, ctx) {
       tableVersion += 1;
       table = next;
       const round = table.state.round;
-      addLog(`New ${table.mode === "arena" ? "arena" : "game"}: ${table.players.length} seats, ${table.state.totalTurns} rounds. ${nameOf(round.drawerSeat)} draws first.`, { kind: "system" });
+      addLog(`New ${table.mode === "arena" ? "arena" : "game"}: ${table.players.length} seats, ${table.state.totalTurns} rounds. ${nameOf(round.drawerSeat)} ${verb(round.drawerSeat, "draw")} first.`, { kind: "system" });
       response.status(201).json(publicState());
       broadcastState();
       pump();

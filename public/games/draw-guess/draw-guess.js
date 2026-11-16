@@ -381,7 +381,7 @@ let draftPrompt = "";
 function resultsPanel(view) {
   const wrap = el("div", "results");
   const winners = view.result.winners.map((seat) => state.players[seat].name);
-  wrap.append(el("h2", "panel-title", winners.length > 1 ? `${winners.join(" & ")} share the wall` : `${winners[0]} takes the salon`));
+  wrap.append(el("h2", "panel-title", winners.length > 1 ? `${winners.join(" & ")} share the wall` : `${winners[0]} ${winners[0] === "You" ? "take" : "takes"} the salon`));
   const list = el("ol");
   for (const entry of view.result.standings) {
     const item = el("li");
