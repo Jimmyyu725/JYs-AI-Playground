@@ -416,6 +416,29 @@ test("when every winner passes, the pung goes through", () => {
   assert.equal(state.players[1].melds[0].type, "pung");
 });
 
+test("the claim window closes early once nobody left could outrank the best claim", () => {
+  let state = scripted({ hands: MULTI_HANDS, front: ["9p"] });
+  state = act(state, 0, { type: "discard", tile: "5p" });
+  state = act(state, 2, { type: "win" });
+  assert.equal(state.phase, "handOver", "the nearest possible winner does not wait for seats 1 and 3");
+  assert.equal(state.result.winner, 2);
+
+  let farther = scripted({ hands: MULTI_HANDS, front: ["9p"] });
+  farther = act(farther, 0, { type: "discard", tile: "5p" });
+  farther = act(farther, 3, { type: "win" });
+  assert.equal(farther.phase, "claim", "seat 2 could still win ahead of seat 3");
+  assert.deepEqual(getSeatsToAct(farther), [1, 2]);
+  farther = act(farther, 2, { type: "pass" });
+  assert.equal(farther.phase, "handOver", "seat 1 can only pung, which cannot beat a win");
+  assert.equal(farther.result.winner, 3);
+
+  let pung = scripted({ hands: CLAIM_HANDS, front: ["4s"] });
+  pung = act(pung, 0, { type: "discard", tile: "5m" });
+  pung = act(pung, 2, { type: "pung" });
+  assert.equal(pung.phase, "discard", "a pung needs no answer from the chow seat");
+  assert.equal(pung.turn.seat, 2);
+});
+
 // ---------------------------------------------------------------------------
 // Self-draw, dealer, rounds
 

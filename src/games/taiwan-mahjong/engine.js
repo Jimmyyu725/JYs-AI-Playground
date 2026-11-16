@@ -756,9 +756,32 @@ function applyOwnTurn(state, seat, action) {
   }
 }
 
+// Claim strength: any win beats pung/kong beats chow; between wins the seat nearer the
+// discarder in turn order is stronger.
+function claimRank(pending, seat, action) {
+  if (action.type === "win") return 300 - ((seat - pending.from + SEAT_COUNT) % SEAT_COUNT);
+  if (action.type === "pung" || action.type === "kong") return 200;
+  if (action.type === "chow") return 100;
+  return 0;
+}
+
+// The window closes as soon as no seat still deciding could outrank the best declared
+// claim, so a win by the nearest seat does not wait for the others.
+function claimDecided(state) {
+  const pending = state.pending;
+  const undecided = pending.eligible.filter((seat) => pending.responses[seat] === undefined);
+  if (undecided.length === 0) return true;
+  const best = Math.max(...Object.entries(pending.responses).map(([seat, action]) => claimRank(pending, Number(seat), action)));
+  if (best === 0) return false;
+  return undecided.every((seat) => pending.options[seat].every((option) => claimRank(pending, seat, option) < best));
+}
+
 function applyResponse(state, seat, action) {
   state.pending.responses[seat] = action;
-  if (getSeatsToAct(state).length > 0) return;
+  if (!claimDecided(state)) return;
+  for (const other of state.pending.eligible) {
+    if (state.pending.responses[other] === undefined) state.pending.responses[other] = { type: "pass", skipped: true };
+  }
   if (state.phase === "claim") {
     resolveClaims(state);
     return;
