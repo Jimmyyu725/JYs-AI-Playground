@@ -136,6 +136,37 @@ setupForm.innerHTML = `
 `;
 setup.body.append(setupForm);
 
+// The tavern ladder: Elo for this room from GET /api/ladder/liars-dice.
+const ladder = el("details", "rules-sheet ladder");
+ladder.append(el("summary", null, "The tavern ladder"));
+const ladderList = el("ol", "ladder-list");
+ladder.append(ladderList);
+setup.body.append(ladder);
+
+async function refreshLadder() {
+  try {
+    const response = await fetch("/api/ladder/liars-dice");
+    if (!response.ok) return;
+    const { ratings = [], matchCount = 0 } = await response.json();
+    if (!ratings.length) {
+      ladderList.replaceChildren(el("li", "ladder-empty", "No finished games yet."));
+      return;
+    }
+    ladderList.replaceChildren(
+      ...ratings.slice(0, 10).map((entry) => {
+        const model = registry?.models.find((candidate) => candidate.id === entry.model);
+        const name = entry.kind === "human" ? "Humans" : `${model?.label ?? entry.model} · ${entry.reasoningEffort}`;
+        const row = el("li", "ladder-row");
+        row.append(el("span", "ladder-name", name), el("span", "ladder-record", `${entry.wins}–${entry.losses}`), el("strong", "ladder-rating", String(Math.round(entry.rating))));
+        return row;
+      }),
+    );
+    ladder.querySelector("summary").textContent = `The tavern ladder · ${matchCount} game${matchCount === 1 ? "" : "s"}`;
+  } catch {
+    // The ladder is a nicety; the table works without it.
+  }
+}
+
 let cast = null;
 let allModels = null;
 let seatModels = [];
@@ -666,6 +697,7 @@ function renderResult() {
   $("review").hidden = true;
   card.hidden = false;
   sfx.play(humanWon || state.humanSeat === null ? "win" : "error");
+  setTimeout(refreshLadder, 600);
 }
 
 async function askReview(player, button) {
@@ -744,6 +776,7 @@ $("tools-slot").append(sfx.muteButton(), setup.toggleButton);
 setup.toggleButton.textContent = "Setup";
 
 await initSetup();
+refreshLadder();
 const initial = await fetch(`${API}/state`).then((response) => response.json()).catch(() => null);
 if (initial) applyState(initial);
 else setup.open();
