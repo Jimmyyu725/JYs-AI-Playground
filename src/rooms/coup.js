@@ -1,7 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { coupDecisionPrompt, coupDecisionSchema } from "../games/coup/ai-view.js";
-import { CoupTable, GAME_ID } from "../games/coup/table.js";
+import { publicView } from "../games/coup/engine.js";
+import { CoupTable, GAME_ID, personaFor } from "../games/coup/table.js";
 import { requestStructuredDecision } from "../platform/decision-gateway.js";
 import { createMatchRecorder, createSSEChannel, httpError } from "../platform/room-kit.js";
 
@@ -118,6 +119,31 @@ export function register(app, ctx) {
     const current = requireTable();
     current.humanAction(request.body?.action);
     response.json(current.publicState());
+  });
+
+  // Post-game review in a character's own voice. Only after the game, when every card may be shown.
+  app.post("/api/coup/review", async (request, response) => {
+    const current = requireTable();
+    if (!current.isOver) throw httpError(409, "Reviews open once the game is over");
+    const seat = Number(request.body?.seat);
+    const entry = current.seats[seat];
+    if (!entry || entry.isHuman) throw httpError(400, "Choose an AI seat to review the game");
+    current.reviews ??= {};
+    if (!current.reviews[seat]) {
+      const view = publicView(current.state, null, { revealAll: true });
+      const human = current.seats.find((other) => other.isHuman);
+      const table = view.players.map((player) => `${player.name} (seat ${player.seat}): ${player.alive ? `survived holding ${player.hidden.join(", ")}` : "eliminated"}; lost ${player.revealed.join(", ") || "nothing"}`).join("\n");
+      const result = await requestStructuredDecision({
+        gameId: GAME_ID,
+        modelConfig: entry.aiConfig,
+        instructions: `You are ${personaFor(entry.character)} Voice: ${entry.character?.voice ?? ""}\nYou just played a game of Coup (the bluffing card game) at a Venetian masquerade. Review the game in character, in at most 5 short sentences: the turning point, the best bluff or challenge, and one concrete lesson${human ? ` for ${human.name}, the human player` : " for the table"}. Refer to real events from the log only.`,
+        input: `FINAL TABLE\n${table}\n\nGAME LOG\n${view.log.map((line) => line.text).join("\n")}`,
+        schemaName: "coup_review",
+        schema: { type: "object", properties: { review: { type: "string", maxLength: 900 } }, required: ["review"], additionalProperties: false },
+      });
+      current.reviews[seat] = String(result.output?.review ?? "").trim().slice(0, 900);
+    }
+    response.json({ seat, name: entry.name, review: current.reviews[seat] });
   });
 
   app.post("/api/coup/retry-ai", (_request, response) => {

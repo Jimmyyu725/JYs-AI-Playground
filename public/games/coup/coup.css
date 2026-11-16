@@ -289,6 +289,11 @@ body[data-mode="arena"] .you {
   display: none;
 }
 
+body[data-mode="arena"] .stage {
+  align-self: end;
+  margin-block-end: 5vh;
+}
+
 /* ---------------------------------------------------------------- seats */
 
 .mask-seat {
@@ -424,7 +429,7 @@ body[data-mode="arena"] .you {
 
 .mini-card {
   position: relative;
-  inline-size: 26px;
+  inline-size: 30px;
   aspect-ratio: 2 / 3;
   border-radius: 3px;
   background: url("/assets/rooms/coup/card-back.webp") center / cover;
@@ -448,8 +453,10 @@ body[data-mode="arena"] .you {
   background: none;
 }
 
-.mini-card[data-lost="true"] {
-  filter: sepia(0.7) brightness(0.62);
+.mini-card[data-lost="true"],
+.hand-card[data-lost="true"] {
+  background-image: linear-gradient(rgb(70 40 18 / 0.72), rgb(40 22 10 / 0.72)), var(--art);
+  background-blend-mode: color, normal;
 }
 
 .mini-card[data-lost="true"]::after,
@@ -739,10 +746,6 @@ body[data-mode="arena"] .you {
 .hand-card:not([data-lost="true"]):hover {
   transform: translateY(-10px);
   box-shadow: 0 0 0 2px var(--gilt), 0 0 26px -4px var(--canal), 0 22px 34px -14px #000;
-}
-
-.hand-card[data-lost="true"] {
-  filter: sepia(0.7) brightness(0.6);
 }
 
 .hand-card[data-choosable="true"] {
@@ -1062,6 +1065,11 @@ body[data-mode="arena"] .you {
   pointer-events: none;
 }
 
+.reveal-layer:has(.reveal) {
+  background: radial-gradient(60% 70% at 50% 50%, rgb(10 5 2 / 0.72), rgb(10 5 2 / 0.25) 70%, transparent);
+  animation: reveal-in 0.4s var(--kit-ease);
+}
+
 .reveal {
   display: grid;
   justify-items: center;
@@ -1172,7 +1180,12 @@ body[data-mode="arena"] .you {
 
 /* ---------------------------------------------------------------- speech + kit */
 
+.mask-seat:has(.kit-speech) {
+  z-index: 5;
+}
+
 .kit-speech {
+  text-align: start;
   font-family: var(--kit-font-body);
   font-style: italic;
   font-size: 0.98rem;
@@ -1255,7 +1268,12 @@ body[data-mode="arena"] .you {
   }
 
   .role-card {
-    inline-size: 70px;
+    inline-size: 76px;
+  }
+
+  .role-card::after {
+    font-size: 0.62rem;
+    padding: 12px 2px 5px;
   }
 
   .hand-card {
@@ -1290,5 +1308,61 @@ body[data-mode="arena"] .you {
   .hand-card,
   .blade {
     transition-duration: 0.01s;
+  }
+}
+
+/* ---------------------------------------------------------------- post-game reviews */
+
+.reviewers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.reviewers .ornate-button {
+  font-size: 0.82rem;
+  padding: 0.45em 0.9em;
+}
+
+.review {
+  margin: 12px 0 0;
+  padding: 10px 14px;
+  border-inline-start: 2px solid var(--canal);
+  border-radius: 0 10px 10px 0;
+  background: color-mix(in oklab, var(--lagoon) 80%, transparent);
+}
+
+.review cite {
+  font: italic 600 0.95rem/1 var(--kit-font-display);
+  color: var(--gilt-light);
+}
+
+.review p {
+  margin: 4px 0 0;
+  font-style: italic;
+}
+
+.result-card {
+  max-block-size: 60dvh;
+  overflow-y: auto;
+}
+
+.stage:has(.result-card) .treasury,
+.stage:has(.result-card) .stage-claim {
+  display: none;
+}
+
+@media (max-width: 860px) {
+  .result-card {
+    flex-direction: column;
+    align-items: stretch;
+    max-block-size: none;
+    overflow: visible;
+    padding: 16px;
+  }
+
+  .result-card > .kit-seat {
+    align-self: center;
   }
 }

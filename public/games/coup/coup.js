@@ -32,7 +32,7 @@ const ACTIONS = {
   coup: { label: "Coup", note: "Pay 7, cannot be stopped", glyph: "VII", targeted: true },
 };
 const ACTION_ORDER = ["income", "foreign_aid", "tax", "exchange", "steal", "assassinate", "coup"];
-const VERB = { income: "takes Income", foreign_aid: "asks for Foreign Aid", tax: "levies Tax", exchange: "calls for an Exchange", steal: "moves to Steal", assassinate: "sends the Assassin", coup: "launches a Coup" };
+const VERB = { income: "takes Income", foreign_aid: "asks for Foreign Aid", tax: "levies Tax", exchange: "calls for an Exchange", steal: "moves to Steal", assassinate: "orders an assassination", coup: "launches a Coup" };
 
 const $ = (selector) => document.querySelector(selector);
 const el = (tag, className, text) => {
@@ -280,9 +280,40 @@ function resultCard() {
   const again = el("button", "ornate-button primary", "Set a new table");
   again.type = "button";
   again.addEventListener("click", () => setup.open());
-  text.append(again);
+  const reviewers = el("div", "reviewers");
+  for (const entry of state.seats.filter((candidate) => !candidate.isHuman)) {
+    const ask = el("button", "ornate-button ghost", `Ask ${entry.name} to review`);
+    ask.type = "button";
+    ask.addEventListener("click", () => requestReview(entry.seat));
+    reviewers.append(ask);
+  }
+  text.append(again, reviewers);
+  for (const [key, review] of reviews) {
+    if (!key.startsWith(`${state.id}:`)) continue;
+    const quote = el("blockquote", "review");
+    quote.append(el("cite", null, review.name), el("p", null, review.text));
+    text.append(quote);
+  }
   box.append(text);
   return box;
+}
+
+const reviews = new Map();
+
+async function requestReview(seat) {
+  const key = `${state.id}:${seat}`;
+  if (reviews.has(key)) return;
+  const tableId = state.id;
+  reviews.set(key, { name: state.seats[seat].name, text: "is gathering their thoughts behind the mask…" });
+  renderStage();
+  try {
+    const result = await api("/api/coup/review", { seat });
+    reviews.set(key, { name: result.name, text: result.review });
+  } catch (error) {
+    reviews.delete(key);
+    toast(error.message, { tone: "error" });
+  }
+  if (state.id === tableId) renderStage();
 }
 
 // ------------------------------------------------------------------ your hand
@@ -521,7 +552,7 @@ function applyState(next) {
     const key = `${state.id}:${seat}:${insight.step}`;
     if (!insight.summary || seen.insights.has(key)) continue;
     seen.insights.add(key);
-    const summary = insight.summary.replace(/\s+/g, " ");
+    const summary = insight.summary.replace(/\*\*(.+?)\*\*/g, "$1:").replace(/\s+/g, " ");
     log.add({ who: `${nameOf(Number(seat))} thinks`, text: summary.length > 260 ? `${summary.slice(0, 257)}…` : summary, kind: "reasoning" });
   }
   seen.tableId = state.id;

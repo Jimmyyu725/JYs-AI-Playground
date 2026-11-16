@@ -292,10 +292,11 @@ export class CoupTable {
       paused: this.paused,
       stalemate: this.stalemate,
       over: this.isOver,
-      // Reasoning summaries mention hidden cards: only spectators and finished games see them.
+      // Reasoning summaries and exchange labels mention hidden cards: only spectators and
+      // finished games see them.
       insights: reveal
         ? this.insights
-        : Object.fromEntries(Object.entries(this.insights).map(([seat, insight]) => [seat, { ...insight, summary: "" }])),
+        : Object.fromEntries(Object.entries(this.insights).map(([seat, { step, latencyMs }]) => [seat, { step, latencyMs, label: "", summary: "" }])),
       tableTalk: this.tableTalk,
     };
   }
