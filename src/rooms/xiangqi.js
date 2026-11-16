@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { requestXiangqiDecisionWithRetry } from "../games/xiangqi/ai.js";
+import { requestXiangqiReview } from "../games/xiangqi/review.js";
 import { XiangqiTable } from "../games/xiangqi/table.js";
 import { pushTableTalk } from "../platform/table-talk.js";
 import { createMatchRecorder, createSSEChannel, httpError, participantFrom, publicError } from "../platform/room-kit.js";
@@ -209,7 +210,28 @@ export function register(app, ctx) {
     }
   });
 
-  app.post("/api/xiangqi/arena/pause", (_request, response, next) => {
+  // Post-game review by one of the AI characters (cached per side for the finished table).
+  app.post("/api/xiangqi/review", async (request, response, next) => {
+    try {
+      const current = requireTable();
+      if (current.phase !== "complete") throw httpError(409, "Finish the game before asking for a review");
+      const side = request.body?.side;
+      const player = current.playerFor(side);
+      if (!player || player.isHuman) throw httpError(400, "Choose an AI player to review the game");
+      current.reviews ??= {};
+      current.reviews[side] ??= requestXiangqiReview(current, side).catch((error) => {
+        delete current.reviews[side];
+        throw error;
+      });
+      response.json(await current.reviews[side]);
+    } catch (error) {
+      if (!error.status) error.status = 502;
+      error.message = publicError(error);
+      next(error);
+    }
+  });
+
+  app.post("/api/xiangqi/arena/pause",(_request, response, next) => {
     try {
       const current = requireTable();
       current.pauseArena();

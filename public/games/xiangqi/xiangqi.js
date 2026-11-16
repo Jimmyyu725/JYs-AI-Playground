@@ -299,7 +299,7 @@ function renderStatus() {
   if (state.status === "complete") {
     line.textContent = state.resultText ?? "The game is over.";
     card.dataset.tone = "done";
-    actions.append(button("New game", () => setup.open()));
+    actions.append(button("New game", () => setup.open()), ...reviewButtons());
   } else if (state.aiError) {
     card.dataset.tone = "error";
     line.textContent = `${state.aiError.playerName} could not move: ${state.aiError.message}`;
@@ -338,7 +338,8 @@ function button(label, onClick, tone = "") {
 function renderScroll() {
   const list = $("moves");
   const rows = movesWithNotation(state.history);
-  $("move-count").textContent = rows.length ? `${Math.ceil(state.ply / 2)} moves` : "—";
+  const moveCount = Math.ceil(state.ply / 2);
+  $("move-count").textContent = rows.length ? `${moveCount} ${moveCount === 1 ? "move" : "moves"}` : "";
   const insight = state.aiInsights?.at(-1);
   const box = $("insight");
   if (insight) {
@@ -353,7 +354,7 @@ function renderScroll() {
   for (const row of rows.slice(list.childElementCount)) {
     const item = el("li", "move-row");
     item.dataset.side = row.side;
-    const number = el("span", "move-no", row.side === "red" || row.resigned ? `${Math.floor((row.ply - 1) / 2) + 1}.` : "");
+    const number = el("span", "move-no", row.resigned ? `${Math.floor(row.ply / 2) + 1}.` : row.side === "red" ? `${Math.floor((row.ply - 1) / 2) + 1}.` : "");
     const text = el("span", "move-text", row.text);
     text.lang = "zh-Hant";
     const detail = el("span", "move-iccs", row.resigned ? row.english : `${row.move}${row.captured ? " ×" : ""}${row.check ? " +" : ""}`);
@@ -362,6 +363,60 @@ function renderScroll() {
     list.append(item);
   }
   list.scrollTop = list.scrollHeight;
+}
+
+// ---------------------------------------------------------------------------
+// Post-game review
+
+const reviews = new Map(); // `${createdAt}:${side}` -> review | "pending"
+
+function reviewButtons() {
+  return (state?.players ?? [])
+    .filter((player) => !player.isHuman)
+    .map((player) => {
+      const key = `${state.createdAt}:${player.side}`;
+      const pending = reviews.get(key) === "pending";
+      const short = player.character?.shortName ?? player.name;
+      const label = pending ? `${short} is reviewing…` : reviews.has(key) ? `${short}'s review is in the scroll` : `Ask ${short} to review this game`;
+      const node = button(label, () => askReview(player.side), "ghost review-ask");
+      node.disabled = pending || (reviews.has(key) && reviews.get(key) !== "pending");
+      return node;
+    });
+}
+
+async function askReview(side) {
+  const key = `${state.createdAt}:${side}`;
+  if (reviews.has(key)) return;
+  reviews.set(key, "pending");
+  renderStatus();
+  renderResult();
+  try {
+    const review = await request("/api/xiangqi/review", { side });
+    reviews.set(key, review);
+    showReview(review);
+    sfx.play("cardFlick");
+  } catch (error) {
+    reviews.delete(key);
+    sfx.play("error");
+    toast(error.message, { tone: "error", duration: 7000 });
+  }
+  renderStatus();
+  renderResult();
+}
+
+function showReview(review) {
+  const box = $("review");
+  box.hidden = false;
+  const head = el("header", "review-head");
+  head.append(seat({ character: characters.find((entry) => entry.id === review.characterId), name: review.playerName, caption: "", size: "xs" }), el("h3", null, `${review.playerName} looks back`));
+  const turning = el("p", "review-turn");
+  turning.append(el("strong", null, "Turning point. "), document.createTextNode(review.turningPoint));
+  const advice = el("p", "review-advice");
+  advice.append(el("strong", null, "Advice. "), document.createTextNode(review.advice));
+  box.replaceChildren(head, el("p", "review-body", review.review), turning, advice);
+  resultDismissedFor = state?.createdAt ?? null;
+  renderResult();
+  box.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "nearest" });
 }
 
 function renderResult() {
@@ -377,6 +432,7 @@ function renderResult() {
   $("result-glyph").textContent = !winner ? "和" : human && winner !== human.side ? "負" : "勝";
   $("result-title").textContent = !winner ? "A drawn game" : `${playerFor(winner)?.name ?? SIDE_LABEL[winner]} wins`;
   $("result-copy").textContent = state.resultText ?? "";
+  $("result-reviews").replaceChildren(...reviewButtons());
 }
 
 function render() {
@@ -392,7 +448,10 @@ function render() {
     renderPieces(animate);
     if (animate) moveFeedback();
   }
-  if (!sameGame) $("seal").classList.remove("is-stamped");
+  if (!sameGame) {
+    $("seal").classList.remove("is-stamped");
+    $("review").hidden = true;
+  }
   renderSeats(!sameGame);
   renderMarks();
   renderStatus();

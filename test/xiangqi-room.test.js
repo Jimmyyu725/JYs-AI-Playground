@@ -3,6 +3,7 @@ import test from "node:test";
 import { AIDecisionError } from "../src/platform/decision-gateway.js";
 import { registerGameDefaults } from "../src/platform/model-registry.js";
 import { XIANGQI_GATEWAY_SCHEMA, requestXiangqiDecisionWithRetry, xiangqiPrompt } from "../src/games/xiangqi/ai.js";
+import { XIANGQI_REVIEW_SCHEMA, buildReviewRequest, requestXiangqiReview } from "../src/games/xiangqi/review.js";
 import { XiangqiTable } from "../src/games/xiangqi/table.js";
 
 registerGameDefaults("xiangqi", { model: "gpt-6-luna", reasoningEffort: "low" });
@@ -141,4 +142,26 @@ test("gateway failures are not retried automatically", async () => {
     /Rate limited/,
   );
   assert.equal(count, 1);
+});
+
+test("a finished game can be reviewed by the AI character in its own voice", async () => {
+  const table = new XiangqiTable({ gameMode: "human", humanSide: "red", humanName: "Jay", aiPlayers: [{ characterId: "tenzin", model: "gpt-6-luna", reasoningEffort: "high" }] });
+  table.applyHumanAction({ type: "move", move: "h2e2" });
+  table.applyAIMove("black", "h9g7");
+  table.applyHumanAction({ type: "resign" });
+  const { instructions, input } = buildReviewRequest(table, "black");
+  assert.match(instructions, /Tenzin Norbu/);
+  assert.match(instructions, /against Jay \(a human player\)/);
+  assert.deepEqual(input.moves, ["1. red h2e2", "2. black h9g7", "red resigned"]);
+  let seen = null;
+  const review = await requestXiangqiReview(table, "black", {
+    gateway: async (request) => {
+      seen = request;
+      return { output: { review: "  A short   game. ", turningPoint: "Ply 3: the resignation.", advice: "Keep playing." } };
+    },
+  });
+  assert.equal(seen.schema, XIANGQI_REVIEW_SCHEMA);
+  assert.deepEqual(seen.modelConfig, { model: "gpt-6-luna", reasoningEffort: "high" });
+  assert.equal(review.review, "A short game.");
+  assert.equal(review.playerName, "Tenzin Norbu");
 });
