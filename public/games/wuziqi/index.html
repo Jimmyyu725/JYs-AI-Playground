@@ -2,72 +2,126 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#15080c" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#e9d9be" />
     <title>Wuziqi 五子棋 — JYs AI Playground</title>
     <link rel="icon" href="data:," />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;600&display=swap" />
+    <link rel="preload" as="image" href="/assets/rooms/wuziqi/stone-black.webp" />
+    <link rel="preload" as="image" href="/assets/rooms/wuziqi/stone-white.webp" />
+    <link rel="stylesheet" href="/shared/kit.css" />
     <link rel="stylesheet" href="/games/wuziqi/wuziqi.css" />
   </head>
   <body>
-    <div class="room-backdrop" aria-hidden="true"></div><div class="noise" aria-hidden="true"></div>
-    <header class="topbar">
-      <div class="room-branding">
-        <a class="lobby-return" href="/">← Playground</a>
-        <button class="brand" id="new-game-button" type="button" aria-label="Open Wuziqi setup">
-          <span class="brand-mark five-mark">五</span>
-          <span><strong>The Five Room</strong><small>五子棋 · House of tactics</small></span>
-        </button>
+    <div class="study" aria-hidden="true">
+      <div class="study-hero"></div>
+      <div class="study-mist"></div>
+      <div class="study-bamboo"></div>
+      <div class="study-glow"></div>
+    </div>
+
+    <header class="masthead">
+      <div class="masthead-left" id="masthead-left"></div>
+      <h1 class="room-title">
+        <span class="room-title-zh" lang="zh-Hans">五子棋</span>
+        <span class="room-title-en">Wuziqi <em>· the scholar's study</em></span>
+      </h1>
+      <div class="masthead-right" id="masthead-right">
+        <span class="move-count" title="Moves played"><small>Move</small><b id="move-number">0</b></span>
       </div>
-      <div class="table-status">
-        <span class="status-pill model" id="model-pill"><i></i> GPT-6 Luna</span>
-        <span class="status-pill" id="reasoning-pill">Reasoning · Medium</span>
-        <span class="status-pill rules">Freestyle · Five or more</span>
-      </div>
-      <div class="move-meta"><span>Move</span><strong id="move-number">0</strong></div>
     </header>
 
-    <main class="go-shell wuziqi-shell">
-      <section class="board-column">
-        <div class="turn-ribbon"><span class="turn-stone black" id="turn-stone"></span><strong id="turn-label">Black to play</strong><span id="turn-detail">Open a game to begin</span></div>
-        <div class="board-stage">
-          <div class="player-card black-player" id="black-player"></div>
-          <div class="board-frame five-board-frame"><div class="go-board" id="wuziqi-board" role="grid" aria-label="Wuziqi board"></div><div class="board-shine"></div></div>
-          <div class="player-card white-player" id="white-player"></div>
-          <div class="game-overlay hidden" id="game-overlay"><div class="overlay-card"><span class="eyebrow" id="overlay-eyebrow">Game complete</span><h2 id="overlay-title">Five connected</h2><p id="overlay-copy"></p><button class="gold-button" id="overlay-action" type="button">New game</button></div></div>
-        </div>
-        <div class="score-dock five-score-dock">
-          <div class="score-cell"><span class="mini-stone black"></span><small>Black stones</small><strong id="black-count">0</strong></div>
-          <div class="score-cell"><span class="mini-stone white"></span><small>White stones</small><strong id="white-count">0</strong></div>
-          <div class="score-cell"><span class="komi-mark">5+</span><small>Winning line</small><strong>Freestyle</strong></div>
-          <div class="game-actions"><button class="quiet-button danger" id="resign-button" type="button" disabled>Resign</button><button class="gold-button hidden" id="arena-toggle" type="button">Pause arena</button></div>
-        </div>
+    <main class="study-room" id="study-room" data-phase="idle">
+      <section class="plates" aria-label="Players">
+        <div class="plate" id="plate-black" data-color="black"></div>
+        <div class="plate" id="plate-white" data-color="white"></div>
       </section>
 
-      <aside class="insight-rail">
-        <section class="rail-panel decision-panel">
-          <div class="panel-heading"><div><span class="eyebrow">OpenAI lens</span><h2>Reading the threat</h2></div><span class="live-indicator" id="live-indicator"><i></i> Idle</span></div>
-          <div class="thinker-profile" id="thinker-profile"><span class="profile-stone black"></span><div><strong>No active player</strong><span>Public rationale and supported summaries</span></div></div>
-          <div class="reasoning-terminal" aria-live="polite"><div class="terminal-line"><span>MODEL /</span><span id="reasoning-status">No model request is active.</span></div><p class="live-summary" id="reasoning-text">Completed summaries remain in the transcript below.</p><div class="transcript-heading"><span>Persistent decision log</span><strong id="reasoning-count">0 entries</strong></div><ol class="reasoning-feed" id="reasoning-feed"></ol></div>
+      <section class="desk" aria-label="Board">
+        <div class="sheet" id="sheet">
+          <div class="sheet-paper">
+            <div class="sheet-lines" id="sheet-lines"></div>
+            <div class="sheet-stars" id="sheet-stars"></div>
+            <div class="sheet-ink" id="sheet-ink"></div>
+            <div class="sheet-grid" id="board" role="grid" aria-label="Wuziqi board"></div>
+            <div class="sheet-seal" id="sheet-seal"></div>
+          </div>
+          <div class="sheet-empty" id="sheet-empty">
+            <span lang="zh-Hans">落子无悔</span>
+            <p>A stone once placed is never taken back.<br />Open the setup scroll to lay out a board.</p>
+          </div>
+        </div>
+        <p class="turn-line" id="turn-line" aria-live="polite">The board is waiting.</p>
+      </section>
+
+      <aside class="scroll-rail" aria-label="Game record">
+        <section class="leaf leaf-live" id="live-leaf" hidden>
+          <header><span class="leaf-kicker" id="live-kicker">Reading the board</span><span class="leaf-timer" id="live-timer"></span></header>
+          <strong class="leaf-name" id="live-name"></strong>
+          <p class="leaf-status" id="live-status"></p>
+          <p class="leaf-summary" id="live-summary"></p>
         </section>
-        <section class="rail-panel history-panel"><div class="panel-heading compact"><div><span class="eyebrow">Game record</span><h2>Move history</h2></div></div><ol class="history-list" id="history-list"></ol></section>
-        <section class="rail-panel house-note"><span>∞</span><div><strong>No artificial turn timer</strong><p>The room waits for the selected OpenAI model. Illegal moves or API errors pause play for an explicit retry.</p></div></section>
+
+        <section class="leaf leaf-pause" id="pause-leaf" hidden>
+          <header><span class="leaf-kicker">Brush lifted · request paused</span></header>
+          <strong class="leaf-name" id="pause-name"></strong>
+          <p class="leaf-status" id="pause-message"></p>
+          <button class="seal-button" id="retry-button" type="button">Retry the model</button>
+        </section>
+
+        <section class="leaf leaf-result" id="result-leaf" hidden>
+          <header><span class="leaf-kicker" id="result-kicker">Game complete</span></header>
+          <strong class="leaf-name" id="result-title"></strong>
+          <p class="leaf-status" id="result-copy"></p>
+          <div class="review-actions" id="review-actions"></div>
+          <div class="review" id="review" hidden></div>
+          <button class="ink-button" id="new-game-button" type="button">Lay out a new board</button>
+        </section>
+
+        <div class="rail-actions" id="rail-actions">
+          <button class="ink-button" id="arena-toggle" type="button" hidden>Pause arena</button>
+          <button class="ghost-button" id="resign-button" type="button" hidden>Resign</button>
+        </div>
+
+        <div class="record" id="record"></div>
       </aside>
     </main>
 
-    <div class="modal-backdrop" id="setup-modal">
-      <form class="setup-card" id="setup-form">
-        <div class="setup-ornament"><i></i><span>五</span><i></i></div><span class="eyebrow">The house of tactics</span><h1>Open a Wuziqi board</h1><p class="setup-lede" id="setup-lede">Connect five or more stones. Overlines win; Renju forbidden moves are not used.</p>
-        <fieldset class="mode-field"><legend>Game mode</legend><div class="mode-options" id="mode-options"><label><input type="radio" name="gameMode" value="human" checked /><span><b>●</b><strong>Play vs AI</strong><small>Take one color</small></span></label><label><input type="radio" name="gameMode" value="arena" /><span><b>∞</b><strong>AI vs AI</strong><small>Watch both minds</small></span></label></div></fieldset>
-        <div class="setup-grid">
-          <label class="field" id="human-name-field"><span>Your name</span><input name="humanName" maxlength="18" value="Player" autocomplete="nickname" /></label>
-          <label class="field" id="human-color-field"><span>Your color</span><select name="humanColor"><option value="black" selected>Black · first move</option><option value="white">White · second move</option></select></label>
-          <label class="field board-size-field"><span>Board size</span><select name="boardSize"><option value="13">13 × 13</option><option value="15" selected>15 × 15 · classic</option><option value="19">19 × 19</option></select></label>
+    <template id="setup-template">
+      <form class="setup" id="setup-form">
+        <fieldset class="setup-mode">
+          <legend>How will you sit?</legend>
+          <label><input type="radio" name="gameMode" value="human" checked /><span><b lang="zh-Hans">对弈</b>Play an AI</span></label>
+          <label><input type="radio" name="gameMode" value="arena" /><span><b lang="zh-Hans">观棋</b>Watch two AIs</span></label>
+        </fieldset>
+        <div class="setup-row" data-human-only>
+          <label class="setup-field"><span>Your name</span><input class="kit-input" name="humanName" maxlength="18" value="Player" autocomplete="nickname" /></label>
+          <label class="setup-field"><span>Your stones</span>
+            <select class="kit-select" name="humanColor"><option value="black" selected>Ink · moves first</option><option value="white">Jade · moves second</option></select>
+          </label>
         </div>
-        <section class="ai-roster-section"><div class="roster-heading"><div><span>AI roster</span><small>Every seat can use a different model and depth</small></div><button class="text-button" id="apply-roster" type="button">Apply first to all</button></div><div class="ai-roster" id="ai-roster"></div></section>
-        <button class="gold-button enter-button" id="setup-submit" type="submit">Begin as Black</button><button class="text-button cancel-button hidden" id="cancel-setup" type="button">Return to current game</button>
+        <label class="setup-field"><span>Board</span>
+          <select class="kit-select" name="boardSize"><option value="13">13 × 13 · quick</option><option value="15" selected>15 × 15 · classic</option><option value="19">19 × 19 · wide</option></select>
+        </label>
+        <section class="setup-cast">
+          <h3 id="cast-heading">Your opponent</h3>
+          <p class="setup-hint">A random guest from the house is seated. Reroll, or choose someone.</p>
+          <div id="cast-slot"></div>
+        </section>
+        <section class="setup-models" id="model-slot"></section>
+        <button class="seal-button setup-submit" id="setup-submit" type="submit">Begin as Ink</button>
+        <p class="setup-rules">Freestyle: five or more in a row wins, overlines count, no forbidden points. If a model stumbles twice in a row the game pauses for you to retry.</p>
       </form>
-    </div>
-    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    </template>
+
+    <svg class="defs" width="0" height="0" aria-hidden="true" focusable="false">
+      <filter id="seal-rough" x="-10%" y="-10%" width="120%" height="120%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="7" result="grain" />
+        <feDisplacementMap in="SourceGraphic" in2="grain" scale="2.5" xChannelSelector="R" yChannelSelector="G" result="edge" />
+      </filter>
+    </svg>
     <script type="module" src="/games/wuziqi/wuziqi.js"></script>
   </body>
 </html>
