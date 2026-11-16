@@ -462,6 +462,14 @@ button {
 .sheet-grid[data-can-act="true"] .point:not(:disabled) {
   cursor: pointer;
 }
+/* Stones, ink bleeds and the hover ghost never take a tap meant for a neighbouring point. */
+.point *,
+.point::before,
+.point::after,
+.stone::before,
+.stone::after {
+  pointer-events: none;
+}
 .point:focus-visible {
   outline: 2px solid var(--seal);
   outline-offset: -3px;

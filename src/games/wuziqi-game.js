@@ -200,7 +200,7 @@ export class WuziqiGame {
       reviewer: { color: reviewer.color, name: reviewer.name, title: reviewer.character.title, personality: reviewer.character.personality, voice: reviewer.character.voice ?? "", role: "player" },
       players: this.players.map((player) => ({ color: player.color, name: player.name, isHuman: player.isHuman })),
       result: { winner: this.result.winner, reason: this.result.reason, winningLine: (this.result.winningLine ?? []).map(([row, column]) => wuziqiCoordinate(row, column, this.boardSize)) },
-      moves: this.moves.map((move) => ({ moveNumber: move.moveNumber, color: move.color, coordinate: move.coordinate })),
+      moves: this.moves.map((move) => ({ moveNumber: move.moveNumber, color: move.color, coordinate: move.coordinate, row: move.row, column: move.column })),
       finalBoardRows: Array.from({ length: this.boardSize }, (_, row) =>
         this.board.slice(row * this.boardSize, (row + 1) * this.boardSize).map((cell) => cell === "black" ? "B" : cell === "white" ? "W" : ".").join(""),
       ),

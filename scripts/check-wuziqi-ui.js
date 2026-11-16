@@ -38,7 +38,7 @@ const desktop = await page.evaluate(() => ({
   documentWidth: document.documentElement.scrollWidth,
 }));
 await page.click(".kit-drawer-toggle");
-await page.check('input[name="gameMode"][value="arena"]', { force: true });
+await page.click('.setup-mode label:has(input[value="arena"])');
 const setup = await page.evaluate(() => ({
   castRows: document.querySelectorAll(".kit-pick-row").length,
   distinctCast: new Set([...document.querySelectorAll(".kit-pick-row .kit-seat")].map((seat) => seat.dataset.characterId)).size,
