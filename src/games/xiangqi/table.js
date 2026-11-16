@@ -99,6 +99,8 @@ export class XiangqiTable {
     if (this.phase !== "active") throw ruleError("The game is already over", 409);
     if (action?.type === "resign") {
       this.state = applyAction(this.state, { type: "resign", side: human.side });
+      // A resignation can land while the AI is still thinking; that request is now moot.
+      this.aiThinking = null;
       return this.state;
     }
     if (this.state.turn !== human.side) throw ruleError("It is not your turn", 409);

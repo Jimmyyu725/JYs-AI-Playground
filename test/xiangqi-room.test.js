@@ -58,6 +58,16 @@ test("human moves are validated by the engine and turns are enforced", () => {
   assert.equal(table.placeFor("red"), 2);
 });
 
+test("resigning while the AI is thinking clears the thinking state", () => {
+  const table = new XiangqiTable({ gameMode: "human", humanSide: "red" });
+  table.applyHumanAction({ type: "move", move: "h2e2" });
+  table.aiThinking = { side: "black", status: "Thinking" };
+  table.applyHumanAction({ type: "resign" });
+  assert.equal(table.phase, "complete");
+  assert.equal(table.publicState().aiThinking, null);
+  assert.equal(table.aiShouldMove, false);
+});
+
 test("a table survives a save round trip, including a paused AI error", () => {
   const table = new XiangqiTable({ gameMode: "human", humanSide: "red", humanName: "Jay" });
   table.applyHumanAction({ type: "move", move: "h2e2" });

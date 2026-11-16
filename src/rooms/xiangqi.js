@@ -75,7 +75,8 @@ function schedule(forVersion = version) {
 async function runAIChain(forVersion) {
   if (activeVersions.has(forVersion)) return;
   activeVersions.add(forVersion);
-  const live = (current) => table === current && forVersion === version;
+  // A resignation during the request ends the game under the AI; its answer is then dropped.
+  const live = (current) => table === current && forVersion === version && current.phase === "active";
   try {
     while (table && forVersion === version && table.aiShouldMove) {
       const current = table;

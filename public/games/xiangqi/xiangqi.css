@@ -57,11 +57,13 @@
   box-sizing: border-box;
 }
 
+/* `clip`, not `hidden`: a hidden overflow-x turns <body> into its own scroll container,
+   which the lantern glow below the board made scrollable on desktop. */
 html,
 body {
   margin: 0;
   min-height: 100%;
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 body {
@@ -582,6 +584,12 @@ body[data-flipped="true"] .glyph {
 .seal.is-stamped {
   opacity: 0.94;
   scale: 1;
+  /* After the stamp lands it settles into a faint watermark, so the corner piece under it
+     stays readable for the rest of the turn. */
+  animation: seal-settle 0.6s ease 1.4s forwards;
+}
+@keyframes seal-settle {
+  to { opacity: 0.3; }
 }
 
 /* ------------------------------------------------------------------ seats */
@@ -739,6 +747,8 @@ body[data-flipped="true"] .glyph {
   margin: 0;
   font-weight: 600;
   font-size: 0.95rem;
+  /* Provider errors carry long URLs and request ids. */
+  overflow-wrap: anywhere;
 }
 .status-card[data-tone="check"] .status-line,
 .status-card[data-tone="error"] .status-line {
@@ -1207,8 +1217,16 @@ body[data-flipped="true"] .glyph {
       "bottom board"
       "scroll scroll";
   }
+  /* The page scrolls here, so the scroll panel grows with a review instead of squeezing it;
+     only the move list keeps its own scroll. */
   .scroll-panel {
-    max-height: 360px;
+    max-height: none;
+  }
+  .move-list {
+    max-height: 300px;
+  }
+  .review {
+    max-height: none;
   }
 }
 
@@ -1255,8 +1273,8 @@ body[data-flipped="true"] .glyph {
     height: 20px;
     font-size: 11px;
   }
-  .scroll-panel {
-    max-height: 420px;
+  .move-list {
+    max-height: 260px;
   }
   .scroll-panel::before {
     width: 46%;
@@ -1292,6 +1310,13 @@ body[data-flipped="true"] .glyph {
 
 .xq-main {
   overflow-x: clip;
+}
+/* The wide layout has a fixed height; the lantern glow under the board must not make the
+   page scroll. */
+@media (min-width: 1181px) {
+  .xq-main {
+    overflow-y: clip;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

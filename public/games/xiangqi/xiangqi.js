@@ -316,7 +316,10 @@ function renderStatus() {
   } else if (state.aiThinking) {
     card.dataset.tone = "thinking";
     const player = playerFor(state.aiThinking.side);
-    line.textContent = `${player?.name ?? "The AI"} is thinking… ${state.aiThinking.status ?? ""}`.trim();
+    // Pausing does not cancel a request already in flight: that move lands, then the arena stops.
+    line.textContent = state.gameMode === "arena" && state.arenaPaused
+      ? `Pausing after this move: ${player?.name ?? "the AI"} is still thinking.`
+      : `${player?.name ?? "The AI"} is thinking… ${state.aiThinking.status ?? ""}`.trim();
     const clean = liveSummary.replace(/\*\*|__|`/g, "").replace(/\s+/g, " ");
     thought.textContent = clean ? `“${clean.slice(-260).trim()}”` : "";
   } else if (state.gameMode === "arena" && state.arenaPaused) {
@@ -694,7 +697,7 @@ function buildSetup() {
   nameLabel.append(el("span", null, "Your name"), nameInput);
   const sideLabel = el("label", "field");
   const sideSelect = el("select", "kit-select");
-  for (const [value, text] of [["red", "Red 紅 (moves first)"], ["black", "Black 黑"], ["random", "Draw lots"]]) sideSelect.add(new Option(text, value));
+  for (const [value, text] of [["red", "Red 紅 (first)"], ["black", "Black 黑"], ["random", "Draw lots"]]) sideSelect.add(new Option(text, value));
   if (["red", "black", "random"].includes(remembered.side)) sideSelect.value = remembered.side;
   sideLabel.append(el("span", null, "Your side"), sideSelect);
   humanBox.append(nameLabel, sideLabel);
