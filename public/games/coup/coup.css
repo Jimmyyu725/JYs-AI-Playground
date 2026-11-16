@@ -527,7 +527,7 @@ body[data-mode="arena"] .stage {
   inline-size: 100%;
   max-inline-size: 780px;
   justify-self: center;
-  min-block-size: 180px;
+  min-block-size: 132px;
   display: flex;
   align-items: center;
   gap: 18px;
@@ -718,7 +718,7 @@ body[data-mode="arena"] .stage {
 
 .hand-card {
   position: relative;
-  inline-size: clamp(104px, 9.5vw, 132px);
+  inline-size: clamp(96px, 8.4vw, 122px);
   aspect-ratio: 2 / 3;
   padding: 0;
   border: 0;
@@ -788,6 +788,7 @@ body[data-mode="arena"] .stage {
 .fan {
   display: flex;
   flex-wrap: wrap;
+  padding-block-end: 16px;
   justify-content: center;
   gap: 8px;
   perspective: 900px;
@@ -797,11 +798,11 @@ body[data-mode="arena"] .stage {
   --tilt: 0deg;
   position: relative;
   display: grid;
-  grid-template-columns: 34px auto;
+  grid-template-columns: 30px auto;
   align-items: center;
-  gap: 8px;
-  min-block-size: 46px;
-  padding: 5px 14px 5px 5px;
+  gap: 7px;
+  min-block-size: 42px;
+  padding: 4px 12px 4px 4px;
   border: var(--hairline);
   border-radius: 999px 999px 999px 999px;
   background:
@@ -810,18 +811,19 @@ body[data-mode="arena"] .stage {
   color: var(--vellum);
   cursor: pointer;
   text-align: start;
-  transform: rotate(var(--tilt));
+  transform: translateY(var(--lift, 0px)) rotate(var(--tilt));
+  transform-origin: 50% 300%;
   transition: transform 0.25s var(--kit-ease), box-shadow 0.25s, background 0.25s;
   animation: blade-open 0.45s var(--kit-ease) backwards;
   animation-delay: calc(var(--i, 0) * 35ms);
 }
 
 @keyframes blade-open {
-  from { opacity: 0; transform: translateY(16px) rotate(calc(var(--tilt) * 3)); }
+  from { opacity: 0; transform: translateY(18px) rotate(0deg) scaleX(0.6); }
 }
 
 .blade:hover:not(:disabled) {
-  transform: translateY(-4px) rotate(var(--tilt));
+  transform: translateY(calc(var(--lift, 0px) - 6px)) rotate(var(--tilt));
   box-shadow: 0 0 0 1px var(--gilt), 0 12px 24px -12px var(--gilt);
 }
 
@@ -831,8 +833,8 @@ body[data-mode="arena"] .stage {
 }
 
 .blade .glyph {
-  inline-size: 34px;
-  block-size: 34px;
+  inline-size: 30px;
+  block-size: 30px;
   border-radius: 50%;
   background: var(--art, radial-gradient(circle, var(--gilt-light), var(--gilt-deep))) 50% 18% / cover;
   box-shadow: 0 0 0 1px var(--gilt-deep);
@@ -1364,5 +1366,33 @@ body[data-mode="arena"] .stage {
 
   .result-card > .kit-seat {
     align-self: center;
+  }
+}
+
+@media (max-width: 860px) {
+  .blade {
+    --tilt: 0deg !important;
+    --lift: 0px !important;
+  }
+}
+
+@media (min-width: 861px) {
+  .fan:not(:has(.targets)) {
+    flex-wrap: nowrap;
+  }
+}
+
+@media (min-width: 861px) and (max-height: 960px) {
+  .palazzo {
+    row-gap: 8px;
+  }
+
+  .you {
+    gap: 6px;
+  }
+
+  .stage-claim {
+    min-block-size: 112px;
+    padding-block: 12px;
   }
 }

@@ -24,15 +24,18 @@ const ROLES = {
 };
 const ACTIONS = {
   income: { label: "Income", note: "+1 coin, safe", glyph: "+1" },
-  foreign_aid: { label: "Foreign Aid", note: "+2 coins, Duke blocks", glyph: "+2" },
-  tax: { label: "Tax", note: "+3 coins as the Duke", role: "Duke" },
-  exchange: { label: "Exchange", note: "Swap cards as the Ambassador", role: "Ambassador" },
-  steal: { label: "Steal", note: "Take 2 as the Captain", role: "Captain", targeted: true },
-  assassinate: { label: "Assassinate", note: "Pay 3 as the Assassin", role: "Assassin", targeted: true },
-  coup: { label: "Coup", note: "Pay 7, cannot be stopped", glyph: "VII", targeted: true },
+  foreign_aid: { label: "Foreign Aid", note: "+2 · Duke blocks", glyph: "+2" },
+  tax: { label: "Tax", note: "+3 · as Duke", role: "Duke" },
+  exchange: { label: "Exchange", note: "Swap · as Ambassador", role: "Ambassador" },
+  steal: { label: "Steal", note: "Take 2 · as Captain", role: "Captain", targeted: true },
+  assassinate: { label: "Assassinate", note: "Pay 3 · as Assassin", role: "Assassin", targeted: true },
+  coup: { label: "Coup", note: "Pay 7 · unstoppable", glyph: "VII", targeted: true },
 };
 const ACTION_ORDER = ["income", "foreign_aid", "tax", "exchange", "steal", "assassinate", "coup"];
 const VERB = { income: "takes Income", foreign_aid: "asks for Foreign Aid", tax: "levies Tax", exchange: "calls for an Exchange", steal: "moves to Steal", assassinate: "orders an assassination", coup: "launches a Coup" };
+
+const VERB_YOU = { income: "take Income", foreign_aid: "ask for Foreign Aid", tax: "levy Tax", exchange: "call for an Exchange", steal: "move to Steal", assassinate: "order an assassination", coup: "launch a Coup" };
+const verbFor = (seat, type) => (state?.humanSeat === seat ? VERB_YOU : VERB)[type] ?? type;
 
 const $ = (selector) => document.querySelector(selector);
 const el = (tag, className, text) => {
@@ -226,18 +229,18 @@ function renderStage() {
     const heading = el("h2");
     const target = pending.target !== null && pending.target !== undefined ? ` against ${nameOf(pending.target)}` : "";
     heading.innerHTML = "";
-    heading.append(`${nameOf(pending.actor)} ${VERB[pending.type] ?? pending.type}${target}`);
+    heading.append(`${nameOf(pending.actor)} ${verbFor(pending.actor, pending.type)}${target}`);
     if (pending.claim) {
       heading.append(" as ");
       heading.append(el("em", null, pending.claim));
     }
     text.append(heading);
     const line = el("p");
-    if (state.block) line.textContent = `${nameOf(state.block.seat)} blocks, claiming the ${state.block.card}.`;
+    if (state.block) line.textContent = `${nameOf(state.block.seat)} ${isHumanSeat(state.block.seat) ? "block" : "blocks"}, claiming the ${state.block.card}.`;
     else if (state.phase === "challenge_action") line.textContent = "The mirror waits: does anyone doubt the claim?";
     else if (state.phase === "block") line.textContent = "The claim stands. Will anyone block?";
     else if (state.phase === "lose_influence") line.textContent = `${nameOf(state.lossPending.seat)} must give up a mask.`;
-    else if (state.phase === "exchange") line.textContent = `${nameOf(state.exchange.seat)} is choosing cards from the court deck.`;
+    else if (state.phase === "exchange") line.textContent = `${nameOf(state.exchange.seat)} ${isHumanSeat(state.exchange.seat) ? "are" : "is"} choosing cards from the court deck.`;
     text.append(line);
     if (state.thinking.length) text.append(el("p", "claim-note", `Waiting on ${state.thinking.map((entry) => nameOf(entry.seat)).join(", ")}…`));
     if (cards.children.length) claim.append(cards);
@@ -350,11 +353,13 @@ function renderYou() {
   renderFan();
 }
 
-function blade({ className = "", art = null, glyph = "", title, note, disabled = false, onClick, index = 0 }) {
+function blade({ className = "", art = null, glyph = "", title, note, disabled = false, onClick, index = 0, count = 1 }) {
   const node = el("button", `blade ${className}`.trim());
   node.type = "button";
+  const offset = index - (count - 1) / 2;
   node.style.setProperty("--i", index);
-  node.style.setProperty("--tilt", `${(index % 2 ? 1 : -1) * 0.6}deg`);
+  node.style.setProperty("--tilt", `${offset * 1.5}deg`);
+  node.style.setProperty("--lift", `${offset * offset * 2}px`);
   const icon = el("span", "glyph", glyph);
   if (art) icon.style.setProperty("--art", artUrl(art));
   const label = el("span");
@@ -391,6 +396,7 @@ function renderFan() {
         fan.append(
           blade({
             index,
+            count: ACTION_ORDER.length,
             art: info.role,
             glyph: info.glyph ?? "",
             title: info.label,
@@ -434,7 +440,7 @@ function renderFan() {
     case "block": {
       const against = pending.target === state.humanSeat ? "you" : "the table";
       prompt.innerHTML = "";
-      prompt.append(`${nameOf(pending.actor)} ${VERB[pending.type]}${pending.target !== null ? ` against ${against}` : ""}. `, el("strong", null, "Block it?"));
+      prompt.append(`${nameOf(pending.actor)} ${verbFor(pending.actor, pending.type)}${pending.target !== null ? ` against ${against}` : ""}. `, el("strong", null, "Block it?"));
       legal.forEach((entry, index) => {
         if (entry.action.type === "block") fan.append(blade({ index, className: "block", art: entry.action.card, title: `Block as ${entry.action.card}`, note: ROLES[entry.action.card].italian, onClick: () => act(entry.action) }));
         else fan.append(blade({ index, className: "pass", glyph: "~", title: "Allow it", note: "Do not block", onClick: () => act(entry.action) }));
@@ -504,6 +510,40 @@ function nextReveal() {
   }, hold);
 }
 
+// ------------------------------------------------------------------ room sounds
+
+let audioContext = null;
+function pluck(card) {
+  if (sfx.muted || !ROLES[card]) return;
+  try {
+    audioContext ??= new AudioContext();
+    const now = audioContext.currentTime;
+    // A harpsichord-like pluck: Duke lowest, Contessa highest.
+    const frequency = 196 * 2 ** ((ROLES[card].pitch * 2) / 12);
+    for (const [ratio, level] of [[1, 0.16], [2, 0.06], [3, 0.03]]) {
+      const osc = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      osc.type = "sawtooth";
+      osc.frequency.value = frequency * ratio;
+      gain.gain.setValueAtTime(level, now);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.7);
+      const filter = audioContext.createBiquadFilter();
+      filter.type = "lowpass";
+      filter.frequency.setValueAtTime(4200, now);
+      filter.frequency.exponentialRampToValueAtTime(600, now + 0.5);
+      osc.connect(filter).connect(gain).connect(audioContext.destination);
+      osc.start(now);
+      osc.stop(now + 0.75);
+    }
+  } catch {
+    // Audio is optional.
+  }
+}
+
+function clink(count) {
+  for (let index = 0; index < Math.min(count, 4); index += 1) setTimeout(() => sfx.play("chipClack"), index * 110);
+}
+
 // ------------------------------------------------------------------ log + effects
 
 function handleNewLog(entries, fresh) {
@@ -512,7 +552,8 @@ function handleNewLog(entries, fresh) {
     log.add({ text: entry.text, kind });
     if (fresh) continue;
     if (entry.kind === "challenge") queueReveal(entry);
-    else if (entry.kind === "resolve" && ["income", "foreign_aid", "tax", "steal"].includes(entry.action)) sfx.play("chipClack");
+    else if (entry.kind === "resolve" && ["income", "foreign_aid", "tax", "steal"].includes(entry.action)) clink({ income: 1, foreign_aid: 2, tax: 3, steal: entry.amount ?? 2 }[entry.action]);
+    else if ((entry.kind === "action" || entry.kind === "block") && entry.claim) pluck(entry.claim);
     else if (entry.kind === "lose_influence") sfx.play("stoneClick");
     else if (entry.kind === "action") sfx.play("cardFlick");
     else if (entry.kind === "game_over") sfx.play("win");
