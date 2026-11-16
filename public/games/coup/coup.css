@@ -289,9 +289,11 @@ body[data-mode="arena"] .you {
   display: none;
 }
 
-body[data-mode="arena"] .stage {
-  align-self: end;
-  margin-block-end: 5vh;
+@media (min-width: 861px) {
+  body[data-mode="arena"] .stage {
+    align-self: end;
+    margin-block-end: 5vh;
+  }
 }
 
 /* ---------------------------------------------------------------- seats */
