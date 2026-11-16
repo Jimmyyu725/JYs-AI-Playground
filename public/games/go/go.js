@@ -369,7 +369,8 @@ function renderSeat(color) {
     card.replaceChildren();
     const portrait = seat({
       character: player.character ?? { initials: "YOU", color: "#e39a52" },
-      name: player.name,
+      // Phone seats sit side by side, so they use the short name the full one would be cut to.
+      name: isWide() ? player.name : player.character?.shortName ?? player.name,
       caption: player.isHuman ? "House guest" : player.character.title,
       size: isWide() ? "lg" : "sm",
     });
@@ -440,12 +441,14 @@ function renderStatus() {
   let text;
   if (state.phase === "complete") text = resultLine();
   else if (state.aiError) text = `${state.aiError.playerName} is paused. Retry to continue.`;
-  else if (state.arena?.paused) text = "The arena is paused.";
+  else if (state.arena?.paused) text = state.aiThinking ? `${actor.name} finishes this move, then the arena pauses.` : "The arena is paused.";
   else if (state.aiThinking) text = `${actor.name} is reading the board…`;
   else if (actor?.isHuman) text = state.consecutivePasses ? "Your move. Your opponent passed." : "Your move.";
   else text = `${actor?.name ?? capitalize(state.currentColor)} to play.`;
   el.turnText.textContent = text;
   el.turnLine.dataset.tone = state.aiError ? "alert" : state.humanCanAct ? "you" : "";
+  el.pass.classList.toggle("hidden", state.gameMode === "arena");
+  el.resign.classList.toggle("hidden", state.gameMode === "arena");
   el.pass.disabled = !state.humanCanAct || busy;
   el.resign.disabled = !state.humanCanAct || busy;
   el.save.disabled = false;
@@ -574,6 +577,17 @@ function renderReading() {
 const record = transcript({ title: "Game record" });
 el.record.append(record.el);
 const recorded = new Set();
+// Follow the latest entry unless the reader scrolled up. The list also shrinks and grows as the
+// reading panel above it fills with a live summary, so re-pin on resize, not only on new lines.
+const recordList = record.el.querySelector(".kit-transcript-list");
+let followRecord = true;
+const pinRecord = () => {
+  if (followRecord) recordList.scrollTop = recordList.scrollHeight;
+};
+recordList.addEventListener("scroll", () => {
+  followRecord = recordList.scrollHeight - recordList.scrollTop - recordList.clientHeight < 24;
+});
+new ResizeObserver(pinRecord).observe(recordList);
 
 function syncRecord(reset) {
   if (reset) {
@@ -591,9 +605,11 @@ function syncRecord(reset) {
     record.add(entry);
   }
   if (reset) {
-    const list = record.el.querySelector(".kit-transcript-list");
-    list.scrollTop = list.scrollHeight;
+    followRecord = true;
+    // Web fonts settle after the first paint and make the entries taller.
+    document.fonts?.ready.then(pinRecord);
   }
+  pinRecord();
 }
 
 /* ---------- Render ---------- */
@@ -775,7 +791,7 @@ form.innerHTML = `
   </div>
   <div class="cast-block"><p class="setup-label">Guests at the board</p><div class="cast"></div><div class="seat-models"></div></div>
   <button class="kit-button start" type="submit">Begin</button>
-  <p class="setup-note">Chinese area scoring, positional superko, no suicide. Every move is saved. Illegal model moves retry twice, then the game pauses for you.</p>`;
+  <p class="setup-note">Chinese area scoring, positional superko, no suicide. Stones count as they stand when both sides pass, so capture dead stones first. Every move is saved. Illegal model moves retry twice, then the game pauses for you.</p>`;
 setup.body.append(form);
 
 let cast = null;

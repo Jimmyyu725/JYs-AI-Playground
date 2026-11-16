@@ -131,8 +131,10 @@ body:has(.kit-drawer[data-open="true"]) .room-art {
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
   gap: 16px;
-  padding: 12px 24px;
+  /* 9px + the 50px title block + 9px = the 68px the room and board heights subtract. */
+  padding: 9px 24px;
   min-block-size: 68px;
+  box-sizing: border-box;
 }
 .topbar-left,
 .topbar-right {

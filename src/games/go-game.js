@@ -6,6 +6,10 @@ const BOARD_SIZES = new Set([9, 13, 19]);
 const COLUMN_LABELS = "ABCDEFGHJKLMNOPQRST";
 const GO_SAVE_VERSION = 1;
 
+function colorName(color) {
+  return color === "black" ? "Black" : "White";
+}
+
 function opposite(color) {
   return color === "black" ? "white" : "black";
 }
@@ -258,7 +262,7 @@ export class GoGame {
 
     if (action === "resign") {
       player.lastAction = "Resigned";
-      this._log("result", `${player.name} resigns. ${opposite(color)} wins.`, { color });
+      this._log("result", `${player.name} resigns. ${colorName(opposite(color))} wins.`, { color });
       this.phase = "complete";
       this.result = { winner: opposite(color), reason: "resignation", margin: null, scores: null };
       this.aiThinking = null;
@@ -336,7 +340,7 @@ export class GoGame {
     this.phase = "complete";
     this.result = { winner, reason: "score", margin, scores };
     this.aiThinking = null;
-    const resultText = winner ? `${winner} wins by ${margin}.` : "The game is tied.";
+    const resultText = winner ? `${colorName(winner)} wins by ${margin}.` : "The game is tied.";
     this._log("result", `Two consecutive passes end the game. ${resultText}`, { scores });
   }
 

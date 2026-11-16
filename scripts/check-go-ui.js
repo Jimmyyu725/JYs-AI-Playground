@@ -57,6 +57,7 @@ process.once("exit", () => {
 });
 if (serverProcess) await waitForServer(baseURL, serverProcess);
 
+// A human game with the human on black: nothing calls a model until the first stone is played.
 const created = await fetch(`${baseURL}/api/go/game`, {
   method: "POST",
   headers: { "Content-Type": "application/json" },
@@ -64,64 +65,60 @@ const created = await fetch(`${baseURL}/api/go/game`, {
 });
 if (!created.ok) throw new Error(`Could not create Go smoke game (${created.status})`);
 
-const browser = await chromium.launch({
-  headless: true,
-  executablePath: resolveChromePath(),
-});
-const errors = [];
-const attachErrors = (page) => {
-  page.on("pageerror", (error) => errors.push(error.message));
-  page.on("console", (message) => { if (message.type() === "error") errors.push(message.text()); });
-};
+fs.mkdirSync("tmp/browser", { recursive: true });
+const browser = await chromium.launch({ headless: true, executablePath: resolveChromePath() });
+const failures = [];
+for (const [width, height] of [[1440, 900], [390, 844]]) {
+  const page = await browser.newPage({ viewport: { width, height }, deviceScaleFactor: 1 });
+  page.on("pageerror", (error) => failures.push(`${width}px: ${error.message}`));
+  page.on("console", (message) => { if (message.type() === "error") failures.push(`${width}px: ${message.text()}`); });
+  await page.goto(`${baseURL}/games/go/`, { waitUntil: "networkidle" });
+  await page.waitForFunction(() => document.querySelector("#turn-text")?.textContent.startsWith("Your move"), null, { timeout: 8_000 });
+  const table = await page.evaluate(() => ({
+    overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    hits: document.querySelectorAll("#goban-hits .hit").length,
+    enabledHits: document.querySelectorAll("#goban-hits .hit:not(:disabled)").length,
+    seats: document.querySelectorAll(".seat-card .kit-seat").length,
+    aiPortrait: Boolean(document.querySelector('.seat-card[data-human="false"] .kit-seat img')?.naturalWidth),
+    passEnabled: !document.getElementById("pass-button").disabled,
+    drawerOpen: document.querySelector(".kit-drawer")?.dataset.open,
+    brokenImages: [...document.images].filter((image) => image.complete && !image.naturalWidth).length,
+  }));
+  if (table.overflow > 0) failures.push(`${width}px: horizontal overflow ${table.overflow}px`);
+  if (table.hits !== 81 || table.enabledHits !== 81) failures.push(`${width}px: expected 81 open points, saw ${table.enabledHits}/${table.hits}`);
+  if (table.seats !== 2 || !table.aiPortrait) failures.push(`${width}px: seats incomplete ${JSON.stringify(table)}`);
+  if (!table.passEnabled) failures.push(`${width}px: Pass is disabled on the human's turn`);
+  if (table.drawerOpen === "true") failures.push(`${width}px: the setup drawer covers a game in progress`);
+  if (table.brokenImages) failures.push(`${width}px: ${table.brokenImages} broken images`);
+  await page.screenshot({ path: `tmp/browser/go-${width}.png` });
 
-const page = await browser.newPage({ viewport: { width: 1440, height: 1050 }, deviceScaleFactor: 1 });
-attachErrors(page);
-await page.goto(`${baseURL}/games/go/`, { waitUntil: "domcontentloaded" });
-await page.waitForFunction(() => document.querySelectorAll(".intersection").length === 81, null, { timeout: 8_000 });
-await page.screenshot({ path: "tmp/browser/go-desktop.png", fullPage: true });
-const desktop = await page.evaluate(() => ({
-  intersections: document.querySelectorAll(".intersection").length,
-  enabledIntersections: document.querySelectorAll(".intersection:not(:disabled)").length,
-  players: document.querySelectorAll(".player-card .player-avatar").length,
-  setupHidden: document.getElementById("setup-modal").classList.contains("hidden"),
-  passEnabled: !document.getElementById("pass-button").disabled,
-  saveEnabled: !document.getElementById("save-button").disabled,
-  bodyFontSize: Number.parseFloat(getComputedStyle(document.body).fontSize),
-}));
-
-await page.click("#new-game-button");
-await page.check('input[name="gameMode"][value="arena"]');
-const setup = await page.evaluate(() => ({
-  rosterRows: document.querySelectorAll(".ai-roster-row").length,
-  modelOptions: document.querySelector(".seat-model")?.options.length,
-  reasoningOptions: document.querySelector(".seat-reasoning")?.options.length,
-  humanFieldsHidden: document.getElementById("human-name-field").classList.contains("hidden") && document.getElementById("human-color-field").classList.contains("hidden"),
-  submitText: document.getElementById("setup-submit").textContent.trim(),
-}));
-
-const mobilePage = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1 });
-attachErrors(mobilePage);
-await mobilePage.goto(`${baseURL}/games/go/`, { waitUntil: "domcontentloaded" });
-await mobilePage.waitForFunction(() => document.querySelectorAll(".intersection").length === 81, null, { timeout: 8_000 });
-const mobile = await mobilePage.evaluate(() => ({
-  viewportWidth: window.innerWidth,
-  documentWidth: document.documentElement.scrollWidth,
-  intersections: document.querySelectorAll(".intersection").length,
-}));
-await mobilePage.screenshot({ path: "tmp/browser/go-mobile.png", fullPage: true });
-
+  await page.click(".new-game");
+  await page.waitForTimeout(400);
+  const firstSeat = () => page.$eval(".setup .kit-pick-row .kit-seat", (node) => node.dataset.characterId);
+  const before = await firstSeat();
+  await page.click(".setup .kit-reroll");
+  const rerolled = await firstSeat();
+  await page.click('.setup label:has(input[name="gameMode"][value="arena"])');
+  const drawer = await page.evaluate(() => ({
+    open: document.querySelector(".kit-drawer")?.dataset.open,
+    pickRows: document.querySelectorAll(".setup .kit-pick-row").length,
+    modelPickers: document.querySelectorAll(".setup .kit-model-picker").length,
+    humanHidden: document.querySelector(".setup .human-only").hidden,
+    submit: document.querySelector(".setup .start").textContent.trim(),
+    distinctCast: new Set([...document.querySelectorAll(".setup .kit-pick-row .kit-seat")].map((node) => node.dataset.characterId)).size,
+  }));
+  if (!before || before === rerolled) failures.push(`${width}px: reroll did not change the seat (${before} -> ${rerolled})`);
+  if (drawer.open !== "true" || drawer.pickRows !== 2 || drawer.modelPickers !== 2 || drawer.distinctCast !== 2 || !drawer.humanHidden || drawer.submit !== "Open the arena") {
+    failures.push(`${width}px: arena setup incomplete ${JSON.stringify(drawer)}`);
+  }
+  await page.close();
+}
 await browser.close();
 stopServer();
 if (serverProcess?.exitCode === null) await once(serverProcess, "exit");
 cleanTestData();
-if (errors.length) throw new Error(`Go browser errors: ${errors.join(" | ")}`);
-if (desktop.intersections !== 81 || desktop.enabledIntersections !== 81 || desktop.players !== 2 || !desktop.setupHidden || !desktop.passEnabled || !desktop.saveEnabled || desktop.bodyFontSize < 15) {
-  throw new Error(`Go desktop smoke failed: ${JSON.stringify(desktop)}`);
+if (failures.length) {
+  console.error(failures.join("\n"));
+  process.exit(1);
 }
-if (setup.rosterRows !== 2 || setup.modelOptions !== 5 || setup.reasoningOptions !== 6 || !setup.humanFieldsHidden || setup.submitText !== "Start AI Arena") {
-  throw new Error(`Go setup smoke failed: ${JSON.stringify(setup)}`);
-}
-if (mobile.documentWidth > mobile.viewportWidth + 1 || mobile.intersections !== 81) {
-  throw new Error(`Go mobile smoke failed: ${JSON.stringify(mobile)}`);
-}
-console.log(JSON.stringify({ ok: true, desktop, setup, mobile }));
+console.log("Go UI check passed (1440x900 and 390x844).");

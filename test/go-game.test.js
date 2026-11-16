@@ -49,6 +49,46 @@ test("enforces positional superko on an immediate recapture", () => {
   assert.throws(() => play(game, "white", 1, 1), /superko/);
 });
 
+test("a stone with no liberties of its own is legal when it captures", () => {
+  const game = new GoGame({ boardSize: 9 });
+  play(game, "black", 1, 0);
+  play(game, "white", 0, 0);
+  play(game, "black", 8, 8);
+  play(game, "white", 0, 2);
+  play(game, "black", 8, 7);
+  play(game, "white", 1, 1);
+  // B9 touches only white stones, but filling it takes A9's last liberty and frees A9 for black.
+  play(game, "black", 0, 1);
+  assert.equal(game.board[0], null);
+  assert.equal(game.board[1], "black");
+  assert.equal(game.captures.black, 1);
+});
+
+test("a multi-stone group is captured whole", () => {
+  const game = new GoGame({ boardSize: 9 });
+  play(game, "black", 1, 0);
+  play(game, "white", 0, 0);
+  play(game, "black", 1, 1);
+  play(game, "white", 0, 1);
+  play(game, "black", 0, 2);
+  assert.equal(game.board[0], null);
+  assert.equal(game.board[1], null);
+  assert.equal(game.captures.black, 2);
+});
+
+test("empty points that touch both colours are neutral under area scoring", () => {
+  const game = new GoGame({ boardSize: 9, komi: 7.5 });
+  // A black wall on row 5 and a white wall on row 7 leave row 6 touching both colours.
+  for (let column = 0; column < 9; column += 1) {
+    play(game, "black", 4, column);
+    play(game, "white", 6, column);
+  }
+  const scores = game.scorePosition();
+  // Black: 9 stones + rows 1-4 (36); white: 9 stones + rows 8-9 (18) + komi; row 6 is nobody's.
+  assert.deepEqual(scores, { black: 45, white: 34.5 });
+  assert.equal(game.territoryOwners().slice(45, 54).every((owner) => owner === null), true);
+});
+
 test("two passes end the game with Chinese area scoring and komi", () => {
   const game = new GoGame({ boardSize: 9, komi: 7.5 });
   game.applyAction("black", "pass");

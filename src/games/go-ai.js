@@ -33,7 +33,7 @@ function instructions(snapshot) {
 
 Character: ${snapshot.actor.personality}
 
-The server uses Chinese area scoring, ${snapshot.rules.komi} komi, positional superko, and forbids suicide. Board rows are top to bottom; columns are left to right; B is black, W is white, and . is empty. For place, select a zero-based row and column from legalPlacements. For pass or resign, row and column must both be null. Passing is strategic and two consecutive passes end the game.${retryInstruction}
+The server uses Chinese area scoring, ${snapshot.rules.komi} komi, positional superko, and forbids suicide. Board rows are top to bottom; columns are left to right; B is black, W is white, and . is empty. For place, select a zero-based row and column from legalPlacements. For pass or resign, row and column must both be null. Passing is strategic and two consecutive passes end the game. Stones are scored exactly as they stand, with no dead-stone agreement, so capture any dead enemy stones inside your area before you pass.${retryInstruction}
 
 Choose a strong move consistent with the character while considering liberties, captures, connection, cutting points, influence, territory, ko, sente, and the phase of the game. Never invent board state. Do not expose private chain-of-thought. The explanation is a public high-level rationale of at most 45 words. Return only the requested structured decision.`;
 }
