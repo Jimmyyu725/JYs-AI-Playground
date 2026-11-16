@@ -119,6 +119,15 @@ test("a finished game produces placements for the ladder", () => {
   assert.ok(reviewInput(table).log.some((line) => line.includes("wins the game")));
 });
 
+test("AI rationales stay hidden from a human opponent until the game ends", () => {
+  const table = humanTable();
+  table.recordInsight(1, { action: "bids 3 × 4s", explanation: "I hold three 4s", latencyMs: 10 });
+  assert.deepEqual(table.publicState().aiInsights, []);
+  const arena = new LiarsDiceTable({ gameMode: "arena", seatCount: 3 });
+  arena.recordInsight(0, { action: "bids 3 × 4s", explanation: "I hold three 4s", latencyMs: 10 });
+  assert.equal(arena.publicState().aiInsights.length, 1);
+});
+
 test("the gateway schema declares tableTalk only through the gateway", () => {
   assert.equal(GATEWAY_SCHEMA.properties.tableTalk, undefined);
   assert.equal(GATEWAY_SCHEMA.required.includes("tableTalk"), false);

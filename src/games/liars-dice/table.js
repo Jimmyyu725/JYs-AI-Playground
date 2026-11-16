@@ -209,7 +209,8 @@ export class LiarsDiceTable {
       arena: this.isArenaMode ? { paused: this.arenaPaused } : null,
       aiThinking: this.aiThinking,
       aiError: this.aiError,
-      aiInsights: this.aiInsights.slice(-24),
+      // A model's rationale can mention its own hidden dice, so a human opponent only sees it after the game.
+      aiInsights: this.isArenaMode || this.isComplete ? this.aiInsights.slice(-24) : [],
       tableTalk: this.tableTalk,
       holdUntil: this.holdUntil,
       serverNow: Date.now(),

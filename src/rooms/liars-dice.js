@@ -116,7 +116,8 @@ async function runAIChain(version) {
               channel.broadcast("ai_stream", { phase: "status", seat, status });
             },
             onSummaryDelta(delta) {
-              if (live(current)) channel.broadcast("ai_stream", { phase: "summary_delta", seat, delta });
+              // Reasoning can mention hidden dice: stream it to spectators of an arena only.
+              if (live(current) && current.isArenaMode) channel.broadcast("ai_stream", { phase: "summary_delta", seat, delta });
             },
           },
           onRetry({ error, retryNumber, maxRetries }) {
