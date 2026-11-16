@@ -301,6 +301,7 @@ export class WuziqiGame {
         lastAction: player.lastAction,
       })),
       recentPublicMoves: this.logs.filter((entry) => entry.kind === "move").slice(-24).map((entry) => entry.text),
+      recentTableTalk: (this.tableTalk ?? []).slice(-6).map((talk) => ({ speaker: talk.playerName, text: talk.text })),
     };
   }
 

@@ -27,6 +27,16 @@ test("a legal decision passes through with table talk", async () => {
   assert.deepEqual(seen[0].tableTalk, { voice: game.currentPlayer.character.voice });
 });
 
+test("the snapshot carries recent table talk so a character does not repeat itself", async () => {
+  const game = arena();
+  game.tableTalk = Array.from({ length: 8 }, (_, index) => ({ id: String(index), speaker: "black", playerName: "Rafa", text: `Line ${index}`, at: index }));
+  const snapshot = game.aiSnapshot();
+  assert.deepEqual(snapshot.recentTableTalk.map((talk) => talk.text), ["Line 2", "Line 3", "Line 4", "Line 5", "Line 6", "Line 7"]);
+  const seen = [];
+  await requestWuziqiDecision(snapshot, config, {}, fakeGateway([{ action: "place", row: 7, column: 7, explanation: "Center." }], seen));
+  assert.match(seen[0].instructions, /never reuse a line/);
+});
+
 test("an occupied intersection is rejected as a retryable illegal move", async () => {
   const game = arena();
   game.applyAction("black", "place", 7, 7);

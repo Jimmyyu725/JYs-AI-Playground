@@ -1,5 +1,5 @@
 // Wuziqi 五子棋 — the scholar's study. The server is authoritative; this page renders state and sends intents.
-import { backToLobby, characterPicker, drawer, loadCharacters, loadModels, modelPicker, prefersReducedMotion, seat, toast, transcript } from "/shared/kit.js";
+import { backToLobby, characterPicker, drawer, loadCharacters, loadModels, modelPicker, prefersReducedMotion, seat, setSeatExpression, toast, transcript } from "/shared/kit.js";
 import { sfx } from "/shared/sfx.js";
 import { speak } from "/shared/speech.js";
 
@@ -58,9 +58,12 @@ const log = transcript({ title: "Brush record · 棋谱", limit: 240 });
 ui.record.append(log.el);
 
 /* ---------- Sound: shared kit clicks plus a guqin pluck for the ending ---------- */
+// Sounds triggered by the other side's moves wait for a first gesture; before one, Chrome blocks audio and warns.
+const heardGesture = () => navigator.userActivation?.hasBeenActive ?? true;
+
 let pluckContext = null;
 function pluck(notes, { decay = 2, bend = 1 } = {}) {
-  if (sfx.muted) return;
+  if (sfx.muted || !heardGesture()) return;
   try {
     pluckContext ??= new (globalThis.AudioContext || globalThis.webkitAudioContext)();
     const ctx = pluckContext;
@@ -195,7 +198,7 @@ function renderBoard({ animate }) {
   if (focusTarget) focusTarget.tabIndex = 0;
   if (animate && state.lastMove && state.lastMove.moveNumber !== lastSoundedMove) {
     lastSoundedMove = state.lastMove.moveNumber;
-    sfx.play("stoneClick");
+    if (heardGesture()) sfx.play("stoneClick");
   }
   renderVictory(animate);
 }
@@ -245,7 +248,7 @@ function renderVictory(animate) {
     stroke.classList.add("is-static");
     seal.classList.add("is-static");
   } else {
-    seal.addEventListener("animationstart", () => setTimeout(() => sfx.play("cupSlam"), 260), { once: true });
+    seal.addEventListener("animationstart", () => setTimeout(() => heardGesture() && sfx.play("cupSlam"), 260), { once: true });
   }
   ui.ink.append(stroke);
   ui.sealLayer.append(seal);
@@ -341,12 +344,11 @@ function renderPlates() {
     plate.dataset.active = String(active);
     const portrait = plate.querySelector(".kit-seat");
     portrait.dataset.active = String(active);
-    // Expression drives CSS only: not every character has every expression painted yet.
     let expression = "neutral";
     if (state.aiThinking?.color === color) expression = "thinking";
     if (state.phase === "complete" && state.result?.winner) expression = state.result.winner === color ? "triumphant" : "defeated";
     plate.dataset.expression = expression;
-    portrait.dataset.expression = expression;
+    setSeatExpression(portrait, expression);
     plate.querySelector(".plate-count").textContent = `${stoneCount(flat.filter((cell) => cell === color).length)} on the paper`;
   }
 }
@@ -662,7 +664,7 @@ ui.resign.addEventListener("click", () => {
 function confirmResign() {
   if (ui.resign.dataset.armed === "true") return true;
   ui.resign.dataset.armed = "true";
-  ui.resign.textContent = "Click again to resign";
+  ui.resign.textContent = coarsePointer?.matches ? "Tap again to resign" : "Click again to resign";
   setTimeout(() => {
     ui.resign.dataset.armed = "false";
     ui.resign.textContent = "Resign";

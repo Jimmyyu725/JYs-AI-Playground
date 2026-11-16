@@ -1218,6 +1218,13 @@ button {
   display: grid;
   gap: 5px;
 }
+/* The kit's 1.4fr / 1fr split clips "Reasoning medium"; split evenly, and stack in the phone sheet. */
+.setup .kit-model-picker {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+@media (max-width: 719px) {
+  .setup .kit-model-picker { grid-template-columns: 1fr; }
+}
 .setup-model-label {
   font: 600 0.8rem/1 var(--font-display);
   letter-spacing: 0.1em;

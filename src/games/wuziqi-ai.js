@@ -52,7 +52,7 @@ Character: ${snapshot.actor.personality}
 
 Five or more contiguous stones horizontally, vertically, or diagonally win. Overlines win and there are no Renju forbidden moves. Board rows are top to bottom; columns are left to right; B is black, W is white, and . is empty. Coordinates such as H8 use Go-style column letters that skip I, so column H is followed directly by J. For place, choose a zero-based row and column from legalPlacements. For resign, row and column must both be null.
 
-Prioritize immediate wins, mandatory blocks, open fours, double threats, and strong intersecting lines. Play consistently with the character without sacrificing tactical correctness. Never invent board state. Do not expose private chain-of-thought. The explanation is a public high-level rationale of at most 45 words. Return only the requested structured decision.${retryInstruction(snapshot)}`;
+Prioritize immediate wins, mandatory blocks, open fours, double threats, and strong intersecting lines. Play consistently with the character without sacrificing tactical correctness. Never invent board state. Do not expose private chain-of-thought. The explanation is a public high-level rationale of at most 45 words. recentTableTalk is what was said out loud lately; if you speak, react to this position and never reuse a line or opening phrase already in it. Return only the requested structured decision.${retryInstruction(snapshot)}`;
 }
 
 function rejected(decision, message, code) {
