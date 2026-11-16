@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 import { buildProfiles, PROFILES_PATH } from "../scripts/check-lobby-profiles.js";
 import {
   characterRecords,
+  countLabel,
   entrantLabel,
   isOpen,
   mergeMatches,
@@ -76,6 +77,9 @@ test("labels read naturally", () => {
   assert.equal(numberWord(42), "42");
   assert.equal(playersLabel({ min: 2, max: 6 }), "2–6 players");
   assert.equal(playersLabel({ min: 3, max: 3 }), "3 players");
+  assert.equal(countLabel(1, "loss", "losses"), "1 loss");
+  assert.equal(countLabel(0, "loss", "losses"), "0 losses");
+  assert.equal(countLabel(2, "win"), "2 wins");
   const registry = { models: [{ id: "gpt-6-luna", label: "GPT-6 Luna" }] };
   assert.equal(entrantLabel({ kind: "ai", model: "gpt-6-luna", reasoningEffort: "high" }, registry), "GPT-6 Luna · high");
   assert.equal(entrantLabel({ kind: "ai", model: "mystery", reasoningEffort: "low" }, registry), "mystery · low");

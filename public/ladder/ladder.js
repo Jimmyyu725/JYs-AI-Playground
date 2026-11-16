@@ -1,5 +1,5 @@
 // The model ladder: Elo standings, a rating trend (per game) or room activity (overall), and recent matches.
-import { entrantKey, entrantLabel, isOpen, ratingPaths, relativeTime, roomLight } from "/assets/lobby/house-data.js";
+import { countLabel, entrantKey, entrantLabel, isOpen, ratingPaths, relativeTime, roomLight } from "/assets/lobby/house-data.js";
 import { el, getJSON, loadCast, mountHouseBar, swap } from "/assets/lobby/house-ui.js";
 
 const SVG = "http://www.w3.org/2000/svg";
@@ -165,13 +165,13 @@ async function main() {
     await Promise.all(playedGames.map(async (gameId) => [gameId, await getJSON(`/api/ladder/${encodeURIComponent(gameId)}`)])),
   );
   const perGameCounts = Object.fromEntries(playedGames.map((gameId) => [gameId, gameLadders[gameId].matchCount]));
-  document.querySelector("#match-count").textContent = overview.matchCount ? String(overview.matchCount) : "no";
+  document.querySelector("#match-count").textContent = overview.matchCount ? countLabel(overview.matchCount, "match", "matches") : "no matches";
 
   const leader = overview.overall.find((entry) => entry.kind !== "human");
   document.querySelector("#leader-rating").textContent = String(leader?.rating ?? BASELINE);
   document.querySelector("#leader-name").textContent = leader ? entrantLabel(leader, registry) : "Unclaimed";
   document.querySelector("#leader-record").textContent = leader
-    ? `${leader.wins} wins · ${leader.losses} losses${leader.draws ? ` · ${leader.draws} draws` : ""} across ${leader.matches} matches`
+    ? `${countLabel(leader.wins, "win")} · ${countLabel(leader.losses, "loss", "losses")}${leader.draws ? ` · ${countLabel(leader.draws, "draw")}` : ""} across ${countLabel(leader.matches, "match", "matches")}`
     : "The first model to win a game here takes the plaque.";
   document.querySelector("#leader").hidden = false;
 

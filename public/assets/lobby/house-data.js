@@ -44,6 +44,11 @@ export function numberWord(value) {
   return NUMBER_WORDS[value] ?? String(value);
 }
 
+/** "1 match", "3 matches", "1 loss": a count with its noun in the right number. */
+export function countLabel(count, singular, plural = `${singular}s`) {
+  return `${count} ${count === 1 ? singular : plural}`;
+}
+
 export function playersLabel(players) {
   if (!players) return "";
   const { min, max } = players;

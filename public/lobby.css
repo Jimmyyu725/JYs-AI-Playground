@@ -531,7 +531,9 @@ main {
 .door {
   --spill: 0.55;
   position: relative;
-  display: grid;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
   gap: 10px;
   text-decoration: none;
   isolation: isolate;
@@ -623,6 +625,8 @@ main {
   text-wrap: pretty;
 }
 .door-foot {
+  /* Pin the footer to the bottom so every door in a row ends on one line. */
+  margin-top: auto;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -891,6 +895,9 @@ body.is-entering .door:not(.is-chosen) {
     text-align: center;
     padding-inline: 6px;
     font-size: 0.8rem;
+  }
+  .doors-note {
+    flex-basis: 100%;
   }
   .door-row {
     gap: 36px 16px;
