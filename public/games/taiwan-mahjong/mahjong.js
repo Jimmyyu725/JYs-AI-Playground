@@ -31,6 +31,7 @@ let busy = false;
 let seenLog = { hand: 0, count: 0 };
 let lastResultKey = null;
 let thinkingSummary = "";
+const reviews = new Map(); // "<hand>:<seat>" -> { player, text }, survives re-renders of the result card
 const seatFigures = new Map(); // seat -> figure.kit-seat
 
 // ---------------------------------------------------------------------------
@@ -247,6 +248,7 @@ function renderSeat(player) {
   meta.append(wind);
   if (player.isDealer) meta.append(el("span", "mj-dealer", "莊"));
   meta.append(el("span", "mj-score", formatScore(state.scores[player.seat])));
+  if (!player.isHuman) meta.append(el("span", "mj-count", `${player.handCount} tiles`));
   if (player.model) meta.append(el("span", "mj-model", `${player.model.replace(/^gpt-/, "")} · ${player.reasoningEffort}`));
   head.append(figure, meta);
 
@@ -254,7 +256,7 @@ function renderSeat(player) {
   const isBottomHuman = player.isHuman;
   if (!isBottomHuman) {
     const hand = el("div", "mj-concealed");
-    const size = "xs";
+    const size = player.hand && (pos === "bottom" || pos === "top") ? "sm" : "xs";
     if (player.hand) {
       for (const tile of player.hand) hand.append(tileElement(tile, { size }));
     } else {
@@ -419,12 +421,26 @@ function renderDock() {
   actions.replaceChildren(...buttons);
   actions.dataset.claim = String(state.phase !== "discard" && legal.length > 0);
 
-  if (state.phase === "gameOver") prompt.textContent = "The game is over.";
-  else if (state.phase === "handOver") prompt.textContent = "Hand over.";
-  else if (state.phase !== "discard" && legal.length > 0) prompt.textContent = `${playerName(state.pending.from)} let go of ${tileName(state.pending.tile)}. Claim it or pass.`;
-  else if (myTurn) prompt.textContent = selectedTile ? "Tap again (or press 打) to discard it." : "Your turn: pick a tile to discard.";
-  else if (state.aiThinking) prompt.textContent = `${state.aiThinking.playerName} is thinking…`;
-  else prompt.textContent = "";
+  const claimWindow = state.phase !== "discard" && legal.length > 0;
+  let line = "";
+  let neon = "";
+  if (state.phase === "gameOver") line = "The game is over.";
+  else if (state.phase === "handOver") line = "Hand over.";
+  else if (claimWindow) {
+    neon = "Claim?";
+    line = state.pending.kind === "addedKong"
+      ? `${playerName(state.pending.from)} is adding ${tileName(state.pending.tile)} to a kong. Rob it or pass.`
+      : `${playerName(state.pending.from)} let go of ${tileName(state.pending.tile)}. Claim it or pass.`;
+  } else if (myTurn) {
+    neon = "Your turn";
+    line = selectedTile ? "Tap it again, or press 打, to discard." : "Pick a tile to discard.";
+  } else if (state.aiThinking) line = `${state.aiThinking.playerName} is thinking…`;
+  const parts = [];
+  if (neon) parts.push(el("span", "mj-turn-neon", neon));
+  parts.push(el("span", null, line));
+  prompt.replaceChildren(...parts);
+  if (claimWindow && dock.dataset.claimKey !== `${state.seq}`) sfx.play("chipClack");
+  dock.dataset.claimKey = claimWindow ? `${state.seq}` : "";
 }
 
 function renderSide() {
@@ -527,6 +543,43 @@ function renderResult() {
     deltas.append(chip);
   });
   parts.push(deltas);
+
+  const reviewers = state.players.filter((player) => !player.isHuman);
+  if (reviewers.length) {
+    const ask = el("div", "mj-review-ask");
+    const quote = el("blockquote", "mj-review");
+    quote.hidden = true;
+    const showReview = (player, text) => {
+      quote.hidden = false;
+      const cite = el("cite", null, `— ${player.character?.name ?? player.name}, ${player.character?.title ?? ""}`);
+      quote.replaceChildren(el("p", null, text), cite);
+    };
+    const shown = [...reviews.entries()].filter(([key]) => key.startsWith(`${state.handNumber}:`)).pop();
+    if (shown) showReview(shown[1].player, shown[1].text);
+    for (const player of reviewers) {
+      const button = el("button", "mj-ghost mj-small", `Ask ${player.name} to review`);
+      button.type = "button";
+      button.addEventListener("click", async () => {
+        for (const other of ask.querySelectorAll("button")) other.disabled = true;
+        quote.hidden = false;
+        quote.replaceChildren(el("p", "mj-review-wait", `${player.name} lights a cigarette and thinks it over…`));
+        try {
+          const answer = await post("/review", { seat: player.seat });
+          reviews.set(`${answer.handNumber}:${player.seat}`, { player, text: answer.review });
+          showReview(player, answer.review);
+          if (!quote.isConnected) renderResult();
+          transcript.add({ who: player.name, text: answer.review, kind: "talk" });
+        } catch (error) {
+          quote.replaceChildren(el("p", "mj-review-wait", error.message));
+          sfx.play("error");
+        } finally {
+          for (const other of ask.querySelectorAll("button")) other.disabled = false;
+        }
+      });
+      ask.append(button);
+    }
+    parts.push(ask, quote);
+  }
 
   if (state.phase === "gameOver") {
     const standings = el("ol", "mj-standings");

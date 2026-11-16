@@ -757,6 +757,43 @@ body[data-mode="human-vs-ai"] .mj-seat[data-pos="bottom"] {
 }
 .mj-delta.is-up { color: var(--mj-cyan); }
 .mj-delta.is-down { color: #ff8a84; }
+.mj-review-ask {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin: 4px 0 10px;
+}
+.mj-review-ask .mj-ghost {
+  font-size: 13px;
+  padding: 5px 12px;
+  border-color: color-mix(in oklab, var(--mj-cyan) 50%, transparent);
+  box-shadow: none;
+}
+.mj-review {
+  margin: 0 0 12px;
+  padding: 12px 16px;
+  text-align: left;
+  border-left: 3px solid var(--mj-amber);
+  background: rgb(242 176 74 / 0.07);
+  border-radius: 0 10px 10px 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.mj-review p {
+  margin: 0 0 6px;
+}
+.mj-review cite {
+  font-size: 12px;
+  color: var(--kit-muted);
+}
+.mj-review-wait {
+  color: var(--kit-muted);
+  font-style: italic;
+}
+.mj-review[hidden] {
+  display: none;
+}
 .mj-standings {
   margin: 0 auto 12px;
   padding: 0;
@@ -891,6 +928,19 @@ button.mj-tile:focus-visible {
 }
 .mj-dock[hidden] {
   display: none;
+}
+.mj-turn-neon {
+  font-family: "Monoton", var(--font-cjk);
+  font-size: 22px;
+  margin-right: 12px;
+  color: #ffe1f2;
+  text-shadow: 0 0 4px #fff, 0 0 12px var(--mj-pink), 0 0 26px var(--mj-pink);
+  vertical-align: -3px;
+  animation: mj-ignite 0.9s 1 both;
+}
+.mj-count {
+  color: var(--kit-muted);
+  font-size: 11px;
 }
 .mj-prompt {
   grid-area: prompt;
@@ -1187,6 +1237,9 @@ button.mj-tile:focus-visible {
   }
   .mj-concealed {
     display: none;
+  }
+  body[data-mode="arena"] .mj-seat[data-pos="bottom"] .mj-concealed {
+    display: flex;
   }
   .mj-seat .mj-tile[data-size="xs"] {
     --w: 13px;

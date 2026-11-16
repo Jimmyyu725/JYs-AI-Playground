@@ -32,6 +32,36 @@ function decide({ instructions, input, modelConfig, voice }, callbacks) {
   }, callbacks);
 }
 
+const REVIEW_SCHEMA = {
+  type: "object",
+  properties: { review: { type: "string", description: "The spoken review, plain text, 3-6 sentences." } },
+  required: ["review"],
+  additionalProperties: false,
+};
+
+function reviewInput(current) {
+  const state = current.state;
+  const view = current.publicState();
+  return {
+    game: "Taiwan Mahjong 台灣麻將 (16 tiles)",
+    handNumber: state.handNumber,
+    players: view.players.map((player) => ({
+      seat: player.seat,
+      name: player.name,
+      seatWind: player.seatWind,
+      isDealer: player.isDealer,
+      finalHand: state.players[player.seat].hand,
+      melds: state.players[player.seat].melds.map((meld) => `${meld.type} ${meld.tiles.join(" ")}`),
+      flowers: player.flowers,
+      discards: player.discards,
+      score: view.scores[player.seat],
+    })),
+    result: state.result,
+    handLog: state.log,
+    earlierHands: state.history.slice(0, -1),
+  };
+}
+
 function recordResult(current) {
   if (!current?.isOver) return;
   const places = current.standings();
@@ -193,6 +223,35 @@ export function register(app, ctx) {
     response.json(current.publicState());
     broadcastState();
     schedule();
+  }));
+
+  app.post("/api/taiwan-mahjong/review", route(async (request, response) => {
+    const current = requireTable();
+    const phase = current.state.phase;
+    if (phase !== "handOver" && phase !== "gameOver") throw httpError(409, "A review is available once the hand is over");
+    const seat = Number(request.body?.seat);
+    const player = current.players[seat];
+    if (!player || player.isHuman) throw httpError(400, "Pick an AI seat to review the hand");
+    const key = `${current.state.handNumber}:${seat}`;
+    current.reviews ??= {};
+    if (!current.reviews[key]) {
+      const character = player.character;
+      const instructions = `You are ${character.name}, ${character.title}. Character: ${character.personality}
+Voice: ${character.voice}
+A hand of Taiwan Mahjong (16-tile) just finished at your table, and someone asked you to review it. Every hand is now face up. In character and in 3 to 6 sentences of plain spoken English (no markdown, no lists): say what decided the hand, name one sharp decision and one questionable one (say whose), and give one concrete lesson for next time. Refer to tiles by name (for example "the 5 of dots", "West wind"), not by code.`;
+      const answer = await requestStructuredDecision({
+        gameId: id,
+        modelConfig: player.aiConfig,
+        instructions,
+        input: reviewInput(current),
+        schemaName: "taiwan_mahjong_review",
+        schema: REVIEW_SCHEMA,
+      });
+      const text = String(answer.output?.review ?? "").trim().slice(0, 1600);
+      if (!text) throw httpError(502, `${player.name} had nothing to say. Try again.`);
+      current.reviews[key] = text;
+    }
+    response.json({ seat, playerName: player.name, characterId: player.character?.id ?? null, handNumber: current.state.handNumber, review: current.reviews[key] });
   }));
 
   app.post("/api/taiwan-mahjong/retry-ai", route((_request, response) => {
