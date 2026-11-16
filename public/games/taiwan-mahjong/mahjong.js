@@ -15,6 +15,7 @@ import {
 import { sfx } from "/shared/sfx.js";
 import { speak } from "/shared/speech.js";
 import { tileElement, tileName } from "/games/taiwan-mahjong/tiles.js";
+import { ambienceButton } from "/games/taiwan-mahjong/ambience.js";
 
 const ROOM = "taiwan-mahjong";
 const API = `/api/${ROOM}`;
@@ -31,6 +32,8 @@ let busy = false;
 let seenLog = { hand: 0, count: 0 };
 let lastResultKey = null;
 let thinkingSummary = "";
+let lastDrawKey = "";
+const seenMelds = new Map(); // "<table>:<hand>:<seat>" -> meld count already shown, to flip only new melds
 const reviews = new Map(); // "<hand>:<seat>" -> { player, text }, survives re-renders of the result card
 const seatFigures = new Map(); // seat -> figure.kit-seat
 
@@ -67,6 +70,11 @@ function playerName(seat) {
 function seededTilt(seat, index) {
   const x = Math.sin(seat * 97.13 + index * 12.9898) * 43758.5453;
   return Math.round(((x - Math.floor(x)) * 6 - 3) * 10) / 10;
+}
+
+function summaryTail() {
+  if (thinkingSummary.length <= 280) return thinkingSummary;
+  return `…${thinkingSummary.slice(-280).replace(/^\S*\s+/, "")}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -186,8 +194,8 @@ function renderChips() {
   chips.replaceChildren(...items.map(([cls, text]) => el("span", cls, text)));
 }
 
-function meldElement(meld, size) {
-  const group = el("span", `mj-meld mj-meld-${meld.type}`);
+function meldElement(meld, size, { fresh = false } = {}) {
+  const group = el("span", `mj-meld mj-meld-${meld.type}${fresh ? " is-new" : ""}`);
   if (!meld.tiles) {
     for (let index = 0; index < 4; index += 1) group.append(tileElement(null, { size }));
     group.title = "Concealed kong 暗槓";
@@ -270,7 +278,10 @@ function renderSeat(player) {
     tiles.append(hand);
   }
   const melds = el("div", "mj-melds");
-  for (const meld of player.melds) melds.append(meldElement(meld, "xs"));
+  const meldKey = `${state.tableId}:${state.handNumber}:${player.seat}`;
+  const shownMelds = seenMelds.get(meldKey) ?? player.melds.length;
+  player.melds.forEach((meld, index) => melds.append(meldElement(meld, "xs", { fresh: index >= shownMelds })));
+  seenMelds.set(meldKey, player.melds.length);
   if (player.flowers.length) {
     const flowers = el("span", "mj-flowers");
     for (const flower of player.flowers) flowers.append(tileElement(flower, { size: "xs" }));
@@ -382,11 +393,19 @@ function renderDock() {
     return button;
   };
   const nodes = tiles.map((tile) => make(tile));
-  if (drawn) nodes.push(make(drawn, "is-drawn"));
+  if (drawn) {
+    const drawKey = `${state.tableId}:${state.handNumber}:${state.logTotal}`;
+    nodes.push(make(drawn, drawKey === lastDrawKey ? "is-drawn" : "is-drawn is-arriving"));
+    if (drawKey !== lastDrawKey) sfx.play("tileClack");
+    lastDrawKey = drawKey;
+  }
   hand.replaceChildren(...nodes);
   hand.dataset.active = String(myTurn);
 
-  ownMelds.replaceChildren(...human.melds.map((meld) => meldElement(meld, "sm")));
+  const ownKey = `${state.tableId}:${state.handNumber}:own`;
+  const ownShown = seenMelds.get(ownKey) ?? human.melds.length;
+  ownMelds.replaceChildren(...human.melds.map((meld, index) => meldElement(meld, "sm", { fresh: index >= ownShown })));
+  seenMelds.set(ownKey, human.melds.length);
   if (human.flowers.length) {
     const flowers = el("span", "mj-flowers");
     for (const flower of human.flowers) flowers.append(tileElement(flower, { size: "sm" }));
@@ -453,7 +472,7 @@ function renderSide() {
   if (state?.aiThinking) {
     $("thinking-who").textContent = state.aiThinking.playerName;
     $("thinking-status").textContent = state.aiThinking.status ?? "";
-    $("thinking-summary").textContent = thinkingSummary.slice(-280);
+    $("thinking-summary").textContent = summaryTail();
   }
   const error = $("ai-error");
   error.hidden = !state?.aiError;
@@ -753,7 +772,7 @@ async function boot() {
     return;
   }
   const panel = buildSetup();
-  $("top-right").append(sfx.muteButton(), panel.toggleButton);
+  $("top-right").append(ambienceButton(), sfx.muteButton(), panel.toggleButton);
 
   const initial = await fetch(`${API}/state`).then((response) => response.json()).catch(() => null);
   if (initial) apply(initial);
@@ -774,7 +793,7 @@ async function boot() {
     else if (message.type === "ai_stream") {
       if (message.payload.phase === "summary_delta") {
         thinkingSummary += message.payload.delta;
-        $("thinking-summary").textContent = thinkingSummary.slice(-280);
+        $("thinking-summary").textContent = summaryTail();
       } else if (message.payload.phase === "status") {
         $("thinking-status").textContent = message.payload.status;
       } else if (message.payload.phase === "error") {

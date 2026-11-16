@@ -233,6 +233,15 @@ body.mj {
   cursor: pointer;
   box-shadow: 0 0 14px -6px var(--mj-pink);
 }
+.mj-ambience {
+  font-weight: 400;
+  border-color: color-mix(in oklab, var(--mj-cyan) 45%, transparent);
+  box-shadow: none;
+}
+.mj-ambience[aria-pressed="true"] {
+  color: #d8fffb;
+  box-shadow: 0 0 14px -6px var(--mj-cyan);
+}
 .kit-drawer-toggle:hover,
 .mj-ghost:hover {
   border-color: var(--mj-pink);
@@ -911,6 +920,29 @@ button.mj-tile:focus-visible {
   outline-offset: 2px;
 }
 
+/* a new meld flips face-up tile by tile; the drawn tile slides in from the wall */
+.mj-meld.is-new .mj-tile {
+  animation: mj-flip 0.32s var(--kit-ease) both;
+}
+.mj-meld.is-new .mj-tile:nth-child(2) { animation-delay: 60ms; }
+.mj-meld.is-new .mj-tile:nth-child(3) { animation-delay: 120ms; }
+.mj-meld.is-new .mj-tile:nth-child(4) { animation-delay: 180ms; }
+@keyframes mj-flip {
+  from {
+    transform: perspective(300px) rotateX(85deg);
+    filter: brightness(0.5);
+  }
+}
+button.mj-tile.is-arriving {
+  animation: mj-draw 0.2s var(--kit-ease) both;
+}
+@keyframes mj-draw {
+  from {
+    translate: 24px -10px;
+    opacity: 0;
+  }
+}
+
 /* ---------------------------------------------------------------- your dock */
 .mj-dock {
   display: grid;
@@ -1176,6 +1208,7 @@ button.mj-tile:focus-visible {
     padding: 10px 16px;
   }
   .mj-top-left { grid-area: left; }
+  .mj-ambience { padding: 7px 10px; font-size: 13px; }
   .mj-top-right { grid-area: right; }
   .mj-brand { grid-area: brand; justify-content: center; }
   .mj-brand-neon { font-size: 24px; }
@@ -1334,7 +1367,10 @@ button.mj-tile:focus-visible {
   .mj-tile.is-claimable,
   .mj-tile.is-fresh,
   .mj-result.is-flicker .mj-result-card,
-  .mj-actions[data-claim="true"] {
+  .mj-actions[data-claim="true"],
+  .mj-meld.is-new .mj-tile,
+  button.mj-tile.is-arriving,
+  .mj-turn-neon {
     animation: none !important;
   }
   .mj-table,
