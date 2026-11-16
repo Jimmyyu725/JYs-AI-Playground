@@ -116,3 +116,20 @@ test("moves are recorded and a finished game yields a review snapshot", async ()
   assert.equal(review.keyMoments.length, 1, "moments outside the game are dropped");
   assert.equal(review.lesson, "Block open threes early.");
 });
+
+test("a saved game restores with in-flight requests paused and arenas paused", () => {
+  const game = new WuziqiGame({ gameMode: "arena", aiPlayers: [config, config] });
+  game.applyAction("black", "place", 7, 7);
+  game.aiThinking = { color: "white", status: "Reasoning" };
+  game.tableTalk = [{ id: "t", speaker: "black", text: "Center." }];
+  const restored = WuziqiGame.restore(JSON.parse(JSON.stringify(game.toSave())));
+  assert.equal(restored.arenaPaused, true);
+  assert.equal(restored.aiThinking, null);
+  assert.equal(restored.currentColor, "white");
+  assert.deepEqual(restored.publicState().board, game.publicState().board);
+  assert.equal(restored.publicState().tableTalk.length, 1);
+  restored.resumeArena();
+  restored.applyAction("white", "place", 7, 8);
+  assert.equal(restored.moves.length, 2);
+  assert.throws(() => WuziqiGame.restore({ version: 2 }), /Unrecognized/);
+});

@@ -211,6 +211,48 @@ export class WuziqiGame {
     this.review = review;
   }
 
+  /** Plain data for saving to disk; restore with WuziqiGame.restore(). */
+  toSave() {
+    return {
+      version: 1,
+      boardSize: this.boardSize,
+      gameMode: this.gameMode,
+      humanColor: this.humanColor,
+      arenaPaused: this.arenaPaused,
+      phase: this.phase,
+      currentColor: this.currentColor,
+      moveNumber: this.moveNumber,
+      board: [...this.board],
+      lastMove: this.lastMove,
+      moves: this.moves,
+      result: this.result,
+      resultRecorded: Boolean(this.resultRecorded),
+      review: this.review?.status === "pending" ? null : this.review,
+      logs: this.logs,
+      aiInsights: this.aiInsights,
+      aiError: this.aiError,
+      tableTalk: this.tableTalk ?? [],
+      players: this.players.map((player) => ({ ...player })),
+    };
+  }
+
+  /**
+   * Rebuilds a saved game. A model request that was in flight is lost, so it comes back as a paused
+   * request for an explicit retry, and a running arena comes back paused.
+   */
+  static restore(saved) {
+    if (saved?.version !== 1 || !BOARD_SIZES.has(saved.boardSize) || saved.board?.length !== saved.boardSize ** 2) throw new Error("Unrecognized Wuziqi save");
+    const game = Object.create(WuziqiGame.prototype);
+    Object.assign(game, saved);
+    delete game.version;
+    game.board = [...saved.board];
+    game.aiThinking = null;
+    game.moves = saved.moves ?? [];
+    game.review = saved.review ?? null;
+    if (game.gameMode === "arena" && game.phase === "active") game.arenaPaused = true;
+    return game;
+  }
+
   setAIError(color, message) {
     this.aiThinking = null;
     const player = this.players.find((candidate) => candidate.color === color);

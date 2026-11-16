@@ -1,3 +1,5 @@
+import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import path from "node:path";
 import { requestWuziqiDecisionWithRetry, requestWuziqiReview } from "../games/wuziqi-ai.js";
 import { WuziqiGame } from "../games/wuziqi-game.js";
 import { pushTableTalk } from "../platform/table-talk.js";
@@ -24,9 +26,33 @@ function broadcastWuziqi(type, payload) {
   }
 }
 
+let savePath = null;
+
+/** Keeps the current game on disk so a server restart resumes it. Saving is best effort. */
+function saveWuziqiGame() {
+  if (!savePath || !wuziqiGame) return;
+  try {
+    mkdirSync(path.dirname(savePath), { recursive: true });
+    writeFileSync(`${savePath}.tmp`, JSON.stringify(wuziqiGame.toSave()));
+    renameSync(`${savePath}.tmp`, savePath);
+  } catch (error) {
+    console.error(`Could not save the Wuziqi game: ${String(error?.message || error)}`);
+  }
+}
+
+function loadWuziqiGame() {
+  try {
+    return WuziqiGame.restore(JSON.parse(readFileSync(savePath, "utf8")));
+  } catch (error) {
+    if (error?.code !== "ENOENT") console.error(`Could not restore the Wuziqi game: ${String(error?.message || error)}`);
+    return null;
+  }
+}
+
 function recordResult() {
   const table = wuziqiGame;
-  if (!table || table.phase !== "complete" || !table.result) return;
+  if (!table || table.phase !== "complete" || !table.result || table.resultRecorded) return;
+  table.resultRecorded = true;
   recordOnce(table, "game", () => ({
     mode: table.gameMode === "arena" ? "arena" : "human-vs-ai",
     participants: table.players.map((player) => participantFrom(player, { place: !table.result.winner || table.result.winner === player.color ? 1 : 2 })),
@@ -38,6 +64,7 @@ let recordOnce = () => null;
 
 function broadcastWuziqiState() {
   recordResult();
+  saveWuziqiGame();
   if (wuziqiGame) broadcastWuziqi("state", wuziqiGame.publicState());
 }
 
@@ -141,6 +168,8 @@ async function runWuziqiAIChain(version) {
 
 export function register(app, ctx) {
   recordOnce = createMatchRecorder(ctx.results, id);
+  savePath = ctx.dataDir ? path.join(ctx.dataDir, "wuziqi-game.json") : null;
+  if (savePath) wuziqiGame = loadWuziqiGame();
   app.get("/api/wuziqi/state", (_request, response) => {
     response.json(wuziqiGame ? wuziqiGame.publicState() : null);
   });
@@ -259,4 +288,11 @@ export function register(app, ctx) {
       next(error);
     }
   });
+
+  return {
+    // A restored human game whose AI seat was mid-request picks the request up again; arenas wait paused.
+    onListen() {
+      scheduleWuziqiAITurn(wuziqiGameVersion);
+    },
+  };
 }
