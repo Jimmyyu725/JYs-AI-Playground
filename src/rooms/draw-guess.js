@@ -527,9 +527,21 @@ export function register(app, ctx) {
     try {
       const file = imagePath(request.params.name);
       if (!fs.existsSync(file)) throw httpError(404, "No such image");
-      // A guesser could otherwise fetch the sharp original early; the client only loads it once it is
-      // shown, and blur is cosmetic for humans exactly as it is for the people sitting at a real table.
-      response.set("Cache-Control", "private, max-age=3600");
+      // The human guesser gets the same server-blurred picture the AI guessers get, never the sharp
+      // original, until they solve it or the round ends. Arena spectators see everything anyway.
+      const current = table;
+      const now = Date.now();
+      if (current && current.humanSeat >= 0 && current.state.phase === "guessing" && current.state.round.imageRef?.endsWith(`/${request.params.name}`)) {
+        const input = visionInputFor(current.state, current.humanSeat, now);
+        if (input?.blurPx > 0) {
+          const dataUrl = blurredImageFor(current.state, current.humanSeat, now);
+          response.set({ "Cache-Control": "no-store", "Content-Type": "image/png" });
+          return response.send(Buffer.from(dataUrl.split(",")[1], "base64"));
+        }
+        response.set("Cache-Control", "no-store");
+      } else {
+        response.set("Cache-Control", "private, max-age=3600");
+      }
       response.sendFile(file, { dotfiles: "allow" });
     } catch (error) {
       next(error.status ? error : httpError(404, "No such image"));

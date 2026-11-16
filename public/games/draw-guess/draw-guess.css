@@ -567,7 +567,7 @@ body {
   .palette { width: 120px; }
   .slips { max-height: 60vh; }
   .salon { display: none; }
-  body[data-phase="game_over"] .salon, body[data-phase="round_over"] .salon { display: block; }
+  body[data-phase="game_over"] .salon { display: block; }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -416,10 +416,14 @@ function setPainting(image, blurPx) {
     painting.removeAttribute("src");
     return;
   }
-  if (painting.getAttribute("src") !== image.imageRef) painting.src = image.imageRef;
+  // At a human table the server blurs the picture itself (stage by stage), so nothing sharper ever
+  // reaches the browser; arena spectators get the original with the same blur applied in CSS.
+  const serverBlurred = !isArena() && blurPx > 0;
+  const src = serverBlurred ? `${image.imageRef}?stage=${image.stage}` : image.imageRef;
+  if (painting.getAttribute("src") !== src) painting.src = src;
   painting.hidden = false;
   const scale = (painting.clientWidth || 512) / BLUR_REFERENCE_WIDTH;
-  painting.style.filter = blurPx > 0 ? `blur(${(blurPx * scale).toFixed(1)}px) saturate(1.05)` : "none";
+  painting.style.filter = blurPx > 0 && !serverBlurred ? `blur(${(blurPx * scale).toFixed(1)}px) saturate(1.05)` : "none";
 }
 
 function renderFrame() {
