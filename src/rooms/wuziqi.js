@@ -1,7 +1,9 @@
-import { requestWuziqiDecision } from "../games/wuziqi-ai.js";
+import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import path from "node:path";
+import { requestWuziqiDecisionWithRetry, requestWuziqiReview } from "../games/wuziqi-ai.js";
 import { WuziqiGame } from "../games/wuziqi-game.js";
 import { pushTableTalk } from "../platform/table-talk.js";
-import { createMatchRecorder, participantFrom, publicError, sendSSE } from "../platform/room-kit.js";
+import { createMatchRecorder, httpError, participantFrom, publicError, sendSSE } from "../platform/room-kit.js";
 
 export const id = "wuziqi";
 export const defaults = { model: "gpt-6-luna", reasoningEffort: "low" };
@@ -24,9 +26,33 @@ function broadcastWuziqi(type, payload) {
   }
 }
 
+let savePath = null;
+
+/** Keeps the current game on disk so a server restart resumes it. Saving is best effort. */
+function saveWuziqiGame() {
+  if (!savePath || !wuziqiGame) return;
+  try {
+    mkdirSync(path.dirname(savePath), { recursive: true });
+    writeFileSync(`${savePath}.tmp`, JSON.stringify(wuziqiGame.toSave()));
+    renameSync(`${savePath}.tmp`, savePath);
+  } catch (error) {
+    console.error(`Could not save the Wuziqi game: ${String(error?.message || error)}`);
+  }
+}
+
+function loadWuziqiGame() {
+  try {
+    return WuziqiGame.restore(JSON.parse(readFileSync(savePath, "utf8")));
+  } catch (error) {
+    if (error?.code !== "ENOENT") console.error(`Could not restore the Wuziqi game: ${String(error?.message || error)}`);
+    return null;
+  }
+}
+
 function recordResult() {
   const table = wuziqiGame;
-  if (!table || table.phase !== "complete" || !table.result) return;
+  if (!table || table.phase !== "complete" || !table.result || table.resultRecorded) return;
+  table.resultRecorded = true;
   recordOnce(table, "game", () => ({
     mode: table.gameMode === "arena" ? "arena" : "human-vs-ai",
     participants: table.players.map((player) => participantFrom(player, { place: !table.result.winner || table.result.winner === player.color ? 1 : 2 })),
@@ -38,6 +64,7 @@ let recordOnce = () => null;
 
 function broadcastWuziqiState() {
   recordResult();
+  saveWuziqiGame();
   if (wuziqiGame) broadcastWuziqi("state", wuziqiGame.publicState());
 }
 
@@ -72,17 +99,30 @@ async function runWuziqiAIChain(version) {
       broadcastWuziqiState();
 
       try {
-        const snapshot = table.aiSnapshot();
-        const decision = await requestWuziqiDecision(snapshot, actor.aiConfig, {
-          onStatus(status) {
-            if (wuziqiGame !== table || version !== wuziqiGameVersion) return;
-            table.aiThinking = { ...table.aiThinking, status };
-            broadcastWuziqi("ai_stream", { phase: "status", color, playerName: actor.name, status });
-            broadcastWuziqiState();
+        const current = () => wuziqiGame === table && version === wuziqiGameVersion;
+        const { decision } = await requestWuziqiDecisionWithRetry({
+          snapshotFactory: () => table.aiSnapshot(),
+          modelConfig: actor.aiConfig,
+          callbacks: {
+            onStatus(status) {
+              if (!current()) return;
+              table.aiThinking = { ...table.aiThinking, status };
+              broadcastWuziqi("ai_stream", { phase: "status", color, playerName: actor.name, status });
+              broadcastWuziqiState();
+            },
+            onSummaryDelta(delta) {
+              if (!current()) return;
+              broadcastWuziqi("ai_stream", { phase: "summary_delta", color, playerName: actor.name, delta });
+            },
           },
-          onSummaryDelta(delta) {
-            if (wuziqiGame !== table || version !== wuziqiGameVersion) return;
-            broadcastWuziqi("ai_stream", { phase: "summary_delta", color, playerName: actor.name, delta });
+          shouldContinue: current,
+          onRetry({ error, retryNumber, maxRetries }) {
+            if (!current()) return;
+            const message = publicError(error);
+            table.recordAIRetry(color, message, retryNumber, maxRetries);
+            table.aiThinking = { ...table.aiThinking, status: `${message}. Retrying automatically (${retryNumber}/${maxRetries})…` };
+            broadcastWuziqi("ai_stream", { phase: "started", color, playerName: actor.name, summary: "", automaticRetry: true, retryNumber, maxRetries });
+            broadcastWuziqiState();
           },
         });
 
@@ -128,6 +168,8 @@ async function runWuziqiAIChain(version) {
 
 export function register(app, ctx) {
   recordOnce = createMatchRecorder(ctx.results, id);
+  savePath = ctx.dataDir ? path.join(ctx.dataDir, "wuziqi-game.json") : null;
+  if (savePath) wuziqiGame = loadWuziqiGame();
   app.get("/api/wuziqi/state", (_request, response) => {
     response.json(wuziqiGame ? wuziqiGame.publicState() : null);
   });
@@ -198,6 +240,32 @@ export function register(app, ctx) {
     }
   });
 
+  app.post("/api/wuziqi/review", (request, response, next) => {
+    try {
+      const table = requireWuziqiGame();
+      if (table.review?.status === "pending") throw httpError(409, "A review is already being written");
+      const snapshot = table.reviewSnapshot(request.body?.color);
+      const reviewer = table.players.find((player) => player.color === snapshot.reviewer.color);
+      table.setReview({ status: "pending", color: reviewer.color, playerName: reviewer.name, characterId: reviewer.character?.id ?? null });
+      response.status(202).json(table.publicState());
+      broadcastWuziqiState();
+      requestWuziqiReview(snapshot, reviewer.aiConfig)
+        .then((review) => {
+          if (wuziqiGame !== table) return;
+          table.setReview({ ...table.review, status: "done", ...review });
+          broadcastWuziqiState();
+        })
+        .catch((error) => {
+          if (wuziqiGame !== table) return;
+          table.setReview({ ...table.review, status: "error", error: publicError(error) });
+          broadcastWuziqiState();
+        });
+    } catch (error) {
+      if (!error.status) error.status = 409;
+      next(error);
+    }
+  });
+
   app.post("/api/wuziqi/arena/pause", (_request, response, next) => {
     try {
       const table = requireWuziqiGame();
@@ -220,4 +288,11 @@ export function register(app, ctx) {
       next(error);
     }
   });
+
+  return {
+    // A restored human game whose AI seat was mid-request picks the request up again; arenas wait paused.
+    onListen() {
+      scheduleWuziqiAITurn(wuziqiGameVersion);
+    },
+  };
 }
