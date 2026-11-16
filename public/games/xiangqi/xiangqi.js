@@ -467,18 +467,63 @@ function moveFeedback() {
   const last = state.lastMove;
   if (!last || last.resigned) return;
   setTimeout(() => {
-    sfx.play(last.captured ? "tileClack" : "stoneClick");
+    tok({ gain: last.captured ? 1 : 0.75 });
+    if (last.captured) setTimeout(() => tok({ gain: 0.35, body: 0 }), 70);
     if (last.check) pluck();
-  }, prefersReducedMotion() ? 0 : 240);
+  }, prefersReducedMotion() ? 0 : 260);
 }
 
-// A low guqin-like pluck for "check", through its own tiny audio graph; respects the shared mute.
-let pluckContext = null;
-function pluck() {
-  if (sfx.muted) return;
+// Room sounds through a small audio graph of their own (the shared kit has no wood or guqin
+// voices); every one of them respects the shared mute setting.
+let roomAudio = null;
+function audioContext() {
+  if (sfx.muted) return null;
   try {
-    pluckContext ??= new AudioContext();
-    const ctx = pluckContext;
+    roomAudio ??= new AudioContext();
+    if (roomAudio.state === "suspended") roomAudio.resume();
+    return roomAudio;
+  } catch {
+    return null;
+  }
+}
+
+// A dry wooden "tok": a band-passed noise click over a short 180 Hz body thump.
+function tok({ gain = 0.8, body = 1 } = {}) {
+  const ctx = audioContext();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+  const length = Math.floor(ctx.sampleRate * 0.05);
+  const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let index = 0; index < length; index += 1) data[index] = (Math.random() * 2 - 1) * (1 - index / length) ** 3;
+  const noise = ctx.createBufferSource();
+  noise.buffer = buffer;
+  const band = ctx.createBiquadFilter();
+  band.type = "bandpass";
+  band.frequency.value = 1500;
+  band.Q.value = 2.2;
+  const clickGain = ctx.createGain();
+  clickGain.gain.value = 0.9 * gain;
+  noise.connect(band).connect(clickGain).connect(ctx.destination);
+  noise.start(now);
+  if (!body) return;
+  const thump = ctx.createOscillator();
+  const thumpGain = ctx.createGain();
+  thump.frequency.setValueAtTime(190, now);
+  thump.frequency.exponentialRampToValueAtTime(120, now + 0.09);
+  thumpGain.gain.setValueAtTime(0.0001, now);
+  thumpGain.gain.exponentialRampToValueAtTime(0.45 * gain, now + 0.004);
+  thumpGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
+  thump.connect(thumpGain).connect(ctx.destination);
+  thump.start(now);
+  thump.stop(now + 0.14);
+}
+
+// A low guqin-like pluck for "check".
+function pluck() {
+  const ctx = audioContext();
+  if (!ctx) return;
+  try {
     const now = ctx.currentTime;
     for (const [frequency, gainValue] of [[146.8, 0.32], [293.6, 0.12], [440.4, 0.05]]) {
       const osc = ctx.createOscillator();
@@ -581,7 +626,10 @@ function onBoardClick(event) {
     return;
   }
   selected = selected === square ? null : square;
-  if (selected !== null) sfx.play("cardFlick");
+  if (selected !== null) {
+    tok({ gain: 0.35, body: 0 });
+    setTimeout(() => tok({ gain: 0.22, body: 0 }), 45);
+  }
   renderMarks();
 }
 
@@ -667,7 +715,7 @@ function buildSetup() {
       resultDismissedFor = null;
       accept(next);
       setup.close();
-      sfx.play("stoneClick");
+      tok();
     } catch (error) {
       toast(error.message, { tone: "error" });
     } finally {
