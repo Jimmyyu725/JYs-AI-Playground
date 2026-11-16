@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#160c07" />
+    <title>Coup 政变 — JYs AI Playground</title>
+    <meta name="description" content="Coup at a Venetian masquerade: claim any role, bluff, and challenge AI characters who lie." />
+    <link rel="icon" href="data:," />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,500;0,6..96,700;1,6..96,500;1,6..96,600&family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=Noto+Serif+SC:wght@600&display=swap" />
+    <link rel="preload" as="image" href="/assets/rooms/coup/card-back.webp" />
+    <link rel="stylesheet" href="/shared/kit.css" />
+    <link rel="stylesheet" href="/games/coup/coup.css" />
+  </head>
+  <body class="coup" data-phase="idle">
+    <div class="room-bg" aria-hidden="true"></div>
+    <div class="caustics" aria-hidden="true"></div>
+    <div class="candle-haze" aria-hidden="true"></div>
+
+    <header class="topbar">
+      <div class="topbar-start" id="topbar-start"></div>
+      <div class="crest">
+        <h1><em>Coup</em> <span lang="zh">政变</span></h1>
+        <p><span>La Notte delle Maschere</span> <span class="crest-sep" aria-hidden="true">·</span> <span id="turn-label">No table yet</span></p>
+      </div>
+      <div class="topbar-end" id="topbar-end">
+        <button class="ornate-button ghost" id="pause-button" type="button" hidden>Pause</button>
+      </div>
+    </header>
+
+    <main class="palazzo" id="palazzo">
+      <section class="court" id="court" aria-label="Players at the table"></section>
+
+      <section class="stage" id="stage" aria-live="polite">
+        <div class="stage-claim" id="stage-claim"></div>
+        <div class="treasury" aria-hidden="true">
+          <div class="dish"><img src="/assets/rooms/coup/coin.webp" alt="" class="dish-coin c1" /><img src="/assets/rooms/coup/coin.webp" alt="" class="dish-coin c2" /><img src="/assets/rooms/coup/coin.webp" alt="" class="dish-coin c3" /></div>
+          <div class="deck-stack"><span class="deck-card"></span><span class="deck-card"></span><span class="deck-card"></span><b id="deck-count">15</b></div>
+        </div>
+        <div class="stage-banner" id="stage-banner"></div>
+      </section>
+
+      <section class="you" id="you" aria-label="Your hand and actions">
+        <div class="hand-row">
+          <div class="hand" id="hand"></div>
+          <div class="purse purse-large" id="your-purse"></div>
+        </div>
+        <div class="prompt" id="prompt"></div>
+        <div class="fan" id="fan" role="group" aria-label="Your choices"></div>
+      </section>
+
+      <aside class="ledger" id="ledger"></aside>
+    </main>
+
+    <div class="reveal-layer" id="reveal-layer" aria-live="assertive"></div>
+
+    <template id="rules-template">
+      <section class="rules">
+        <h3>The five masks</h3>
+        <ul>
+          <li><b>Duke</b> Tax: take 3. Blocks Foreign Aid.</li>
+          <li><b>Assassin</b> Pay 3: a player loses an influence. Contessa blocks.</li>
+          <li><b>Captain</b> Steal 2 from a player. Captain or Ambassador blocks.</li>
+          <li><b>Ambassador</b> Draw 2, keep the best, return the rest. Blocks stealing.</li>
+          <li><b>Contessa</b> Blocks an assassination.</li>
+        </ul>
+        <p>Anyone may claim any role. Anyone may challenge a claim: the liar, or the wrong accuser, loses an influence. Income (+1), Foreign Aid (+2) and Coup (pay 7) need no role. At 10 coins you must Coup.</p>
+      </section>
+    </template>
+
+    <script type="module" src="/games/coup/coup.js"></script>
+  </body>
+</html>
