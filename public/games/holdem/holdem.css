@@ -859,9 +859,8 @@ body[data-mode="arena"] .seat-model,
 
 .bet {
   position: absolute;
-  left: calc(50% + var(--x) * var(--rx) * var(--bet-rx, var(--bet-r)));
-  /* --bet-drop pushes side seats' chips below the board where the table is narrow. */
-  top: calc(50% + var(--y) * var(--ry) * var(--bet-ry, var(--bet-r)) + var(--ax) * var(--bet-drop, 0%));
+  left: calc(50% + var(--x) * var(--rx) * var(--bet-r));
+  top: calc(50% + var(--y) * var(--ry) * var(--bet-r));
   translate: -50% -50%;
   display: flex;
   align-items: center;
@@ -1487,9 +1486,6 @@ body[data-mode="arena"] .seat-model,
     --board-card-w: 42px;
     --rx: 39%;
     --ry: 40%;
-    --bet-rx: 0.75;
-    --bet-ry: 0.46;
-    --bet-drop: 23%;
     inline-size: 100%;
     aspect-ratio: 0.9;
     margin-block: 30px 0;
@@ -1568,6 +1564,22 @@ body[data-mode="arena"] .seat-model,
   .chip-stack {
     inline-size: 24px;
     block-size: 24px;
+  }
+  .bet {
+    left: calc(var(--pbx) * 1%);
+    top: calc(var(--pby) * 1%);
+    z-index: 2;
+    flex-direction: column;
+    gap: 0;
+  }
+  .bet .chip-stack {
+    inline-size: 22px;
+    block-size: 22px;
+  }
+  .bet .bet-amount {
+    margin-block-start: -2px;
+    font-size: 0.75rem;
+    padding: 0 6px;
   }
   .bet-amount {
     font-size: 0.8rem;

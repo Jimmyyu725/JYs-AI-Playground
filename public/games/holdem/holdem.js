@@ -40,6 +40,9 @@ const PIPS = {
   9: [[30, 18], [70, 18], [30, 39], [70, 39], [50, 50], [30, 61], [70, 61], [30, 82], [70, 82]],
   10: [[30, 18], [70, 18], [50, 29], [30, 39], [70, 39], [30, 61], [70, 61], [50, 71], [30, 82], [70, 82]],
 };
+// Seat ellipse radii (percent of the table) in the phone layout; they match --rx / --ry in holdem.css.
+const PHONE_RX = 39;
+const PHONE_RY = 40;
 const CHIP_DENOMS = [
   [500, "black"],
   [100, "navy"],
@@ -344,7 +347,11 @@ function renderBets(state, previous) {
       const { x, y } = seatPosition(player.seat, count);
       bet.style.setProperty("--x", x.toFixed(3));
       bet.style.setProperty("--y", y.toFixed(3));
-      bet.style.setProperty("--ax", (Math.abs(x) > 0.5 ? Math.abs(x) : 0).toFixed(3));
+      // Phone layout: chips sit just under each seat's plate (beside the cards for the bottom seat),
+      // because the narrow felt has no room between the seats and the board.
+      const bottom = y > 0.9;
+      bet.style.setProperty("--pbx", (bottom ? 76 : 50 + x * PHONE_RX).toFixed(2));
+      bet.style.setProperty("--pby", (bottom ? 50 + y * PHONE_RY - 8 : 50 + y * PHONE_RY + 22).toFixed(2));
       host.append(bet);
     }
     if (Number(bet.dataset.amount) !== player.streetBet) {
