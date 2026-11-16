@@ -633,6 +633,20 @@ body[data-flipped="true"] .glyph {
 .moon-ring .kit-seat-label {
   display: none;
 }
+/* Expressions are shown with light and colour on the one painted portrait. */
+.moon-ring .kit-portrait {
+  transition: filter 0.6s, box-shadow 0.6s;
+}
+.moon-ring .kit-seat[data-expression="thinking"] .kit-portrait {
+  box-shadow: 0 0 18px rgb(242 184 198 / 0.55);
+}
+.moon-ring .kit-seat[data-expression="triumphant"] .kit-portrait {
+  box-shadow: 0 0 24px rgb(245 201 138 / 0.85);
+  filter: brightness(1.08) saturate(1.1);
+}
+.moon-ring .kit-seat[data-expression="defeated"] .kit-portrait {
+  filter: grayscale(0.7) brightness(0.8);
+}
 .moon-ring .kit-portrait {
   background: radial-gradient(circle at 50% 35%, color-mix(in oklab, var(--seat-color) 70%, white), var(--seat-color));
 }
