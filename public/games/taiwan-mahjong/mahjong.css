@@ -518,6 +518,31 @@ body[data-mode="human-vs-ai"] .mj-seat[data-pos="bottom"] {
 .mj-scores:empty {
   display: none;
 }
+.mj-table[data-empty="true"] .mj-center {
+  grid-area: 1 / 1 / -1 / -1;
+  display: grid;
+  place-items: center;
+}
+/* While the setup drawer is open on a wide screen, the room makes room for it. */
+@media (min-width: 1101px) {
+  .mj-layout {
+    transition: padding 0.38s var(--kit-ease);
+  }
+  .mj-top {
+    transition: padding 0.38s var(--kit-ease);
+  }
+  body:has(.kit-drawer[data-open="true"]) :is(.mj-layout, .mj-top) {
+    padding-right: calc(var(--kit-drawer-width) + 22px);
+  }
+}
+.mj-empty-title {
+  max-width: 300px;
+  text-align: center;
+}
+.mj-table[data-empty="true"] .mj-hub-label {
+  max-width: 280px;
+  font-size: 14px;
+}
 .mj-table[data-empty="true"] .mj-hub-body {
   gap: 10px;
 }
