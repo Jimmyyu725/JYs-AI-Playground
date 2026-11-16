@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0b0e26" />
+    <meta name="description" content="The House: all fifty AI characters of JYs AI Playground, with their temperaments, voices and records." />
+    <title>The House · JYs AI Playground</title>
+    <link rel="icon" href="data:," />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@300..700&family=Geist+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&family=Noto+Serif+SC:wght@500;700&display=swap" />
+    <link rel="stylesheet" href="/lobby.css" />
+    <link rel="stylesheet" href="/characters/house.css" />
+  </head>
+  <body class="page-quiet page-house">
+    <div class="corridor-art" aria-hidden="true"></div>
+    <div class="corridor-haze" aria-hidden="true"></div>
+
+    <header class="house-bar">
+      <a class="monogram" href="/" aria-label="JYs AI Playground, the corridor">
+        <span class="monogram-mark" aria-hidden="true">JY</span>
+        <span class="monogram-text"><strong>JYs AI Playground</strong><small>The House</small></span>
+      </a>
+      <nav class="house-nav" aria-label="House">
+        <a href="/">Doors</a>
+        <a href="/characters/" aria-current="page">The House</a>
+        <a href="/ladder/">Ladder</a>
+      </nav>
+      <div class="house-tools">
+        <p class="house-status" id="house-status" data-state="checking" role="status">
+          <span class="status-lamp" aria-hidden="true"></span>
+          <span class="status-text">Checking the house…</span>
+        </p>
+        <span id="mute-slot"></span>
+      </div>
+    </header>
+
+    <main>
+      <section class="page-intro" aria-labelledby="house-title">
+        <p class="kicker">The House · <span id="cast-count">fifty</span> regulars</p>
+        <h1 id="house-title">Everyone who might sit <em>across from you.</em></h1>
+        <p class="page-copy">
+          Every new table seats a random few of them. Each keeps their temperament and their voice in every room, whichever
+          model is doing the thinking behind the face.
+        </p>
+        <div class="house-tools-row">
+          <label class="search">
+            <span class="visually-hidden">Find a character</span>
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+            <input id="cast-search" type="search" placeholder="Find a name, a title, a temperament…" autocomplete="off" />
+          </label>
+          <div class="chip-row" role="group" aria-label="Show">
+            <button class="chip" type="button" data-filter="all" aria-pressed="true">Everyone</button>
+            <button class="chip" type="button" data-filter="played" aria-pressed="false">Has played recently</button>
+          </div>
+        </div>
+        <ol class="intro-aside intro-fan" id="intro-fan" aria-label="A few of the regulars"></ol>
+      </section>
+
+      <section aria-label="Characters">
+        <p class="cast-empty" id="cast-empty" hidden>Nobody in the house matches that.</p>
+        <ol class="cast-grid" id="cast-grid"></ol>
+        <p class="cast-note" id="cast-note"></p>
+      </section>
+    </main>
+
+    <footer class="house-foot">
+      <span>JYs AI Playground</span>
+      <span id="provider-summary">Checking providers…</span>
+      <span><a href="/">The corridor</a> · <a href="/ladder/">Ladder</a></span>
+    </footer>
+
+    <script type="module" src="/characters/house.js"></script>
+  </body>
+</html>

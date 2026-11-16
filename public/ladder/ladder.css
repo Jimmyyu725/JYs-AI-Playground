@@ -1,0 +1,372 @@
+/* The ladder: a scoreboard hung in the corridor, lit in periwinkle (OpenAI), sea-glass (DeepSeek) and lamp (humans). */
+.ladder-tabs {
+  margin-top: 30px;
+}
+.ladder-tabs .chip {
+  position: relative;
+  padding-left: 26px;
+}
+.ladder-tabs .chip::before {
+  content: "";
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  margin-top: -3.5px;
+  border-radius: 50%;
+  background: var(--glow, var(--peri));
+  box-shadow: 0 0 8px var(--glow, var(--peri));
+}
+
+.ladder-stage {
+  width: min(1240px, 100%);
+  margin-inline: auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: 22px;
+}
+.ladder-panel {
+  min-width: 0;
+  padding: clamp(18px, 2.6vw, 30px);
+  border-radius: var(--radius);
+  background: var(--glass-strong);
+  border: 1px solid var(--line);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  view-transition-name: var(--vt, none);
+}
+.standings {
+  --vt: standings;
+}
+.trend {
+  --vt: trend;
+}
+.recent {
+  --vt: recent;
+  grid-column: 1 / -1;
+}
+.panel-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 16px;
+  margin-bottom: 18px;
+}
+.panel-head h2 {
+  font-size: clamp(1.6rem, 2.6vw, 2.2rem);
+  line-height: 1.05;
+}
+.panel-note {
+  margin: 0;
+  font: 400 0.72rem/1.4 var(--font-mono);
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+.chart-empty {
+  margin: 0;
+  padding: 24px 0;
+  color: var(--muted);
+  font-style: italic;
+  list-style: none;
+}
+
+/* Standings */
+.standings-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+}
+.standing {
+  --bar: var(--peri);
+  display: grid;
+  grid-template-columns: 2.2ch minmax(0, 1fr) minmax(80px, 1fr) 4.6ch;
+  grid-template-areas: "rank who bar rating" "rank record bar rating";
+  align-items: center;
+  column-gap: 14px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+.standing[data-provider="deepseek"] {
+  --bar: #8ff0d0;
+}
+.standing[data-provider="human"] {
+  --bar: var(--lamp);
+}
+.standing-rank {
+  grid-area: rank;
+  font: italic 400 1.4rem/1 var(--font-display);
+  color: var(--bar);
+}
+.standing-who {
+  grid-area: who;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.95rem;
+}
+.standing-record {
+  grid-area: record;
+  font: 400 0.7rem/1.3 var(--font-mono);
+  color: var(--muted);
+}
+.standing-bar {
+  grid-area: bar;
+  width: 100%;
+  height: 14px;
+  overflow: visible;
+}
+.bar-track {
+  fill: var(--line);
+}
+.bar-zero {
+  fill: color-mix(in oklab, var(--ink) 50%, transparent);
+}
+.bar-up {
+  fill: var(--bar);
+}
+.bar-down {
+  fill: color-mix(in oklab, var(--bar) 45%, transparent);
+}
+.standing-rating {
+  grid-area: rating;
+  text-align: right;
+  font: 500 1rem/1 var(--font-mono);
+}
+
+/* Trend */
+.trend-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+.grid {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+.grid-base {
+  stroke: color-mix(in oklab, var(--ink) 40%, transparent);
+  stroke-dasharray: 4 4;
+}
+.tick,
+.room-count {
+  fill: var(--muted);
+  font: 400 11px var(--font-mono);
+}
+.rooms-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+.room-row {
+  display: grid;
+  grid-template-columns: minmax(0, 9em) 1fr 3ch;
+  align-items: center;
+  gap: 14px;
+}
+.room-label {
+  font-size: 0.88rem;
+  color: var(--ink-soft);
+}
+.room-svg {
+  width: 100%;
+  height: 14px;
+}
+.room-track {
+  fill: color-mix(in oklab, var(--ink) 7%, transparent);
+}
+.room-bar {
+  fill: var(--glow);
+}
+.room-count {
+  text-align: right;
+}
+.trend-line {
+  fill: none;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .trend-line {
+    animation: draw 1.2s var(--ease) both;
+  }
+  .trend-dot {
+    animation: pop 0.4s 1s var(--ease) both;
+  }
+  @keyframes draw {
+    from {
+      stroke-dashoffset: 1;
+    }
+  }
+  @keyframes pop {
+    from {
+      opacity: 0;
+    }
+  }
+}
+.legend {
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+}
+.legend li::before {
+  content: "";
+  display: inline-block;
+  width: 14px;
+  height: 3px;
+  margin-right: 7px;
+  vertical-align: middle;
+  border-radius: 2px;
+  background: var(--series);
+}
+
+/* Recent matches */
+.match-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
+  gap: 14px;
+}
+.match {
+  padding: 14px 16px;
+  border-radius: 12px;
+  background:
+    linear-gradient(90deg, color-mix(in oklab, var(--glow) 14%, transparent), transparent 60%),
+    color-mix(in oklab, var(--night) 40%, transparent);
+  border: 1px solid color-mix(in oklab, var(--glow) 22%, transparent);
+  border-left: 3px solid var(--glow);
+}
+.match-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0 0 8px;
+}
+.match-room {
+  font: 400 1.2rem/1.1 var(--font-display);
+}
+.match-mode {
+  font: 500 0.64rem/1 var(--font-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--glow);
+}
+.match-time {
+  margin-left: auto;
+  font: 400 0.7rem/1 var(--font-mono);
+  color: var(--muted);
+}
+.match-seats {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+.match-seat {
+  display: grid;
+  grid-template-columns: 1.6ch minmax(0, 0.8fr) minmax(0, 1fr) 4ch;
+  gap: 10px;
+  align-items: baseline;
+  font-size: 0.85rem;
+}
+.match-rank {
+  font: italic 400 1rem/1 var(--font-display);
+  color: var(--muted);
+}
+.match-seat:first-child .match-rank {
+  color: var(--lamp);
+}
+.match-who {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: color-mix(in oklab, var(--who) 55%, var(--ink));
+}
+.match-model {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+.match-delta {
+  text-align: right;
+  font: 500 0.78rem/1 var(--font-mono);
+  color: var(--muted);
+}
+.match-delta[data-sign="up"] {
+  color: #8ff0b8;
+}
+.match-delta[data-sign="down"] {
+  color: var(--danger);
+}
+
+@media (max-width: 900px) {
+  .ladder-stage {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 520px) {
+  .standing {
+    grid-template-columns: 2ch minmax(0, 1fr) 4.6ch;
+    grid-template-areas: "rank who rating" "rank record rating" "rank bar bar";
+    row-gap: 4px;
+  }
+}
+
+/* The leader's plaque: an arched nameplate lit in periwinkle. */
+.leader {
+  position: relative;
+  margin-top: 32px;
+  padding: 30px 32px;
+  border-radius: 50% 50% var(--radius) var(--radius) / 34% 34% var(--radius) var(--radius);
+  text-align: center;
+  background:
+    radial-gradient(ellipse 70% 55% at 50% 0%, color-mix(in oklab, var(--peri) 30%, transparent), transparent 70%),
+    var(--glass-strong);
+  border: 1px solid color-mix(in oklab, var(--peri) 40%, transparent);
+  box-shadow: 0 0 80px -30px var(--peri);
+}
+.leader[hidden] {
+  display: none;
+}
+.leader .kicker {
+  margin-top: 26px;
+}
+.leader-rating {
+  margin: 0;
+  font: italic 400 clamp(4rem, 9vw, 7rem) / 0.9 var(--font-display);
+  color: var(--peri);
+  text-shadow: 0 0 40px color-mix(in oklab, var(--peri) 50%, transparent);
+}
+.leader-name {
+  margin: 10px 0 4px;
+  font: 400 1.6rem/1.1 var(--font-display);
+}
+.leader-record {
+  margin: 0;
+  font: 400 0.75rem/1.4 var(--font-mono);
+  color: var(--muted);
+}
+@media (min-width: 960px) {
+  .leader {
+    margin-top: 0;
+  }
+}

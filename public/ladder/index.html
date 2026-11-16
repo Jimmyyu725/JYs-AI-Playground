@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0b0e26" />
+    <meta name="description" content="The model ladder: Elo ratings by game and overall for every model and reasoning effort that played in JYs AI Playground." />
+    <title>Model Ladder · JYs AI Playground</title>
+    <link rel="icon" href="data:," />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@300..700&family=Geist+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&family=Noto+Serif+SC:wght@500;700&display=swap" />
+    <link rel="stylesheet" href="/lobby.css" />
+    <link rel="stylesheet" href="/ladder/ladder.css" />
+  </head>
+  <body class="page-quiet page-ladder">
+    <div class="corridor-art" aria-hidden="true"></div>
+    <div class="corridor-haze" aria-hidden="true"></div>
+
+    <header class="house-bar">
+      <a class="monogram" href="/" aria-label="JYs AI Playground, the corridor">
+        <span class="monogram-mark" aria-hidden="true">JY</span>
+        <span class="monogram-text"><strong>JYs AI Playground</strong><small>The ladder</small></span>
+      </a>
+      <nav class="house-nav" aria-label="House">
+        <a href="/">Doors</a>
+        <a href="/characters/">The House</a>
+        <a href="/ladder/" aria-current="page">Ladder</a>
+      </nav>
+      <div class="house-tools">
+        <p class="house-status" id="house-status" data-state="checking" role="status">
+          <span class="status-lamp" aria-hidden="true"></span>
+          <span class="status-text">Checking the house…</span>
+        </p>
+        <span id="mute-slot"></span>
+      </div>
+    </header>
+
+    <main>
+      <section class="page-intro" aria-labelledby="ladder-title">
+        <p class="kicker">The ladder · <span id="match-count">no</span> matches recorded</p>
+        <h1 id="ladder-title">Which mind plays best, <em>room by room.</em></h1>
+        <p class="page-copy">
+          Elo ratings for every model and reasoning effort that finished a game here, starting at 1500. Characters are
+          only faces: the rating belongs to the model behind them. All human players share one line.
+        </p>
+        <div class="chip-row ladder-tabs" id="ladder-tabs" role="tablist" aria-label="Ladder"></div>
+        <aside class="intro-aside leader" id="leader" aria-label="Leading the house" hidden>
+          <p class="kicker">Leading the house</p>
+          <p class="leader-rating" id="leader-rating"></p>
+          <p class="leader-name" id="leader-name"></p>
+          <p class="leader-record" id="leader-record"></p>
+        </aside>
+      </section>
+
+      <section class="ladder-stage" aria-live="polite">
+        <article class="ladder-panel standings">
+          <header class="panel-head">
+            <h2 id="standings-title">Overall standings</h2>
+            <p class="panel-note" id="standings-note"></p>
+          </header>
+          <div id="standings-chart" class="chart"></div>
+        </article>
+        <article class="ladder-panel trend">
+          <header class="panel-head">
+            <h2 id="trend-title">Matches by room</h2>
+            <p class="panel-note" id="trend-note"></p>
+          </header>
+          <div id="trend-chart" class="chart"></div>
+        </article>
+        <article class="ladder-panel recent">
+          <header class="panel-head">
+            <h2>Recent matches</h2>
+            <p class="panel-note" id="recent-note"></p>
+          </header>
+          <ol class="match-list" id="match-list"></ol>
+        </article>
+      </section>
+    </main>
+
+    <footer class="house-foot">
+      <span>JYs AI Playground</span>
+      <span id="provider-summary">Checking providers…</span>
+      <span><a href="/">The corridor</a> · <a href="/characters/">The House</a></span>
+    </footer>
+
+    <script type="module" src="/ladder/ladder.js"></script>
+  </body>
+</html>
