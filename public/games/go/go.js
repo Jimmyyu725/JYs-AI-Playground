@@ -228,6 +228,12 @@ function buildBoard(size) {
   }
 }
 
+let focusPoint = { row: -1, column: -1 };
+function hitAt(row, column) {
+  if (row < 0 || column < 0 || row >= builtSize || column >= builtSize) return null;
+  return el.hits.children[row * builtSize + column] ?? null;
+}
+
 function stoneTurn(row, column) {
   return ((row * 7919 + column * 104729) % 360) | 0;
 }
@@ -273,8 +279,12 @@ function renderBoard(previousBoard) {
   for (const hit of el.hits.children) {
     const occupied = Boolean(state.board[Number(hit.dataset.row)][Number(hit.dataset.column)]);
     hit.disabled = !canAct || occupied;
-    hit.tabIndex = canAct && !occupied ? 0 : -1;
+    hit.tabIndex = -1;
   }
+  // Roving focus: one tab stop on the board, arrow keys move between open points.
+  const centre = Math.floor(size / 2);
+  const rover = [hitAt(focusPoint.row, focusPoint.column), hitAt(centre, centre), el.hits.querySelector(".hit:not(:disabled)")].find((hit) => hit && !hit.disabled);
+  if (rover) rover.tabIndex = 0;
   renderTerritory();
   renderHighlight();
   return { added, removed: removed.length };
@@ -643,6 +653,32 @@ async function askReview(color) {
     }
   }
 }
+
+const ARROWS = { ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] };
+el.hits.addEventListener("keydown", (event) => {
+  const step = ARROWS[event.key];
+  const from = event.target.closest(".hit");
+  if (!step || !from || !state) return;
+  event.preventDefault();
+  let row = Number(from.dataset.row);
+  let column = Number(from.dataset.column);
+  for (;;) {
+    row += step[0];
+    column += step[1];
+    const next = hitAt(row, column);
+    if (!next) return;
+    if (next.disabled) continue;
+    from.tabIndex = -1;
+    next.tabIndex = 0;
+    next.focus();
+    focusPoint = { row, column };
+    return;
+  }
+});
+el.hits.addEventListener("focusin", (event) => {
+  const hit = event.target.closest(".hit");
+  if (hit) focusPoint = { row: Number(hit.dataset.row), column: Number(hit.dataset.column) };
+});
 
 el.hits.addEventListener("click", (event) => {
   const hit = event.target.closest(".hit");
