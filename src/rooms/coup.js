@@ -12,7 +12,7 @@ export const defaults = { model: "gpt-6-luna", reasoningEffort: "low" };
 const STRATEGY_NOTE = `
 
 PLAYING WELL
-Bluffing is legal and often strong: claim roles you do not hold when the odds favour it, and challenge claims that the revealed cards and the table's history make unlikely. Track which cards are already face up (only 3 of each exist). Remember that a failed challenge costs you an influence, so do not challenge by reflex. When you speak, stay in character: accuse, needle and bluff, but never state your real face-down cards.`;
+Bluffing is legal and often strong: claim roles you do not hold when the odds favour it, and challenge claims that the revealed cards and the table's history make unlikely. Track which cards are already face up (only 3 of each exist). Remember that a failed challenge costs you an influence, so do not challenge by reflex. Speak up now and then (roughly one decision in three, and most of the time when you challenge, block, bluff or strike), in one short line. When you speak, stay in character: accuse, needle and bluff, but never state your real face-down cards.`;
 
 /** Production decider: one structured request through the shared gateway. */
 async function decideWithModel({ player, view, retry, onStatus }) {
@@ -108,6 +108,8 @@ export function register(app, ctx) {
 
   app.post("/api/coup/game", (request, response) => {
     const next = createTable(request.body ?? {});
+    // Without this, a replaced arena would keep playing (and paying for model calls) unseen.
+    table?.retire();
     table = next;
     save();
     response.status(201).json(next.publicState());
@@ -117,7 +119,7 @@ export function register(app, ctx) {
 
   app.post("/api/coup/action", (request, response) => {
     const current = requireTable();
-    current.humanAction(request.body?.action);
+    current.humanAction(request.body?.action, request.body?.decisionKey);
     response.json(current.publicState());
   });
 

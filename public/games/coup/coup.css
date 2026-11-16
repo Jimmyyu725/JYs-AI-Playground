@@ -404,7 +404,8 @@ body[data-mode="arena"] .you {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font: 700 1rem/1 var(--kit-font-display);
+  /* Garamond, not Bodoni: Bodoni's "1" is a bare stem that reads as "I" in a coin count. */
+  font: 600 1.05rem/1 var(--kit-font-body);
   font-variant-numeric: lining-nums tabular-nums;
   color: var(--gilt-light);
 }
@@ -455,10 +456,11 @@ body[data-mode="arena"] .you {
   background: none;
 }
 
+/* A lost influence: the art turns to ash grey and dims, so it never reads as a live card. */
 .mini-card[data-lost="true"],
 .hand-card[data-lost="true"] {
-  background-image: linear-gradient(rgb(70 40 18 / 0.72), rgb(40 22 10 / 0.72)), var(--art);
-  background-blend-mode: color, normal;
+  background-image: linear-gradient(rgb(14 8 5 / 0.5), rgb(14 8 5 / 0.5)), linear-gradient(#808080, #808080), var(--art);
+  background-blend-mode: normal, saturation, normal;
 }
 
 .mini-card[data-lost="true"]::after,
@@ -655,7 +657,7 @@ body[data-mode="arena"] .you {
   min-inline-size: 26px;
   padding: 2px 6px;
   border-radius: 999px;
-  font: 700 0.8rem/1.2 var(--kit-font-display);
+  font: 600 0.82rem/1.2 var(--kit-font-body);
   font-variant-numeric: lining-nums;
   text-align: center;
   background: var(--velvet);

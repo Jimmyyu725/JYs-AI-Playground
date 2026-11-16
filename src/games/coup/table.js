@@ -121,7 +121,7 @@ export class CoupTable {
 
   /** Starts a request for every AI seat the engine waits on that is not already being asked. */
   pump() {
-    if (this.isOver || this.aiError || this.paused) return;
+    if (this.isOver || this.aiError || this.paused || this.retired) return;
     for (const seat of awaitingSeats(this.state)) {
       const player = this.seats[seat];
       if (player.isHuman) continue;
@@ -136,7 +136,7 @@ export class CoupTable {
   async askSeat(seat, key, slot) {
     const player = this.seats[seat];
     const tableId = this.id;
-    const stillOpen = () => this.id === tableId && this.inflight.has(slot) && this.decisionKey(seat) === key;
+    const stillOpen = () => this.id === tableId && !this.retired && this.inflight.has(slot) && this.decisionKey(seat) === key;
     let retry = null;
     let lastError = "";
     this.emitState();
@@ -187,7 +187,11 @@ export class CoupTable {
         };
         if (parsed.tableTalk) {
           const talk = pushTableTalk(this, { speaker: seat, playerName: player.name, characterId: player.character?.id ?? null, text: parsed.tableTalk });
-          if (talk) this.emit("table_talk", talk);
+          if (talk) {
+            // Said just before this move: lets a reloaded page put the line back in log order.
+            talk.step = this.state.step;
+            this.emit("table_talk", talk);
+          }
         }
         this.inflight.delete(slot);
         this.apply(seat, parsed.action);
@@ -203,6 +207,12 @@ export class CoupTable {
         this.emitState();
       }
     }
+  }
+
+  /** A replaced table stops asking models: answers still in flight are dropped on arrival. */
+  retire() {
+    this.retired = true;
+    this.inflight.clear();
   }
 
   pauseForError(seat, message) {
@@ -230,11 +240,18 @@ export class CoupTable {
     };
   }
 
-  /** A move from the human seat (validated by the engine). */
-  humanAction(action) {
+  /**
+   * A move from the human seat (validated by the engine). `expectedKey` is the decisionKey the
+   * client saw: if the table moved on in the meantime (say an AI challenge closed the window and
+   * a block window opened), a stale click must not be applied to the new decision.
+   */
+  humanAction(action, expectedKey = undefined) {
     if (this.humanSeat === null) throw tableError(409, "This is an arena table: there is no human seat");
     if (this.isOver) throw tableError(409, "The game is over");
     if (!awaitingSeats(this.state).includes(this.humanSeat)) throw tableError(409, "The table is not waiting for you right now");
+    if (expectedKey !== undefined && expectedKey !== null && expectedKey !== this.decisionKey(this.humanSeat)) {
+      throw tableError(409, "The table moved on before your choice arrived: look again and choose");
+    }
     try {
       this.apply(this.humanSeat, action);
     } catch (error) {
@@ -278,6 +295,7 @@ export class CoupTable {
       mode: this.mode,
       humanSeat: human,
       ...view,
+      decisionKey: human === null ? null : this.decisionKey(human),
       seats: this.seats.map((entry) => ({
         seat: entry.seat,
         isHuman: entry.isHuman,

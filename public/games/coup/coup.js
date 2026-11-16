@@ -86,12 +86,14 @@ async function send(path, body) {
 function act(action) {
   pickedTarget = null;
   sfx.play(action.type === "challenge" ? "cupSlam" : "cardFlick");
-  send("/api/coup/action", { action });
+  send("/api/coup/action", { action, decisionKey: state?.decisionKey ?? null });
 }
 
 // ------------------------------------------------------------------ helpers
 
 const nameOf = (seat) => (state?.seats[seat]?.isHuman ? "You" : state?.seats[seat]?.name ?? `Seat ${seat}`);
+// Mid-sentence form: "against you", "caught you lying".
+const objectName = (seat) => (state?.seats[seat]?.isHuman ? "you" : nameOf(seat));
 const isHumanSeat = (seat) => state && state.humanSeat === seat;
 const youAwaited = () => state && state.humanSeat !== null && state.awaitingSeats.includes(state.humanSeat);
 
@@ -230,7 +232,7 @@ function renderStage() {
     }
     const text = el("div", "claim-text");
     const heading = el("h2");
-    const target = pending.target !== null && pending.target !== undefined ? ` against ${nameOf(pending.target)}` : "";
+    const target = pending.target !== null && pending.target !== undefined ? ` against ${objectName(pending.target)}` : "";
     heading.innerHTML = "";
     heading.append(`${nameOf(pending.actor)} ${verbFor(pending.actor, pending.type)}${target}`);
     if (pending.claim) {
@@ -507,7 +509,9 @@ function nextReveal() {
   const caption = el("div", "reveal-caption");
   caption.append(
     el("h2", null, bluff ? `Bluff! No ${entry.claim}.` : `A true ${entry.claim}.`),
-    el("p", null, bluff ? `${nameOf(entry.seat)} caught ${nameOf(entry.claimant)} lying, and a mask must fall.` : `${nameOf(entry.claimant)} shows the card. ${nameOf(entry.seat)} doubted wrongly and pays with a mask.`),
+    el("p", null, bluff
+        ? `${nameOf(entry.seat)} caught ${objectName(entry.claimant)} lying, and a mask must fall.`
+        : `${nameOf(entry.claimant)} ${isHumanSeat(entry.claimant) ? "show" : "shows"} the card. ${nameOf(entry.seat)} doubted wrongly and ${isHumanSeat(entry.seat) ? "pay" : "pays"} with a mask.`),
   );
   box.append(mirror, caption);
   layer.replaceChildren(box);
@@ -559,8 +563,10 @@ function clink(count) {
 
 // ------------------------------------------------------------------ log + effects
 
-function handleNewLog(entries, fresh) {
+function handleNewLog(entries, fresh, talks = []) {
   for (const entry of entries) {
+    // Replayed table talk goes back in front of the move it was said with.
+    while (talks.length && (talks[0].step ?? -1) < entry.step) addTalk(talks.shift(), false);
     const kind = entry.kind === "start" || entry.kind === "game_over" || entry.kind === "eliminated" ? "system" : "move";
     log.add({ text: entry.text, kind });
     if (fresh) continue;
@@ -571,6 +577,7 @@ function handleNewLog(entries, fresh) {
     else if (entry.kind === "action") sfx.play("cardFlick");
     else if (entry.kind === "game_over") sfx.play("win");
   }
+  for (const talk of talks) addTalk(talk, false);
 }
 
 function applyState(next) {
@@ -594,14 +601,13 @@ function applyState(next) {
   const pause = $("#pause-button");
   pause.hidden = state.mode !== "arena" || state.over;
   pause.textContent = state.paused ? "Resume" : "Pause";
-  if (freshTable) for (const talk of state.tableTalk ?? []) addTalk(talk, false);
   const newEntries = state.log.slice(seen.log);
   seen.log = state.log.length;
   if (!freshTable) seen.tableId = state.id;
   renderCourt();
   renderStage();
   renderYou();
-  handleNewLog(newEntries, freshTable && firstLoad);
+  handleNewLog(newEntries, freshTable && firstLoad, freshTable ? [...(state.tableTalk ?? [])] : []);
   for (const [seat, insight] of Object.entries(state.insights ?? {})) {
     const key = `${state.id}:${seat}:${insight.step}`;
     if (!insight.summary || seen.insights.has(key)) continue;

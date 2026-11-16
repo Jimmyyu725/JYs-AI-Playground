@@ -94,6 +94,22 @@ test("the table waits for the human and applies their legal moves", async () => 
   assert.throws(() => table.humanAction({ type: "income" }), /over/);
 });
 
+test("a stale human click is refused once the table has moved to another decision", () => {
+  const table = new CoupTable({ mode: "human-vs-ai", playerCount: 2, seed: 8 }, { decide: () => new Promise(() => {}) });
+  table.state.activeSeat = 1;
+  table.state.players[0].coins = 2;
+  table.apply(1, { type: "steal", target: 0 });
+  const challengeKey = table.publicState().decisionKey;
+  assert.equal(table.state.phase, "challenge_action");
+  table.humanAction({ type: "pass" }, challengeKey);
+  assert.equal(table.state.phase, "block");
+  // A second "pass" sent for the closed challenge window must not decline the block.
+  assert.throws(() => table.humanAction({ type: "pass" }, challengeKey), (error) => error.status === 409);
+  assert.equal(table.state.phase, "block");
+  table.humanAction({ type: "pass" }, table.publicState().decisionKey);
+  assert.equal(table.state.players[1].coins >= 2, true);
+});
+
 test("illegal human actions are refused with a 400", () => {
   const table = new CoupTable({ mode: "human-vs-ai", playerCount: 2, seed: 5 }, { decide: randomDecider() });
   table.state.activeSeat = 0;
@@ -140,6 +156,9 @@ test("a gateway failure pauses immediately and retry resumes the same decision",
   assert.equal(table.aiError, null);
   assert.ok(table.state.step > 0);
   assert.ok(table.tableTalk.some((line) => line.text === "Patience."));
+  // The line carries the step it was said at, so a reloaded page can replay it in log order.
+  const said = table.tableTalk.find((line) => line.text === "Patience.");
+  assert.ok(table.state.log.some((entry) => entry.step === said.step + 1 && entry.seat === said.speaker));
 });
 
 test("answers to a reaction window that already closed are dropped", async () => {
@@ -163,6 +182,27 @@ test("answers to a reaction window that already closed are dropped", async () =>
   for (let index = 0; index < 20; index += 1) await tick();
   assert.equal(table.state.step, stepAfterChallenge);
   assert.equal(table.state.log.filter((entry) => entry.kind === "pass").length, 0);
+});
+
+test("a retired table drops answers in flight and asks no further models", async () => {
+  const releases = [];
+  let calls = 0;
+  const table = new CoupTable({ mode: "arena", playerCount: 3, seed: 12 }, {
+    decide: () => {
+      calls += 1;
+      return new Promise((resolve) => releases.push(() => resolve({ output: { actionId: 1 } })));
+    },
+  });
+  table.pump();
+  await tick();
+  const step = table.state.step;
+  table.retire();
+  releases.forEach((release) => release());
+  for (let index = 0; index < 20; index += 1) await tick();
+  assert.equal(table.state.step, step);
+  assert.equal(calls, 1);
+  table.pump();
+  assert.equal(calls, 1);
 });
 
 test("a saved table restores with the same state and seats", () => {

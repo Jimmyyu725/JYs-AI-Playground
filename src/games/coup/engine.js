@@ -478,7 +478,8 @@ function declareAction(state, seat, action) {
 function recordPass(state, seat) {
   state.responders = state.responders.filter((other) => other !== seat);
   state.passed.push(seat);
-  pushLog(state, { kind: "pass", seat, window: state.phase, text: `${playerName(state, seat)} passes.` });
+  const passText = state.phase === "block" ? "does not block" : state.phase === "challenge_block" ? "lets the block stand" : "does not challenge";
+  pushLog(state, { kind: "pass", seat, window: state.phase, text: `${playerName(state, seat)} ${passText}.` });
   if (state.responders.length > 0) return;
   // Everyone passed: the window closes and the queued steps continue.
   if (state.phase === "challenge_block") {
