@@ -60,6 +60,7 @@ export class TaiwanMahjongTable {
     this.aiError = null;
     this.arenaPaused = false;
     this.createdAt = Date.now();
+    this.tableId = `${this.createdAt.toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
   }
 
   get isOver() {
@@ -170,6 +171,7 @@ export class TaiwanMahjongTable {
       view.drawnTile = state.phase === "discard" ? state.turn.drawnTile : null;
     }
     return {
+      tableId: this.tableId,
       mode: this.mode,
       length: this.length,
       lengthLabel: LENGTHS[this.length].label,
@@ -209,6 +211,7 @@ export class TaiwanMahjongTable {
       tableTalk: this.tableTalk,
       arenaPaused: this.arenaPaused,
       createdAt: this.createdAt,
+      tableId: this.tableId,
     };
   }
 
@@ -222,6 +225,7 @@ export class TaiwanMahjongTable {
     table.tableTalk = saved.tableTalk ?? [];
     table.arenaPaused = Boolean(saved.arenaPaused);
     table.createdAt = saved.createdAt ?? Date.now();
+    if (saved.tableId) table.tableId = saved.tableId;
     return table;
   }
 }

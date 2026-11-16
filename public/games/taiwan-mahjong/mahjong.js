@@ -697,7 +697,8 @@ function consumeLog(next, { silent = false } = {}) {
 function apply(next) {
   if (!next) return;
   const firstLoad = !state;
-  if (state && next.handNumber === state.handNumber && next.seq < state.seq) return; // out-of-order
+  if (state && next.tableId !== state.tableId) seenLog = { hand: 0, count: 0 };
+  else if (state && next.handNumber === state.handNumber && next.seq < state.seq) return; // out-of-order
   state = next;
   if ((state.logTotal ?? 0) < seenLog.count && state.handNumber === seenLog.hand) seenLog.count = 0;
   consumeLog(state, { silent: firstLoad });
