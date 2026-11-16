@@ -427,6 +427,33 @@ body:has(.kit-drawer[data-open="true"]) .room-art {
   box-shadow: 0 0 0 1px rgb(255 240 220 / 0.25);
   animation: dot-in 0.4s var(--ease) both;
 }
+.goban[data-numbers="on"] .stone[data-n]::before {
+  content: attr(data-n);
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font: 700 calc(var(--cell) * 0.36) / 1 var(--font-body);
+  font-variant-numeric: tabular-nums;
+  color: var(--washi);
+}
+.goban[data-numbers="on"] .stone.white[data-n]::before {
+  color: var(--sumi);
+  rotate: calc(var(--turn, 0deg) * -1);
+}
+.goban[data-numbers="on"] .stone.is-last::after {
+  display: none;
+}
+.goban[data-numbers="on"] .stone.is-last[data-n]::before {
+  color: var(--momiji);
+}
+.goban[data-numbers="on"] .stone.black.is-last[data-n]::before {
+  color: color-mix(in oklab, var(--momiji) 55%, white);
+}
+.act[aria-pressed="true"] {
+  border-color: var(--kaya);
+  background: color-mix(in oklab, var(--kaya) 22%, var(--cedar));
+}
 @keyframes stone-drop {
   from {
     scale: 1.07;

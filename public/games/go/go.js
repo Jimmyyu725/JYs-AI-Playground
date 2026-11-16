@@ -37,6 +37,7 @@ const el = {
   resign: $("resign-button"),
   arena: $("arena-toggle"),
   save: $("save-button"),
+  numbers: $("numbers-button"),
   notice: $("notice"),
   liveDot: $("live-dot"),
   readingWho: $("reading-who"),
@@ -273,6 +274,16 @@ function renderBoard(previousBoard) {
   }
   for (const node of el.stones.querySelectorAll(".is-last")) node.classList.remove("is-last");
   if (state.lastMove?.action === "place") stoneNodes.get(`${state.lastMove.row},${state.lastMove.column}`)?.classList.add("is-last");
+  // Move numbers (kifu view): the latest move played on each point, from the public log.
+  const numbered = new Set();
+  for (const entry of state.logs) {
+    if (entry.kind !== "move" || !Number.isInteger(entry.row)) continue;
+    const key = `${entry.row},${entry.column}`;
+    if (numbered.has(key)) continue;
+    numbered.add(key);
+    const stone = stoneNodes.get(key);
+    if (stone) stone.dataset.n = String(entry.moveNumber);
+  }
 
   const canAct = state.humanCanAct && !busy;
   el.goban.dataset.ghost = canAct ? state.currentColor : "";
@@ -541,7 +552,7 @@ function renderNotice() {
 }
 
 // OpenAI summaries arrive as Markdown with bold section titles; show them as plain prose.
-const plain = (text) => String(text ?? "").replace(/\*\*(.+?)\*\*\s*/g, "$1 · ").replace(/\s+/g, " ").trim();
+const plain = (text) => String(text ?? "").replace(/\*\*(.+?)\*\*\s*/g, " $1 · ").replace(/\s+/g, " ").trim();
 
 function renderReading() {
   const thinking = state.aiThinking;
@@ -686,6 +697,21 @@ el.hits.addEventListener("click", (event) => {
   act("place", Number(hit.dataset.row), Number(hit.dataset.column));
 });
 el.pass.addEventListener("click", () => act("pass"));
+el.numbers.addEventListener("click", () => {
+  const on = el.numbers.getAttribute("aria-pressed") !== "true";
+  el.numbers.setAttribute("aria-pressed", String(on));
+  el.goban.dataset.numbers = on ? "on" : "off";
+  try {
+    localStorage.setItem("go.moveNumbers", on ? "1" : "0");
+  } catch {
+    // Storage can be unavailable; the toggle still works for this visit.
+  }
+});
+try {
+  if (localStorage.getItem("go.moveNumbers") === "1") el.numbers.click();
+} catch {
+  // Ignore unavailable storage.
+}
 el.resign.addEventListener("click", () => {
   if (el.resign.dataset.armed === "true") {
     el.resign.dataset.armed = "false";
