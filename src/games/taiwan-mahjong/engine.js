@@ -435,6 +435,7 @@ function dealFromWall(state, wall) {
   }
   const dealerPlayer = state.players[state.dealer];
   dealerPlayer.hand.push(state.wall.shift());
+  logEvent(state, { type: "deal", dealer: state.dealer, roundWind: state.roundWind });
   // Flower replacement in seat order from the dealer, each seat until it holds none.
   for (let offset = 0; offset < SEAT_COUNT; offset += 1) {
     const seat = (state.dealer + offset) % SEAT_COUNT;
@@ -453,7 +454,6 @@ function dealFromWall(state, wall) {
   state.result = null;
   state.lastDiscard = null;
   state.turn = { seat: state.dealer, drew: true, drawnTile: null, kongReplacement: false, lastTile: false };
-  logEvent(state, { type: "deal", dealer: state.dealer, roundWind: state.roundWind });
   return state;
 }
 

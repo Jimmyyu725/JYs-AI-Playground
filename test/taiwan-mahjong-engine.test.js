@@ -118,6 +118,8 @@ test("flowers dealt into a hand are set aside and replaced from the back, chaini
   assert.ok(state.players[0].hand.includes("5s"));
   assert.equal(state.players[0].hand.length, 17);
   assert.equal(state.log.filter((event) => event.type === "flower").length, 2);
+  // The table log reads in order: the deal comes before the flowers it set aside.
+  assert.deepEqual(state.log.map((event) => event.type), ["deal", "flower", "flower"]);
 });
 
 test("a flower drawn during play is replaced from the back of the wall", () => {

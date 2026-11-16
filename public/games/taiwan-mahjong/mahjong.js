@@ -67,14 +67,23 @@ function posOf(seat) {
 function playerName(seat) {
   return state?.players?.[seat]?.name ?? `Seat ${seat}`;
 }
+// A human who kept the default name "You" needs "you draw" and "your discard", not "You draws".
+function isYou(seat) {
+  return seat === state?.humanSeat && playerName(seat) === "You";
+}
+function whose(seat) {
+  return isYou(seat) ? "your" : `${playerName(seat)}'s`;
+}
 function seededTilt(seat, index) {
   const x = Math.sin(seat * 97.13 + index * 12.9898) * 43758.5453;
   return Math.round(((x - Math.floor(x)) * 6 - 3) * 10) / 10;
 }
 
+// The reasoning summary arrives as Markdown; the card shows plain text.
 function summaryTail() {
-  if (thinkingSummary.length <= 280) return thinkingSummary;
-  return `…${thinkingSummary.slice(-280).replace(/^\S*\s+/, "")}`;
+  const plain = thinkingSummary.replace(/\*\*|__|`/g, "").replace(/^#+\s*/gm, "");
+  if (plain.length <= 280) return plain;
+  return `…${plain.slice(-280).replace(/^\S*\s+/, "")}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -327,7 +336,7 @@ function renderHub() {
     const big = tileElement(tile, { size: "md", extraClass: state.pending ? "is-claimable" : "" });
     items.push(big);
     const from = state.pending?.from ?? state.lastDiscard?.seat;
-    const label = state.pending?.kind === "addedKong" ? `${playerName(from)} adds a kong — rob it?` : `${playerName(from)} discarded`;
+    const label = state.pending?.kind === "addedKong" ? `${playerName(from)} ${isYou(from) ? "add" : "adds"} a kong — rob it?` : `${playerName(from)} discarded`;
     items.push(el("span", "mj-hub-label", label));
   } else {
     items.push(el("span", "mj-hub-wall", String(state.wallRemaining)), el("span", "mj-hub-label", "tiles left in the wall"));
@@ -535,20 +544,28 @@ function renderResult() {
   const parts = [];
   const winner = result.winner ?? null;
   if (result.type === "exhaustiveDraw") {
-    parts.push(el("p", "mj-result-zh", "流局"), el("h2", "mj-result-title", "Wall exhausted — the dealer stays"));
+    const title = state.phase === "gameOver" ? "Wall exhausted — nobody wins" : "Wall exhausted — the dealer stays";
+    parts.push(el("p", "mj-result-zh", "流局"), el("h2", "mj-result-title", title));
   } else {
     const zh = { selfDraw: "自摸", discardWin: "胡", robbingKong: "搶槓" }[result.type];
     parts.push(el("p", "mj-result-zh", zh));
-    const how = result.type === "selfDraw" ? "draws the winning tile" : result.type === "robbingKong" ? `robs ${playerName(result.from)}'s kong` : `wins on ${playerName(result.from)}'s discard`;
+    const you = isYou(winner);
+    const how = result.type === "selfDraw"
+      ? `${you ? "draw" : "draws"} the winning tile`
+      : result.type === "robbingKong"
+        ? `${you ? "rob" : "robs"} ${whose(result.from)} kong`
+        : `${you ? "win" : "wins"} on ${whose(result.from)} discard`;
     parts.push(el("h2", "mj-result-title", `${playerName(winner)} ${how}`));
     const winningHand = el("div", "mj-result-hand");
     for (const meld of state.players[winner].melds) winningHand.append(meldElement({ ...meld, tiles: meld.tiles ?? null }, "sm"));
     const concealed = el("span", "mj-meld");
-    for (const tile of result.hands?.[winner] ?? []) {
+    const winningHandTiles = result.hands?.[winner] ?? [];
+    const winIndex = winningHandTiles.lastIndexOf(result.winTile); // mark one copy, not every copy
+    winningHandTiles.forEach((tile, index) => {
       const item = tileElement(tile, { size: "sm" });
-      if (tile === result.winTile) item.classList.add("is-called");
+      if (index === winIndex) item.classList.add("is-called");
       concealed.append(item);
-    }
+    });
     winningHand.append(concealed);
     parts.push(winningHand);
     const fans = el("ul", "mj-fans");
@@ -560,7 +577,7 @@ function renderResult() {
     if (!fans.children.length) fans.append(el("li", null, "No tai: base payment only"));
     parts.push(fans);
     const pays = el("p", "mj-pays");
-    pays.textContent = result.payments.map((payment) => `${playerName(payment.payer)} pays ${payment.amount} (${payment.tai} 台)`).join(" · ");
+    pays.textContent = result.payments.map((payment) => `${playerName(payment.payer)} ${isYou(payment.payer) ? "pay" : "pays"} ${payment.amount} (${payment.tai} 台)`).join(" · ");
     parts.push(pays);
   }
   const deltas = el("div", "mj-deltas");
@@ -571,6 +588,8 @@ function renderResult() {
   });
   parts.push(deltas);
 
+  // The reviews go last: a long review must not push the next-hand button out of the card.
+  const reviewParts = [];
   const reviewers = state.players.filter((player) => !player.isHuman);
   if (reviewers.length) {
     const ask = el("div", "mj-review-ask");
@@ -595,7 +614,9 @@ function renderResult() {
           reviews.set(`${answer.handNumber}:${player.seat}`, { player, text: answer.review });
           showReview(player, answer.review);
           if (!quote.isConnected) renderResult();
+          else quote.scrollIntoView({ block: "nearest", behavior: prefersReducedMotion() ? "auto" : "smooth" });
           transcript.add({ who: player.name, text: answer.review, kind: "talk" });
+          pinTranscript();
         } catch (error) {
           quote.replaceChildren(el("p", "mj-review-wait", error.message));
           sfx.play("error");
@@ -605,7 +626,7 @@ function renderResult() {
       });
       ask.append(button);
     }
-    parts.push(ask, quote);
+    reviewParts.push(ask, quote);
   }
 
   if (state.phase === "gameOver") {
@@ -635,7 +656,7 @@ function renderResult() {
     parts.push(next);
   }
   box.replaceChildren(el("div", "mj-result-card", ""));
-  box.firstChild.append(...parts);
+  box.firstChild.append(...parts, ...reviewParts);
   if (fresh) {
     box.classList.remove("is-flicker");
     void box.offsetWidth;
@@ -676,23 +697,25 @@ function render() {
 
 function describeEvent(event) {
   const who = event.seat !== undefined ? playerName(event.seat) : "";
+  // "You discards" reads wrong: a human who kept the default name gets the plain verb.
+  const verb = (third, plain) => (who === "You" && event.seat === state?.humanSeat ? plain : third);
   switch (event.type) {
     case "deal":
       return { text: `Hand dealt. ${event.dealer === state?.humanSeat ? "You deal" : `${playerName(event.dealer)} deals`} (莊).`, kind: "system", sound: "diceRoll" };
     case "discard":
-      return { who, text: `discards ${tileName(event.tile)}`, sound: "tileClack" };
+      return { who, text: `${verb("discards", "discard")} ${tileName(event.tile)}`, sound: "tileClack" };
     case "chow":
     case "pung":
     case "kong":
-      return { who, text: `${{ chow: "吃 chows", pung: "碰 pungs", kong: "槓 kongs" }[event.type]} ${tileName(event.tile)} from ${playerName(event.from)}`, sound: "cupSlam" };
+      return { who, text: `${event.type === "chow" ? "吃" : event.type === "pung" ? "碰" : "槓"} ${verb(`${event.type}s`, event.type)} ${tileName(event.tile)} from ${playerName(event.from)}`, sound: "cupSlam" };
     case "concealedKong":
-      return { who, text: "declares a concealed kong 暗槓", sound: "cupSlam" };
+      return { who, text: `${verb("declares", "declare")} a concealed kong 暗槓`, sound: "cupSlam" };
     case "addedKong":
-      return { who, text: `adds ${tileName(event.tile)} to a kong 加槓`, sound: "cupSlam" };
+      return { who, text: `${verb("adds", "add")} ${tileName(event.tile)} to a kong 加槓`, sound: "cupSlam" };
     case "flower":
-      return { who, text: `sets aside ${tileName(event.tile)}`, sound: null, quiet: true };
+      return { who, text: `${verb("sets", "set")} aside ${tileName(event.tile)}`, sound: null, quiet: true };
     case "win":
-      return { who, text: event.selfDraw ? "自摸! Self-drawn win" : event.robbingKong ? "搶槓! Robs the kong" : `胡! Wins on ${playerName(event.from)}'s ${tileName(event.tile)}`, kind: "system", sound: null };
+      return { who, text: event.selfDraw ? "自摸! Self-drawn win" : event.robbingKong ? "搶槓! Robs the kong" : `胡! Wins on ${whose(event.from)} ${tileName(event.tile)}`, kind: "system", sound: null };
     case "handEnd":
       return event.result === "exhaustiveDraw" ? { text: "流局 The wall runs dry.", kind: "system", sound: null } : null;
     default:
@@ -727,6 +750,7 @@ function apply(next) {
   consumeLog(state, { silent: firstLoad });
   if (!state.aiThinking) thinkingSummary = "";
   render();
+  pinTranscript();
 }
 
 // ---------------------------------------------------------------------------
@@ -766,8 +790,28 @@ function discard(tile) {
 
 const transcript = createTranscript({ title: "Table log 牌局", limit: 160 });
 
+// The kit keeps the log pinned to the newest line only while it is already at the bottom. The
+// thinking card above it appears and disappears with every AI turn (shrinking the list), and the
+// web fonts arrive after the first lines (growing them); either one unpins the log and the newest
+// moves end up below the fold. Re-pin after every update unless the reader scrolled up on purpose.
+let pinTranscript = () => {};
+function followTranscript() {
+  const list = transcript.el.querySelector(".kit-transcript-list");
+  if (!list) return;
+  let follow = true;
+  list.addEventListener("scroll", () => {
+    follow = list.scrollHeight - list.scrollTop - list.clientHeight < 24;
+  });
+  pinTranscript = () => {
+    if (follow) list.scrollTop = list.scrollHeight;
+  };
+  if (typeof ResizeObserver === "function") new ResizeObserver(() => pinTranscript()).observe(list);
+  document.fonts?.ready.then(() => pinTranscript());
+}
+
 async function boot() {
   $("transcript-slot").append(transcript.el);
+  followTranscript();
   $("top-left").append(backToLobby());
   try {
     [characters, registry] = await Promise.all([loadCharacters(), loadModels()]);
@@ -824,6 +868,7 @@ async function boot() {
     const placement = phone ? (pos === "bottom" ? "top" : "bottom") : { top: "bottom", bottom: "top", left: "right", right: "left" }[pos];
     speak(anchor, talk.text, { placement });
     transcript.add({ who: talk.playerName, text: talk.text, kind: "talk" });
+    pinTranscript();
   });
   if (prefersReducedMotion()) document.body.dataset.motion = "reduced";
 }
