@@ -657,6 +657,10 @@ button { font: inherit; color: inherit; }
   .face-pick .die { --die: 30px; }
   .face-row { gap: 1px; }
   .seal { width: 64px; height: 64px; }
+  /* Over the plaque, clear of the opponents' dice and your own hand. */
+  .reveal { top: 40%; gap: 4px; }
+  .reveal-stamp { font-size: 3.2rem; }
+  .reveal-text { font-size: 0.95rem; padding: 8px 12px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
