@@ -12,8 +12,9 @@ import {
   getSeatsToAct,
   sortTiles,
 } from "./engine.js";
+import { TABLE_TALK_MAX_LENGTH, cleanTableTalk, tableTalkInstruction, withTableTalk } from "../../platform/table-talk.js";
 
-export const TABLE_TALK_MAX = 140;
+export const TABLE_TALK_MAX = TABLE_TALK_MAX_LENGTH;
 export const TAIWAN_MAHJONG_RETRYABLE_CODES = Object.freeze(["invalid_decision", "illegal_action"]);
 
 const SUIT_NAMES = { m: ["萬", "Characters"], p: ["筒", "Dots"], s: ["條", "Bamboo"] };
@@ -37,18 +38,16 @@ export function tileLabel(code) {
   return `${code[0]} ${english} ${CHINESE_DIGITS[Number(code[0])]}${chinese}`;
 }
 
-export const DECISION_SCHEMA = Object.freeze({
+// Strict structured-output schema; tableTalk is the house's shared optional line (an empty
+// string means silence).
+export const DECISION_SCHEMA = Object.freeze(withTableTalk({
   type: "object",
   properties: {
     actionId: { type: "integer", description: "The id of exactly one action from legalActions." },
-    tableTalk: {
-      anyOf: [{ type: "string", maxLength: TABLE_TALK_MAX }, { type: "null" }],
-      description: "Optional in-character line said aloud at the table, at most 140 characters. Never reveal your tiles.",
-    },
   },
-  required: ["actionId", "tableTalk"],
+  required: ["actionId"],
   additionalProperties: false,
-});
+}));
 
 function describeAction(state, seat, action) {
   const pending = state.pending;
@@ -168,7 +167,7 @@ export function buildDecisionInstructions(snapshot, { character = null, retry = 
     : "";
   return `${persona}You are playing seat ${snapshot.you.seat} (${snapshot.you.seatWind}) at a Taiwan Mahjong table.
 ${RULES_SUMMARY}
-Choose exactly one action by its actionId from legalActions in the input. tableTalk is optional (null or at most ${TABLE_TALK_MAX} characters), spoken aloud in character; never reveal your hidden tiles. Return only the structured decision.${retryText}`;
+Choose exactly one action by its actionId from legalActions in the input. Return only the structured decision.${tableTalkInstruction(character?.voice)}${retryText}`;
 }
 
 function failure(code, error, rejectedDecision) {
@@ -206,12 +205,10 @@ export function parseSeatDecision(state, seat, raw, { expectedSeq = null } = {})
   if (!entry) {
     return failure("illegal_action", `actionId ${actionId} is not in legalActions (valid ids are 1-${actions.length})`, decision);
   }
-  let tableTalk = decision.tableTalk ?? null;
-  if (tableTalk !== null && typeof tableTalk !== "string") {
-    return failure("invalid_decision", "tableTalk must be a string or null", decision);
+  const rawTalk = decision.tableTalk ?? null;
+  if (rawTalk !== null && typeof rawTalk !== "string") {
+    return failure("invalid_decision", "tableTalk must be a string", decision);
   }
-  if (typeof tableTalk === "string") {
-    tableTalk = tableTalk.replace(/\s+/g, " ").trim().slice(0, TABLE_TALK_MAX) || null;
-  }
+  const tableTalk = cleanTableTalk(rawTalk);
   return { ok: true, actionId, action: structuredClone(entry.action), key: actionKey(entry.action), label: entry.label, tableTalk };
 }

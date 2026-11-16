@@ -113,11 +113,11 @@ test("claim-window actions are labeled for the model", () => {
   assert.equal(snapshot.phase, "claim");
 });
 
-test("the decision schema is strict: actionId plus nullable tableTalk of at most 140 chars", () => {
+test("the decision schema is strict: actionId plus the shared tableTalk string of at most 140 chars", () => {
   assert.equal(DECISION_SCHEMA.additionalProperties, false);
   assert.deepEqual(DECISION_SCHEMA.required, ["actionId", "tableTalk"]);
   assert.equal(DECISION_SCHEMA.properties.actionId.type, "integer");
-  assert.deepEqual(DECISION_SCHEMA.properties.tableTalk.anyOf, [{ type: "string", maxLength: 140 }, { type: "null" }]);
+  assert.deepEqual(DECISION_SCHEMA.properties.tableTalk, { type: "string", maxLength: 140 });
   assert.equal(TABLE_TALK_MAX, 140);
 });
 
@@ -146,6 +146,7 @@ test("over-long tableTalk is trimmed to 140 characters, not rejected", () => {
   assert.equal(parsed.ok, true);
   assert.equal(parsed.tableTalk.length, 140);
   assert.equal(parseSeatDecision(state, 0, { actionId: 1, tableTalk: "   " }).tableTalk, null);
+  assert.equal(parseSeatDecision(state, 0, { actionId: 1, tableTalk: "" }).tableTalk, null, "an empty string is silence");
 });
 
 test("returns precise retryable errors for malformed or illegal answers", () => {
@@ -159,7 +160,7 @@ test("returns precise retryable errors for malformed or illegal answers", () => 
     [{ tableTalk: null }, "invalid_decision", /integer/],
     [{ actionId: 0, tableTalk: null }, "illegal_action", new RegExp(`valid ids are 1-${count}`)],
     [{ actionId: count + 1, tableTalk: null }, "illegal_action", /not in legalActions/],
-    [{ actionId: 1, tableTalk: 42 }, "invalid_decision", /tableTalk must be a string or null/],
+    [{ actionId: 1, tableTalk: 42 }, "invalid_decision", /tableTalk must be a string/],
   ];
   for (const [raw, code, message] of cases) {
     const parsed = parseSeatDecision(state, 0, raw);
@@ -192,9 +193,10 @@ test("instructions carry the persona, rules, and the retry reason", () => {
   assert.match(plain, /Claim priority: win > pung\/kong > chow/);
   assert.doesNotMatch(plain, /AUTOMATIC RETRY/);
   const retry = buildDecisionInstructions(snapshot, {
-    character: { name: "Vesper Vale", title: "The Velvet Knife", personality: "Patient." },
+    character: { name: "Vesper Vale", title: "The Velvet Knife", personality: "Patient.", voice: "Purrs compliments." },
     retry: { retryNumber: 1, maxRetries: 2, rejectedDecision: { actionId: 99 }, error: "actionId 99 is not in legalActions" },
   });
   assert.match(retry, /^You are Vesper Vale, The Velvet Knife/);
+  assert.match(retry, /Your voice: Purrs compliments\./);
   assert.match(retry, /AUTOMATIC RETRY 1\/2: .*actionId 99 is not in legalActions/);
 });
