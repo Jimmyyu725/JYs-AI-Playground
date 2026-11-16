@@ -419,6 +419,22 @@ function showReview(review) {
   box.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "nearest" });
 }
 
+// The last few lines of table talk, newest last, so a bubble that faded can still be read.
+function renderTalk() {
+  const host = $("talk-log");
+  const lines = (state.tableTalk ?? []).slice(-3);
+  const key = lines.map((line) => line.id).join("|");
+  if (host.dataset.key === key) return;
+  host.dataset.key = key;
+  host.replaceChildren(...lines.map((line) => {
+    const item = el("p", "talk-line");
+    const speaker = playerFor(line.speaker);
+    item.style.setProperty("--speaker-color", speaker?.character?.color ?? "var(--blossom)");
+    item.append(el("strong", null, line.playerName), document.createTextNode(`“${line.text}”`));
+    return item;
+  }));
+}
+
 function renderResult() {
   const card = $("result");
   if (state.status !== "complete" || resultDismissedFor === state.createdAt) {
@@ -456,6 +472,7 @@ function render() {
   renderMarks();
   renderStatus();
   renderScroll();
+  renderTalk();
   renderResult();
   $("seal").classList.toggle("is-stamped", Boolean(state.inCheck));
   $("seal").firstElementChild.textContent = state.turn === "red" ? "帥" : "將";
