@@ -815,7 +815,8 @@ export function restoreGame(payload) {
 
   let state;
   try {
-    state = createXiangqiGame({ fen: saved.startFen, ...saved.options });
+    const { repetitionLimit, noCaptureDrawPlies, maxPlies } = saved.options ?? {};
+    state = createXiangqiGame({ fen: saved.startFen, repetitionLimit, noCaptureDrawPlies, maxPlies });
   } catch (error) {
     requireSaved(false, error.message);
   }
