@@ -11,6 +11,13 @@
 //
 // Seats are 0..3 and play passes from seat s to seat (s + 1) % 4. A seat's wind is its
 // distance from the dealer (dealer = East).
+//
+// Rule choices: 16 tiles are kept back as a dead wall; an exhaustive draw keeps the dealer
+// (連莊); only one player wins a discard (nearest in turn order); a seat that passes up a
+// win cannot win on another player's tile until its next turn (過水). Not implemented:
+// eight-flower instant wins (八仙過海, 七搶一), flower kongs (花槓), heavenly/earthly hands,
+// wait-shape tai (獨聽/邊張/中洞), concealed-pung tai (三暗刻 and up), big/small dragons and
+// winds, and 全求人.
 
 export const SEAT_COUNT = 4;
 export const HAND_SIZE = 16;
