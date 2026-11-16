@@ -628,7 +628,7 @@ function renderStakes() {
   dom.bidValue.textContent = state.highestBid ? String(state.highestBid) : "—";
   dom.bombValue.textContent = String(state.bombsPlayed ?? 0);
   const multiplier = state.result?.multiplier ?? state.multiplier ?? 1;
-  dom.multiplierValue.replaceChildren(el("span", "times", "×"), String(multiplier));
+  dom.multiplierValue.replaceChildren(el("span", "times", "x"), String(multiplier));
   dom.stakeMultiplier.dataset.hot = String(multiplier > 1);
 }
 
@@ -729,7 +729,28 @@ const setup = drawer({ title: "Set the table 摆桌", open: false });
 setup.toggleButton.textContent = "Set the table";
 setup.toggleButton.classList.add("couplet-toggle");
 $("bar-left").prepend(backToLobby({ label: "Lobby" }));
-$("bar-right").append(sfx.muteButton(), setup.toggleButton);
+$("bar-right").append(ambienceButton(), sfx.muteButton(), setup.toggleButton);
+
+/** Optional distant firecrackers from the next lanes; off by default, remembered per viewer. */
+function ambienceButton() {
+  const key = "playground.doudizhu.ambience";
+  let on = false;
+  try { on = localStorage.getItem(key) === "1"; } catch { /* storage unavailable */ }
+  const button = el("button", "lane-button ghost small ambience-toggle");
+  button.type = "button";
+  const sync = () => {
+    button.textContent = on ? "Lane noise on" : "Lane noise off";
+    button.setAttribute("aria-pressed", String(on));
+    laneSfx.setAmbience(on);
+  };
+  button.addEventListener("click", () => {
+    on = !on;
+    try { localStorage.setItem(key, on ? "1" : "0"); } catch { /* storage unavailable */ }
+    sync();
+  });
+  sync();
+  return button;
+}
 
 let cast = null;
 let seatModels = [];

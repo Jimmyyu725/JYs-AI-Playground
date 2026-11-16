@@ -57,7 +57,30 @@ function gong(ctx, at = 0) {
   }
 }
 
+let ambienceTimer = null;
+
 export const laneSfx = {
+  /** Distant festive noise: a few muffled pops every 10–20 s while on. */
+  setAmbience(on) {
+    clearTimeout(ambienceTimer);
+    ambienceTimer = null;
+    if (!on) return;
+    const next = () => {
+      ambienceTimer = setTimeout(() => {
+        const ctx = audio();
+        if (ctx) {
+          let at = 0;
+          const count = 3 + Math.floor(Math.random() * 6);
+          for (let index = 0; index < count; index += 1) {
+            at += 0.05 + Math.random() * 0.12;
+            pop(ctx, at, { frequency: 500 + Math.random() * 700, duration: 0.06, gain: 0.06 + Math.random() * 0.06 });
+          }
+        }
+        next();
+      }, 10_000 + Math.random() * 10_000);
+    };
+    next();
+  },
   /** A short string of firecrackers: the bomb. */
   firecrackers(count = 14) {
     const ctx = audio();
