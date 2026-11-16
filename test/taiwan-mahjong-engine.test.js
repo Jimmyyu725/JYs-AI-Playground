@@ -469,6 +469,24 @@ test("self-drawn win: all three pay, the dealer adds dealer tai", () => {
   assert.throws(() => act(state, 2, { type: "pass" }), /over/);
 });
 
+test("過水: passing up a win blocks winning on discards until the seat's own next turn", () => {
+  let state = scripted({ hands: SELF_DRAW_HANDS, front: ["2p", "2p", "1s", "9p", "3m", "8p"] });
+  state = act(state, 0, { type: "discard", tile: "9m" });
+  state = act(state, 1, { type: "discard", tile: "2p" });
+  state = act(state, 2, { type: "discard", tile: "1s" });
+  assert.deepEqual(types(getLegalActions(state, 1)), ["win", "pung", "pass"]);
+  state = act(state, 1, { type: "pass" });
+  assert.equal(state.players[1].skipWin, true);
+  assert.equal(state.turn.seat, 3);
+  state = act(state, 3, { type: "discard", tile: "9p" });
+  assert.deepEqual(types(getLegalActions(state, 1)), ["pung", "pass"], "no win on 9p while 過水 applies");
+  state = act(state, 1, { type: "pass" });
+  assert.equal(state.turn.seat, 0);
+  state = act(state, 0, { type: "discard", tile: "1p" });
+  assert.equal(state.turn.seat, 1);
+  assert.equal(state.players[1].skipWin, false, "the restriction ends when the seat's turn comes");
+});
+
 test("the dealer may decline a self-draw win and discard instead", () => {
   let state = scripted({ hands: SELF_DRAW_HANDS, front: ["2p", "1s"] });
   state = act(state, 0, { type: "discard", tile: "9m" });

@@ -354,6 +354,7 @@ function drawTile(state, seat, fromBack) {
 }
 
 function startTurn(state, seat, { fromBack = false, kongReplacement = false } = {}) {
+  state.players[seat].skipWin = false;
   const tile = drawTile(state, seat, fromBack);
   if (tile === null) {
     finishExhaustiveDraw(state);
@@ -384,7 +385,7 @@ function dealFromWall(state, wall) {
   for (const code of FLOWER_CODES) if (counts.get(code) !== 1) throw new Error(`The wall must hold one "${code}"`);
 
   state.wall = [...wall];
-  state.players = Array.from({ length: SEAT_COUNT }, (_, seat) => ({ seat, hand: [], melds: [], flowers: [], discards: [] }));
+  state.players = Array.from({ length: SEAT_COUNT }, (_, seat) => ({ seat, hand: [], melds: [], flowers: [], discards: [], skipWin: false }));
   state.log = []; // the event log covers the current hand only; `history` keeps hand summaries
   for (let offset = 0; offset < SEAT_COUNT; offset += 1) {
     const seat = (state.dealer + offset) % SEAT_COUNT;
@@ -577,7 +578,7 @@ function ownTurnActions(state, seat) {
 function claimOptions(state, seat, tile, from) {
   const player = state.players[seat];
   const actions = [];
-  if (isWinningHand([...player.hand, tile], player.melds.length)) actions.push({ type: "win" });
+  if (!player.skipWin && isWinningHand([...player.hand, tile], player.melds.length)) actions.push({ type: "win" });
   const copies = countOf(player.hand, tile);
   if (copies >= 3 && drawableCount(state) > 0) actions.push({ type: "kong" });
   if (copies >= 2) actions.push({ type: "pung" });
@@ -595,7 +596,7 @@ function claimOptions(state, seat, tile, from) {
 
 function robKongOptions(state, seat, tile) {
   const player = state.players[seat];
-  return isWinningHand([...player.hand, tile], player.melds.length) ? [{ type: "win" }] : [];
+  return !player.skipWin && isWinningHand([...player.hand, tile], player.melds.length) ? [{ type: "win" }] : [];
 }
 
 export function getLegalActions(state, seat) {
@@ -686,6 +687,7 @@ function resolveClaims(state) {
   }
   const player = state.players[claimant];
   const action = responses[claimant];
+  player.skipWin = false;
   state.players[from].discards.pop();
   state.lastDiscard = null;
   if (action.type === "chow") {
@@ -778,6 +780,10 @@ function claimDecided(state) {
 
 function applyResponse(state, seat, action) {
   state.pending.responses[seat] = action;
+  // 過水: a seat that passes up a win cannot win on another player's tile until its own next turn.
+  if (action.type === "pass" && state.pending.options[seat].some((option) => option.type === "win")) {
+    state.players[seat].skipWin = true;
+  }
   if (!claimDecided(state)) return;
   for (const other of state.pending.eligible) {
     if (state.pending.responses[other] === undefined) state.pending.responses[other] = { type: "pass", skipped: true };
