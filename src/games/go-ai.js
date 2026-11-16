@@ -121,3 +121,49 @@ export async function requestGoDecisionWithRetry({
 
   throw previousError;
 }
+
+const GO_REVIEW_SCHEMA = {
+  type: "object",
+  properties: {
+    review: { type: "string", minLength: 1, maxLength: 1200 },
+    keyMoments: {
+      type: "array",
+      maxItems: 4,
+      items: {
+        type: "object",
+        properties: {
+          coordinate: { type: "string", maxLength: 4 },
+          note: { type: "string", minLength: 1, maxLength: 220 },
+        },
+        required: ["coordinate", "note"],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ["review", "keyMoments"],
+  additionalProperties: false,
+};
+
+/** A finished-game review in the reviewer's own voice. The snapshot comes from GoGame.reviewSnapshot(). */
+export async function requestGoReview(snapshot, modelConfig, callbacks = {}) {
+  const response = await requestStructuredDecision({
+    gameId: "go",
+    modelConfig,
+    instructions: `You are ${snapshot.reviewer.name}, ${snapshot.reviewer.title}. You just played ${snapshot.reviewer.color} in this finished Go game and now review it for the table, in character.
+
+Character: ${snapshot.reviewer.personality}
+Voice: ${snapshot.reviewer.voice}
+
+Columns are letters A-T without I, left to right; rows are numbers counted from the bottom. Write the review in at most 150 words: what decided the game, what each side did well or badly, and one concrete lesson. Then list up to four key moments, each with the exact coordinate of a move from the record and a one-sentence note. Never invent moves that are not in the record.`,
+    input: snapshot,
+    schemaName: "go_review",
+    schema: GO_REVIEW_SCHEMA,
+  }, callbacks);
+  const output = response.output;
+  return {
+    text: String(output.review).trim().slice(0, 1200),
+    keyMoments: (Array.isArray(output.keyMoments) ? output.keyMoments : [])
+      .slice(0, 4)
+      .map((moment) => ({ coordinate: String(moment.coordinate).trim().toUpperCase().slice(0, 4), note: String(moment.note).trim().slice(0, 220) })),
+  };
+}
