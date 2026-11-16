@@ -8,6 +8,7 @@ import {
   getLegalActions,
 } from "../src/games/taiwan-mahjong/engine.js";
 import {
+  ACTION_SCHEMA,
   DECISION_SCHEMA,
   TABLE_TALK_MAX,
   TAIWAN_MAHJONG_RETRYABLE_CODES,
@@ -199,4 +200,15 @@ test("instructions carry the persona, rules, and the retry reason", () => {
   assert.match(retry, /^You are Vesper Vale, The Velvet Knife/);
   assert.match(retry, /Your voice: Purrs compliments\./);
   assert.match(retry, /AUTOMATIC RETRY 1\/2: .*actionId 99 is not in legalActions/);
+  assert.match(plain, /Table talk:/);
+  assert.doesNotMatch(buildDecisionInstructions(snapshot, { tableTalk: false }), /Table talk:/);
+});
+
+test("ACTION_SCHEMA is the bare choice for the gateway's own tableTalk option", () => {
+  assert.deepEqual(ACTION_SCHEMA.required, ["actionId"]);
+  assert.equal("tableTalk" in ACTION_SCHEMA.properties, false);
+  const state = scripted(CLAIM_HANDS, ["4s"]);
+  const parsed = parseSeatDecision(state, 0, { actionId: 1 });
+  assert.equal(parsed.ok, true);
+  assert.equal(parsed.tableTalk, null);
 });

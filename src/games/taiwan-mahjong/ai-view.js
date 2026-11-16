@@ -38,16 +38,20 @@ export function tileLabel(code) {
   return `${code[0]} ${english} ${CHINESE_DIGITS[Number(code[0])]}${chinese}`;
 }
 
-// Strict structured-output schema; tableTalk is the house's shared optional line (an empty
-// string means silence).
-export const DECISION_SCHEMA = Object.freeze(withTableTalk({
+// The action choice alone. Pass this with requestStructuredDecision's `tableTalk: { voice }`
+// option, which adds the table-talk field and instruction itself.
+export const ACTION_SCHEMA = Object.freeze({
   type: "object",
   properties: {
     actionId: { type: "integer", description: "The id of exactly one action from legalActions." },
   },
   required: ["actionId"],
   additionalProperties: false,
-}));
+});
+
+// Full strict schema with the house's optional tableTalk line (an empty string means silence),
+// for callers that do not use the gateway's tableTalk option.
+export const DECISION_SCHEMA = Object.freeze(withTableTalk(ACTION_SCHEMA));
 
 function describeAction(state, seat, action) {
   const pending = state.pending;
@@ -158,7 +162,8 @@ Chow only from the player directly before you. Claim priority: win > pung/kong >
 Tai: dealer 1 (+2 per dealer streak), self-drawn 1, concealed 1 (concealed self-draw 3), all chows 2, all pungs 4, half flush 4, full flush 8, dragon pung 1 each, seat/round wind pung 1, seat flower 1 each, robbing a kong 1, last tile 1, kong replacement win 1.
 Payment = base + tai x per-tai. A discard win is paid by the discarder, a self-draw by all three others.`;
 
-export function buildDecisionInstructions(snapshot, { character = null, retry = null } = {}) {
+// `tableTalk: false` leaves out the table-talk instruction (when the gateway adds it).
+export function buildDecisionInstructions(snapshot, { character = null, retry = null, tableTalk = true } = {}) {
   const persona = character
     ? `You are ${character.name}, ${character.title}. Character: ${character.personality}\n`
     : "";
@@ -167,7 +172,7 @@ export function buildDecisionInstructions(snapshot, { character = null, retry = 
     : "";
   return `${persona}You are playing seat ${snapshot.you.seat} (${snapshot.you.seatWind}) at a Taiwan Mahjong table.
 ${RULES_SUMMARY}
-Choose exactly one action by its actionId from legalActions in the input. Return only the structured decision.${tableTalkInstruction(character?.voice)}${retryText}`;
+Choose exactly one action by its actionId from legalActions in the input. Return only the structured decision.${tableTalk ? tableTalkInstruction(character?.voice) : ""}${retryText}`;
 }
 
 function failure(code, error, rejectedDecision) {
