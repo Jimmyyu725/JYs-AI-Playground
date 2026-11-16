@@ -162,6 +162,9 @@ Chow only from the player directly before you. Claim priority: win > pung/kong >
 Tai: dealer 1 (+2 per dealer streak), self-drawn 1, concealed 1 (concealed self-draw 3), single wait 1, all chows 2, all pungs 4, three/four/five concealed pungs 2/5/8, all melded 2, half flush 4, full flush 8, all honors 16, dragon pung 1 each (small/big three dragons 4/8), seat/round wind pung 1 (small/big four winds 8/16), seat flower 1 each, robbing a kong 1, last tile 1, kong replacement win 1.
 Payment = base + tai x per-tai. A discard win is paid by the discarder, a self-draw by all three others.`;
 
+// Mahjong regulars talk while they play; without this nudge models tend to stay silent all hand.
+export const TABLE_TALK_NUDGE = "\nThis parlour is chatty: about one decision in four, put a short in-character line in tableTalk (react to a claim or a discard, the tea, the rain, or needle a rival); otherwise leave it empty.";
+
 // `tableTalk: false` leaves out the table-talk instruction (when the gateway adds it).
 export function buildDecisionInstructions(snapshot, { character = null, retry = null, tableTalk = true } = {}) {
   const persona = character

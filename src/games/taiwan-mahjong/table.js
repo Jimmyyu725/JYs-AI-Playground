@@ -12,7 +12,7 @@ import {
   isLegalAction,
   startNextHand,
 } from "./engine.js";
-import { TAIWAN_MAHJONG_RETRYABLE_CODES, buildDecisionInstructions, buildSeatSnapshot, parseSeatDecision } from "./ai-view.js";
+import { TABLE_TALK_NUDGE, TAIWAN_MAHJONG_RETRYABLE_CODES, buildDecisionInstructions, buildSeatSnapshot, parseSeatDecision } from "./ai-view.js";
 import { pushTableTalk } from "../../platform/table-talk.js";
 
 export const MAX_AUTOMATIC_RETRIES = 2;
@@ -112,7 +112,7 @@ export class TaiwanMahjongTable {
     let retry = null;
     for (let attempt = 0; attempt <= MAX_AUTOMATIC_RETRIES; attempt += 1) {
       const snapshot = this.snapshotFor(seat);
-      const instructions = buildDecisionInstructions(snapshot, { character: player.character, retry, tableTalk: false });
+      const instructions = buildDecisionInstructions(snapshot, { character: player.character, retry, tableTalk: false }) + TABLE_TALK_NUDGE;
       const startedAt = Date.now();
       const response = await decide({ instructions, input: snapshot, modelConfig: player.aiConfig, voice: player.character?.voice ?? "" });
       const answer = { ...(response.output ?? {}), tableTalk: response.tableTalk ?? "" };
