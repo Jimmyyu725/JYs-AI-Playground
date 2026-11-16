@@ -614,6 +614,25 @@ body:has(.kit-drawer[data-open="true"]) .room-art {
   font-variant-numeric: tabular-nums;
 }
 
+/* The human seat: your bowl of stones instead of a portrait. */
+.seat-card[data-human="true"] .kit-portrait {
+  background: radial-gradient(ellipse at 50% 35%, #8a5a33, #4a2c17 72%);
+  box-shadow: inset 0 3px 10px rgb(0 0 0 / 0.6), 0 0 0 2px color-mix(in oklab, var(--kaya) 45%, transparent), 0 10px 24px -12px #000;
+}
+.seat-card[data-human="true"] .kit-initials {
+  display: none;
+}
+.seat-card[data-human="true"] .kit-portrait::after {
+  content: "";
+  position: absolute;
+  inset: 22%;
+  background: center / contain no-repeat url("/assets/rooms/go/stone-black.png");
+  filter: drop-shadow(2px 3px 3px rgb(0 0 0 / 0.5));
+}
+.seat-card[data-human="true"][data-color="white"] .kit-portrait::after {
+  background-image: url("/assets/rooms/go/stone-white.png");
+}
+
 /* The kettle shows who is thinking. */
 .steam {
   position: absolute;
@@ -743,6 +762,9 @@ body:has(.kit-drawer[data-open="true"]) .room-art {
 }
 .record .kit-transcript-item[data-kind="talk"] span {
   color: var(--washi);
+}
+.record .kit-transcript-item[data-kind="error"] {
+  color: color-mix(in oklab, var(--momiji) 55%, var(--lantern));
 }
 .record .kit-transcript-item[data-kind="reasoning"] {
   font-size: 0.78rem;

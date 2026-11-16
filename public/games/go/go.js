@@ -560,7 +560,7 @@ function syncRecord(reset) {
     recorded.clear();
   }
   const entries = [
-    ...[...state.logs].reverse().map((entry) => ({ id: `log-${entry.id}`, at: Date.parse(entry.at), who: "", text: entry.text, kind: entry.kind === "move" ? "move" : "system" })),
+    ...[...state.logs].reverse().map((entry) => ({ id: `log-${entry.id}`, at: Date.parse(entry.at), who: "", text: entry.text, kind: entry.kind === "move" ? "move" : entry.kind === "error" ? "error" : "system" })),
     ...(state.tableTalk ?? []).map((line) => ({ id: `talk-${line.id}`, at: line.at, who: line.playerName, text: line.text, kind: "talk" })),
     ...state.aiInsights.map((insight) => ({ id: `ai-${insight.id}`, at: Date.parse(insight.at) - 1, who: insight.playerName, text: insight.explanation || insight.summary, kind: "reasoning" })),
   ].filter((entry) => !recorded.has(entry.id));
