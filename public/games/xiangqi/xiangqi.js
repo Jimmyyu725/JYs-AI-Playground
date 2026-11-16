@@ -666,6 +666,7 @@ function buildSetup() {
   setup.toggleButton.textContent = "Table setup";
   const body = setup.body;
   const defaults = registry.defaults?.xiangqi ?? registry.defaultConfig;
+  const remembered = readSetup();
 
   const intro = el("p", "setup-intro", "A quiet game in the pavilion. Choose who sits across the board; every new table seats a random character unless you pick one.");
 
@@ -686,11 +687,12 @@ function buildSetup() {
   const nameLabel = el("label", "field");
   const nameInput = el("input", "kit-input xq-input");
   nameInput.maxLength = 18;
-  nameInput.value = "Jay";
+  nameInput.value = remembered.name ?? "Jay";
   nameLabel.append(el("span", null, "Your name"), nameInput);
   const sideLabel = el("label", "field");
   const sideSelect = el("select", "kit-select");
   for (const [value, text] of [["red", "Red 紅 (moves first)"], ["black", "Black 黑"], ["random", "Draw lots"]]) sideSelect.add(new Option(text, value));
+  if (["red", "black", "random"].includes(remembered.side)) sideSelect.value = remembered.side;
   sideLabel.append(el("span", null, "Your side"), sideSelect);
   humanBox.append(nameLabel, sideLabel);
 
@@ -703,7 +705,7 @@ function buildSetup() {
     const keep = pickers.map((picker) => picker.value);
     modelsBox.replaceChildren();
     pickers = labels.map((label, index) => {
-      const picker = modelPicker({ registry, value: keep[index] ?? defaults, label });
+      const picker = modelPicker({ registry, value: keep[index] ?? validModel(remembered.models?.[index]) ?? defaults, label });
       const wrap = el("div", "model-row");
       wrap.append(el("span", "model-row-label", label), picker.el);
       modelsBox.append(wrap);
@@ -739,6 +741,9 @@ function buildSetup() {
       accept(next);
       setup.close();
       tok();
+      writeSetup({ name: nameInput.value, side: sideSelect.value, models: pickers.map((picker) => picker.value) });
+      // The next table gets a fresh random cast again unless the player picks one.
+      cast.value.forEach((_id, index) => cast.reroll(index));
     } catch (error) {
       toast(error.message, { tone: "error" });
     } finally {
@@ -747,6 +752,27 @@ function buildSetup() {
   });
 
   body.append(intro, modeField, humanBox, castHeading, cast.el, el("h3", "setup-heading", "Model and reasoning"), modelsBox, start);
+}
+
+// Per-viewer convenience: the last name, side and models used, kept in this browser only.
+const SETUP_KEY = "xiangqi.setup.v1";
+function readSetup() {
+  try {
+    return JSON.parse(localStorage.getItem(SETUP_KEY) ?? "{}") ?? {};
+  } catch {
+    return {};
+  }
+}
+function writeSetup(value) {
+  try {
+    localStorage.setItem(SETUP_KEY, JSON.stringify(value));
+  } catch {
+    // Storage may be unavailable (private mode); the setup still works.
+  }
+}
+function validModel(value) {
+  if (!value || !registry.models.some((model) => model.id === value.model) || !registry.reasoningEfforts.includes(value.reasoningEffort)) return null;
+  return value;
 }
 
 // ---------------------------------------------------------------------------
@@ -828,6 +854,11 @@ async function boot() {
   buildSetup();
   $("tools").append(sfx.muteButton(), setup.toggleButton);
   $("board").addEventListener("click", onBoardClick);
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape" || selected === null || !state) return;
+    selected = null;
+    renderMarks();
+  });
   $("result-new").addEventListener("click", () => setup.open());
   $("result-close").addEventListener("click", () => {
     resultDismissedFor = state?.createdAt ?? null;
