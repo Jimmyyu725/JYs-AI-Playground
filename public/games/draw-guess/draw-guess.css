@@ -1,0 +1,567 @@
+/* Draw & Guess 你画我猜: a Paris rooftop atelier at golden hour. */
+@property --t {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 1;
+}
+
+@property --ray-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+:root {
+  --umber: #3d1f14;
+  --paper: #f6efdf;
+  --apricot: #f0b382;
+  --charcoal: #2b2420;
+  --zinc: #56708f;
+  --amber: #e9a23b;
+  --terracotta: #b4552f;
+  --vermilion: #c7361e;
+  --dusk: #6b4c7a;
+
+  --kit-bg: var(--umber);
+  --kit-surface: var(--paper);
+  --kit-surface-strong: color-mix(in oklab, var(--apricot) 55%, var(--paper));
+  --kit-ink: var(--charcoal);
+  --kit-muted: color-mix(in oklab, var(--charcoal) 64%, var(--paper));
+  --kit-line: color-mix(in oklab, var(--charcoal) 18%, transparent);
+  --kit-accent: var(--zinc);
+  --kit-accent-ink: #fff;
+  --kit-danger: var(--vermilion);
+  --kit-success: #5d7f4f;
+  --kit-radius: 6px;
+  --kit-shadow: 0 22px 40px -22px rgb(61 31 20 / 0.7), 0 2px 0 rgb(61 31 20 / 0.08);
+  --kit-font-body: "Instrument Sans", "Noto Sans SC", system-ui, sans-serif;
+  --kit-font-display: "Fraunces", Georgia, serif;
+  --kit-drawer-width: min(430px, 94vw);
+  --kit-speech-bg: var(--paper);
+  --kit-speech-ink: var(--charcoal);
+  --kit-ease: cubic-bezier(0.22, 1.2, 0.36, 1);
+
+  --hand: "Caveat", "LXGW WenKai TC", "Noto Sans SC", cursive;
+  --t: 1;
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+
+html, body { margin: 0; min-height: 100%; }
+
+body {
+  background: var(--umber);
+  color: var(--charcoal);
+  font-family: var(--kit-font-body);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ------------------------------------------------------------------ the room */
+.atelier { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+
+.atelier-bg {
+  position: absolute;
+  inset: 0;
+  background: url("/assets/rooms/draw-guess/bg-desktop.webp") 50% 40% / cover no-repeat;
+  filter: saturate(calc(0.75 + var(--t) * 0.3)) brightness(calc(0.78 + var(--t) * 0.24));
+  transition: filter 1.2s linear;
+}
+
+.atelier-rays {
+  position: absolute;
+  inset: -20%;
+  background: conic-gradient(from calc(118deg + var(--ray-angle)) at 12% 2%,
+    transparent 0deg, rgb(255 214 140 / 0.0) 8deg, rgb(255 214 140 / 0.28) 14deg, transparent 22deg,
+    rgb(255 220 160 / 0.18) 30deg, transparent 40deg, rgb(255 210 140 / 0.22) 48deg, transparent 60deg, transparent 360deg);
+  mix-blend-mode: soft-light;
+  opacity: calc(0.25 + var(--t) * 0.75);
+  animation: sway 26s ease-in-out infinite alternate;
+}
+
+@keyframes sway { from { --ray-angle: -4deg; } to { --ray-angle: 5deg; } }
+
+/* The sun is the timer: golden hour slides to violet dusk as the round runs out. */
+.atelier-dusk {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(170deg, var(--dusk), color-mix(in oklab, var(--dusk) 60%, var(--umber)));
+  mix-blend-mode: color;
+  opacity: calc((1 - var(--t)) * 0.75);
+  transition: opacity 1s linear;
+}
+
+.atelier-motes {
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(circle at 20% 30%, rgb(255 236 200 / 0.8) 0 1.4px, transparent 2px),
+    radial-gradient(circle at 60% 70%, rgb(255 236 200 / 0.6) 0 1px, transparent 1.6px),
+    radial-gradient(circle at 80% 20%, rgb(255 236 200 / 0.7) 0 1.2px, transparent 1.8px),
+    radial-gradient(circle at 35% 85%, rgb(255 236 200 / 0.5) 0 1px, transparent 1.5px);
+  background-size: 340px 300px, 270px 260px, 410px 380px, 300px 330px;
+  opacity: calc(0.2 + var(--t) * 0.5);
+  animation: drift 40s linear infinite;
+}
+
+@keyframes drift { to { background-position: 40px -300px, -30px -260px, 20px -380px, -10px -330px; } }
+
+@media (max-width: 760px) {
+  .atelier-bg { background-image: url("/assets/rooms/draw-guess/bg-phone.webp"); background-position: 50% 30%; }
+}
+
+/* ------------------------------------------------------------------ top bar */
+.topbar {
+  position: relative;
+  z-index: 5;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 12px;
+  padding: 14px clamp(16px, 3vw, 36px) 6px;
+}
+
+.topbar-left, .topbar-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.topbar-right { justify-content: flex-end; }
+
+.room-title {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  color: var(--paper);
+  text-shadow: 0 2px 18px rgb(61 31 20 / 0.6);
+  white-space: nowrap;
+}
+
+.title-zh { font-family: "Ma Shan Zheng", "LXGW WenKai TC", serif; font-size: clamp(1.6rem, 2.6vw, 2.4rem); font-weight: 400; color: var(--amber); }
+.title-en { font-family: var(--kit-font-display); font-style: italic; font-variation-settings: "SOFT" 100, "WONK" 1, "opsz" 96; font-weight: 600; font-size: clamp(1.1rem, 1.8vw, 1.6rem); }
+.title-en em { color: var(--apricot); }
+
+.round-chip, .topbar .kit-back, .topbar .kit-mute, .topbar .kit-drawer-toggle, .topbar .chip-button {
+  font: 600 0.85rem/1 var(--kit-font-body);
+  padding: 9px 13px;
+  border-radius: 999px;
+  border: 1px solid rgb(246 239 223 / 0.35);
+  background: color-mix(in oklab, var(--umber) 62%, transparent);
+  color: var(--paper);
+  backdrop-filter: blur(8px);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.topbar .kit-drawer-toggle { background: var(--zinc); border-color: transparent; }
+.topbar .chip-button[data-state="paused"] { background: var(--amber); color: var(--umber); }
+.round-chip { cursor: default; font-variant-numeric: tabular-nums; }
+
+/* ------------------------------------------------------------------ studio grid */
+.studio {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: minmax(200px, 250px) minmax(0, 1fr) minmax(250px, 320px);
+  gap: clamp(14px, 2vw, 30px);
+  padding: 8px clamp(16px, 3vw, 36px) 28px;
+  align-items: start;
+  max-width: 1500px;
+  margin: 0 auto;
+}
+
+.wall-label {
+  margin: 0 0 10px;
+  font: italic 600 1rem/1.1 var(--kit-font-display);
+  font-variation-settings: "SOFT" 100, "WONK" 1;
+  color: var(--paper);
+  letter-spacing: 0.01em;
+  text-shadow: 0 1px 10px rgb(61 31 20 / 0.7);
+}
+
+/* Seats: paper cards pinned to the wall. */
+.seat-row { display: grid; gap: 10px; }
+
+.sitter {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px 8px 8px;
+  background: var(--paper) url("/assets/rooms/draw-guess/paper-tile.webp") 0 0 / 520px;
+  border-radius: 3px;
+  box-shadow: var(--kit-shadow);
+  rotate: var(--tilt, 0deg);
+  transition: rotate 0.5s var(--kit-ease), translate 0.5s var(--kit-ease), box-shadow 0.3s;
+}
+
+.sitter:nth-child(2n) { --tilt: 0.8deg; }
+.sitter:nth-child(3n) { --tilt: -0.7deg; }
+.sitter:hover { rotate: 0deg; translate: 0 -2px; }
+.sitter[data-drawer="true"] { box-shadow: 0 0 0 3px var(--amber), var(--kit-shadow); }
+.sitter[data-drawer="true"][data-urgent="true"] { box-shadow: 0 0 0 3px var(--vermilion), var(--kit-shadow); }
+.sitter[data-solved="true"]::before {
+  content: "";
+  position: absolute;
+  inset: -14px auto auto -18px;
+  width: 92px;
+  aspect-ratio: 1;
+  background: url("/assets/rooms/draw-guess/splatter-amber.webp") center / contain no-repeat;
+  z-index: -1;
+  animation: splat 0.6s var(--kit-ease) both;
+}
+
+@keyframes splat { from { scale: 0.4; opacity: 0; } to { scale: 1; opacity: 0.95; } }
+
+.sitter .kit-seat { margin: 0; }
+.sitter .kit-seat .kit-seat-label { display: none; }
+.sitter-text { min-width: 0; display: grid; gap: 1px; }
+.sitter-name { font: 700 1.25rem/1 var(--hand); color: var(--charcoal); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sitter-caption { font-size: 0.72rem; color: var(--kit-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sitter-caption[data-busy="true"] { color: var(--zinc); }
+.sitter-caption[data-busy="true"]::before { content: "✎ "; display: inline-block; animation: scribble 0.9s ease-in-out infinite; }
+@keyframes scribble { 50% { translate: 2px -1px; rotate: -12deg; } }
+.sitter-score { font: 700 1.5rem/1 var(--kit-font-display); font-variant-numeric: tabular-nums; color: var(--terracotta); }
+.sitter-role { position: absolute; top: -8px; right: 10px; font: 600 0.62rem/1 var(--kit-font-body); text-transform: uppercase; letter-spacing: 0.08em; background: var(--amber); color: var(--umber); padding: 4px 6px; border-radius: 2px; }
+.sitter .kit-speech { z-index: 30; }
+
+/* Salon: finished drawings hung on the wall. */
+.salon { margin-top: 22px; }
+.salon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 12px; }
+.salon-piece { margin: 0; display: grid; gap: 4px; justify-items: center; animation: hang 0.7s var(--kit-ease) both; }
+.salon-piece img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border: 8px solid transparent;
+  border-image: url("/assets/rooms/draw-guess/canvas-frame.webp") 124 100 100 100 / 10px 8px 8px 8px stretch;
+  background: var(--paper);
+  box-shadow: 0 10px 18px -10px rgb(61 31 20 / 0.8);
+}
+.salon-piece figcaption { font: 700 1rem/1 var(--hand); color: var(--paper); text-shadow: 0 1px 6px rgb(61 31 20 / 0.9); text-align: center; }
+@keyframes hang { from { translate: 0 -16px; rotate: -4deg; opacity: 0; } }
+
+/* ------------------------------------------------------------------ stage */
+.stage { display: grid; justify-items: center; gap: 12px; container-type: inline-size; min-width: 0; }
+
+.tape {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  max-width: 100%;
+  padding: 8px 26px 6px;
+  margin-bottom: -26px;
+  background: color-mix(in oklab, #efe2c2 92%, transparent);
+  clip-path: polygon(1% 8%, 4% 0, 30% 6%, 62% 0, 97% 5%, 100% 30%, 98% 94%, 70% 100%, 35% 94%, 3% 100%, 0 70%);
+  box-shadow: 0 6px 12px -8px rgb(61 31 20 / 0.6);
+  rotate: -1.2deg;
+}
+
+.tape-word { font: 700 clamp(1.5rem, 4cqi, 2.3rem)/1 var(--hand); letter-spacing: 0.06em; color: var(--charcoal); overflow-wrap: anywhere; }
+.tape-word[data-shape="true"] { letter-spacing: 0.32em; }
+.tape-meta { font: 600 0.75rem/1.2 var(--kit-font-body); color: var(--terracotta); text-transform: uppercase; letter-spacing: 0.08em; white-space: nowrap; }
+
+.frame {
+  position: relative;
+  width: min(100%, 64vh, 640px);
+  aspect-ratio: 1;
+  border-style: solid;
+  border-width: 34px 26px 26px 26px;
+  border-image: url("/assets/rooms/draw-guess/canvas-frame.webp") 124 100 100 100 / 34px 26px 26px 26px stretch;
+  filter: drop-shadow(0 26px 30px rgb(61 31 20 / 0.55));
+}
+
+.frame-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--paper) url("/assets/rooms/draw-guess/paper-tile.webp") 0 0 / 640px;
+}
+
+.painting, .sketch { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.painting { object-fit: cover; transition: filter 1.4s ease-out, opacity 0.6s; animation: develop 1.2s ease-out both; }
+.painting[hidden], .sketch[hidden] { display: none; }
+@keyframes develop { from { opacity: 0; clip-path: inset(0 100% 0 0); } to { opacity: 1; clip-path: inset(0 0 0 0); } }
+.sketch { touch-action: none; cursor: crosshair; }
+
+.frame-panel { position: absolute; inset: 0; display: grid; place-items: center; padding: clamp(14px, 5cqi, 34px); text-align: center; }
+.frame-panel:empty { display: none; }
+
+.stamp { position: absolute; width: 46%; left: 27%; top: 27%; pointer-events: none; animation: splat 0.7s var(--kit-ease) both; mix-blend-mode: multiply; }
+.stamp[hidden] { display: none; }
+
+.clock {
+  position: absolute;
+  right: -18px;
+  bottom: -18px;
+  width: 64px;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: conic-gradient(var(--amber) calc(var(--t) * 360deg), color-mix(in oklab, var(--umber) 80%, transparent) 0);
+  box-shadow: 0 8px 18px -6px rgb(61 31 20 / 0.8);
+}
+.clock::before { content: ""; position: absolute; inset: 6px; border-radius: 50%; background: var(--paper); }
+.clock span { position: relative; font: 700 1.4rem/1 var(--kit-font-display); font-variant-numeric: tabular-nums; color: var(--umber); }
+.clock[data-urgent="true"] { background: conic-gradient(var(--vermilion) calc(var(--t) * 360deg), color-mix(in oklab, var(--umber) 80%, transparent) 0); animation: pulse 1s ease-in-out infinite; }
+.clock[hidden] { display: none; }
+@keyframes pulse { 50% { scale: 1.07; } }
+
+/* Panels drawn on the paper: word cards, waiting, results. */
+.panel-title { margin: 0 0 6px; font: italic 600 clamp(1.3rem, 5cqi, 2rem)/1.1 var(--kit-font-display); font-variation-settings: "SOFT" 100, "WONK" 1; color: var(--umber); }
+.panel-copy { margin: 0 0 14px; color: var(--kit-muted); font-size: 0.95rem; max-width: 34ch; margin-inline: auto; }
+.panel-hand { font: 600 1.35rem/1.25 var(--hand); color: var(--charcoal); max-width: 32ch; margin: 8px auto 0; }
+
+.word-cards { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
+.word-card {
+  position: relative;
+  min-width: 128px;
+  padding: 18px 16px 14px;
+  border: 0;
+  background: #fffaf0 url("/assets/rooms/draw-guess/paper-tile.webp") 0 0 / 400px;
+  box-shadow: 0 14px 20px -14px rgb(61 31 20 / 0.7), 0 0 0 1px rgb(61 31 20 / 0.08);
+  cursor: pointer;
+  rotate: var(--tilt, -2deg);
+  transition: rotate 0.35s var(--kit-ease), translate 0.35s var(--kit-ease), box-shadow 0.25s;
+  animation: deal 0.55s var(--kit-ease) both;
+  animation-delay: calc(var(--i, 0) * 90ms);
+}
+.word-card:nth-child(2) { --tilt: 1.5deg; }
+.word-card:nth-child(3) { --tilt: -0.5deg; }
+.word-card:hover, .word-card:focus-visible { rotate: 0deg; translate: 0 -6px; box-shadow: 0 22px 26px -16px rgb(61 31 20 / 0.8), 0 0 0 2px var(--amber); outline: none; }
+.word-card strong { display: block; font: 700 1.9rem/1 var(--hand); color: var(--charcoal); }
+.word-card span { display: block; margin-top: 4px; font-family: "Ma Shan Zheng", "LXGW WenKai TC", serif; color: var(--terracotta); font-size: 1.1rem; }
+.word-card small { display: inline-block; margin-top: 8px; font: 600 0.66rem/1 var(--kit-font-body); text-transform: uppercase; letter-spacing: 0.1em; color: var(--zinc); }
+@keyframes deal { from { translate: 0 30px; rotate: 8deg; opacity: 0; } }
+
+.mode-tabs { display: inline-flex; gap: 4px; margin-bottom: 12px; padding: 4px; border-radius: 999px; background: rgb(61 31 20 / 0.08); }
+.mode-tabs button { border: 0; padding: 8px 14px; border-radius: 999px; font: 600 0.85rem/1 var(--kit-font-body); background: transparent; color: var(--charcoal); cursor: pointer; }
+.mode-tabs button[aria-pressed="true"] { background: var(--zinc); color: #fff; }
+
+.prompt-form { display: grid; gap: 10px; width: min(100%, 420px); }
+.prompt-form textarea {
+  min-height: 120px;
+  resize: vertical;
+  padding: 12px;
+  border: 1px solid rgb(61 31 20 / 0.2);
+  background: rgb(255 255 255 / 0.55);
+  font: 600 1.3rem/1.25 var(--hand);
+  color: var(--charcoal);
+  border-radius: 4px;
+}
+
+.hang, .ghost {
+  border: 0;
+  border-radius: 999px;
+  padding: 11px 18px;
+  font: 600 0.92rem/1 var(--kit-font-body);
+  cursor: pointer;
+  transition: translate 0.2s var(--kit-ease), box-shadow 0.2s, background 0.2s;
+}
+.hang { background: var(--zinc); color: #fff; box-shadow: 0 10px 18px -10px rgb(30 40 60 / 0.9); }
+.hang:hover { translate: 0 -2px; background: color-mix(in oklab, var(--zinc) 85%, black); }
+.ghost { background: rgb(246 239 223 / 0.85); color: var(--charcoal); box-shadow: inset 0 0 0 1px rgb(61 31 20 / 0.2); }
+.hang:disabled, .ghost:disabled { opacity: 0.5; cursor: not-allowed; translate: none; }
+.hang:focus-visible, .ghost:focus-visible, .tool:focus-visible, .word-card:focus-visible { outline: 3px solid var(--amber); outline-offset: 2px; }
+
+.painting-wait { display: grid; justify-items: center; gap: 12px; }
+.brush-dance { width: 120px; height: 60px; position: relative; }
+.brush-dance i { position: absolute; left: 0; top: 50%; height: 10px; border-radius: 6px; background: var(--c, var(--amber)); animation: stroke 1.6s ease-in-out infinite; animation-delay: var(--d, 0s); opacity: 0.85; }
+.brush-dance i:nth-child(1) { --c: var(--amber); top: 10%; }
+.brush-dance i:nth-child(2) { --c: var(--terracotta); top: 42%; --d: 0.25s; }
+.brush-dance i:nth-child(3) { --c: var(--zinc); top: 74%; --d: 0.5s; }
+@keyframes stroke { 0% { width: 0; } 55% { width: 100%; opacity: 0.85; } 100% { width: 100%; opacity: 0; } }
+
+.results { width: min(100%, 380px); }
+.results ol { list-style: none; margin: 0 0 14px; padding: 0; display: grid; gap: 6px; text-align: left; }
+.results li { display: grid; grid-template-columns: 26px 1fr auto; gap: 8px; align-items: baseline; padding: 6px 8px; border-bottom: 1px dashed rgb(61 31 20 / 0.2); }
+.results li b { font: 700 1.1rem/1 var(--kit-font-display); color: var(--terracotta); }
+.results li span { font: 700 1.3rem/1 var(--hand); }
+.results li em { font: 700 1.1rem/1 var(--kit-font-display); font-style: normal; font-variant-numeric: tabular-nums; }
+.results li[data-winner="true"] { background: color-mix(in oklab, var(--amber) 30%, transparent); }
+
+.points-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 8px; }
+.points-row span { padding: 4px 9px; border-radius: 999px; background: rgb(61 31 20 / 0.08); font: 600 0.8rem/1.2 var(--kit-font-body); }
+.points-row span[data-gain="true"] { background: color-mix(in oklab, var(--amber) 45%, transparent); }
+
+/* ------------------------------------------------------------------ drawing tools */
+.tools {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-areas: "palette brushes" "palette buttons";
+  align-items: center;
+  gap: 8px 16px;
+  width: min(100%, 640px);
+  padding: 10px 14px;
+  background: color-mix(in oklab, var(--umber) 55%, transparent);
+  backdrop-filter: blur(10px);
+  border-radius: 14px;
+}
+.tools[hidden] { display: none; }
+
+.palette { grid-area: palette; position: relative; width: 150px; aspect-ratio: 1024 / 935; }
+.palette img { width: 100%; height: 100%; display: block; filter: drop-shadow(0 8px 10px rgb(0 0 0 / 0.4)); user-select: none; }
+.blob {
+  position: absolute;
+  width: 22%;
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  border-radius: 50%;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  transition: box-shadow 0.2s, scale 0.2s var(--kit-ease);
+}
+.blob:hover { scale: 1.12; }
+.blob[aria-checked="true"] { box-shadow: 0 0 0 3px #fff, 0 0 0 5px var(--charcoal), inset 6px -6px 10px rgb(255 255 255 / 0.5); }
+
+.brushes { grid-area: brushes; display: flex; gap: 8px; align-items: center; }
+.brush {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 0;
+  display: grid;
+  place-items: center;
+  background: rgb(246 239 223 / 0.9);
+  cursor: pointer;
+}
+.brush i { display: block; border-radius: 50%; background: var(--brush-color, var(--charcoal)); width: var(--size); height: var(--size); }
+.brush[aria-checked="true"] { box-shadow: 0 0 0 3px var(--amber); }
+
+.tool-buttons { grid-area: buttons; display: flex; flex-wrap: wrap; gap: 8px; }
+.tool { border: 0; border-radius: 999px; padding: 9px 13px; font: 600 0.82rem/1 var(--kit-font-body); background: rgb(246 239 223 / 0.9); color: var(--charcoal); cursor: pointer; }
+.tool[aria-pressed="true"] { background: var(--apricot); box-shadow: inset 0 0 0 2px var(--terracotta); }
+.tool-buttons .hang { margin-left: auto; }
+
+/* ------------------------------------------------------------------ guessing */
+.guess-bar {
+  display: flex;
+  gap: 8px;
+  width: min(100%, 560px);
+  padding: 8px;
+  background: color-mix(in oklab, var(--umber) 55%, transparent);
+  backdrop-filter: blur(10px);
+  border-radius: 999px;
+}
+.guess-bar[hidden] { display: none; }
+.guess-bar input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 16px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--paper);
+  font: 700 1.35rem/1 var(--hand);
+  color: var(--charcoal);
+}
+.guess-bar input:focus-visible { outline: 3px solid var(--amber); }
+.guess-bar[data-shake="true"] { animation: shake 0.4s; }
+@keyframes shake { 25% { translate: -6px 0; } 75% { translate: 6px 0; } }
+
+.notice {
+  max-width: min(100%, 560px);
+  padding: 12px 16px;
+  border-radius: 10px;
+  background: var(--paper);
+  box-shadow: var(--kit-shadow);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.9rem;
+}
+.notice[hidden] { display: none; }
+.notice[data-tone="error"] { box-shadow: inset 4px 0 0 var(--vermilion), var(--kit-shadow); }
+
+/* ------------------------------------------------------------------ the wall of slips */
+.wall { min-width: 0; }
+.slips { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; max-height: calc(100vh - 150px); overflow-y: auto; overscroll-behavior: contain; padding: 4px 6px 10px 4px; scrollbar-width: thin; }
+
+.slip {
+  position: relative;
+  padding: 8px 12px 7px;
+  background: #fbf5e6 url("/assets/rooms/draw-guess/paper-tile.webp") 0 0 / 420px;
+  box-shadow: 0 8px 12px -10px rgb(61 31 20 / 0.8);
+  rotate: var(--tilt, 0deg);
+  animation: pin 0.45s var(--kit-ease) both;
+}
+.slip:nth-child(3n + 1) { --tilt: -0.8deg; }
+.slip:nth-child(3n + 2) { --tilt: 0.6deg; }
+.slip::before { content: ""; position: absolute; top: -4px; left: 50%; width: 9px; height: 9px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #f6d48c, var(--terracotta)); box-shadow: 0 2px 2px rgb(0 0 0 / 0.3); }
+.slip-who { display: block; font: 600 0.7rem/1.2 var(--kit-font-body); text-transform: uppercase; letter-spacing: 0.08em; color: color-mix(in oklab, var(--seat-color, var(--zinc)) 62%, var(--charcoal)); }
+.slip-text { font: 700 1.3rem/1.15 var(--hand); color: var(--charcoal); overflow-wrap: anywhere; }
+.slip[data-kind="system"] { background: color-mix(in oklab, var(--umber) 72%, transparent); backdrop-filter: blur(6px); box-shadow: none; }
+.slip[data-kind="system"]::before { display: none; }
+.slip[data-kind="system"] .slip-text { font: 500 0.82rem/1.35 var(--kit-font-body); color: var(--paper); }
+.slip[data-kind="talk"] .slip-text { font: italic 500 0.95rem/1.35 var(--kit-font-display); }
+.slip[data-kind="talk"] { background: var(--apricot); }
+.slip[data-correct="true"] { background: color-mix(in oklab, var(--amber) 60%, #fbf5e6); }
+@keyframes pin { from { translate: 0 -10px; opacity: 0; rotate: 4deg; } }
+
+/* ------------------------------------------------------------------ setup drawer, paper sheet */
+.kit-drawer {
+  background: color-mix(in oklab, var(--paper) 92%, transparent) url("/assets/rooms/draw-guess/paper-tile.webp") 0 0 / 520px;
+  background-blend-mode: multiply;
+  color: var(--charcoal);
+  border-inline-start: 0;
+  box-shadow: -24px 0 40px -24px rgb(61 31 20 / 0.8);
+}
+.kit-drawer-title { font-family: var(--kit-font-display); font-style: italic; font-variation-settings: "SOFT" 100, "WONK" 1; }
+.setup { display: grid; gap: 16px; padding-bottom: 20px; }
+.setup fieldset { border: 0; margin: 0; padding: 0; display: grid; gap: 8px; }
+.setup legend, .setup label > span { font: 600 0.72rem/1.2 var(--kit-font-body); text-transform: uppercase; letter-spacing: 0.1em; color: var(--terracotta); margin-bottom: 4px; padding: 0; }
+.setup label { display: grid; gap: 4px; }
+.setup input[type="text"], .setup select {
+  width: 100%;
+  padding: 9px 11px;
+  border: 1px solid rgb(61 31 20 / 0.22);
+  border-radius: 6px;
+  background: rgb(255 255 255 / 0.6);
+  font: 500 0.95rem/1.2 var(--kit-font-body);
+  color: var(--charcoal);
+}
+.segmented { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px; border-radius: 10px; background: rgb(61 31 20 / 0.07); }
+.segmented button { flex: 1; border: 0; padding: 9px 8px; border-radius: 7px; background: transparent; font: 600 0.85rem/1 var(--kit-font-body); color: var(--charcoal); cursor: pointer; }
+.segmented button[aria-pressed="true"] { background: var(--zinc); color: #fff; }
+.setup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.seat-models { display: grid; gap: 8px; }
+.seat-model { display: grid; gap: 4px; padding: 8px; border-radius: 8px; background: rgb(255 255 255 / 0.35); }
+.seat-model > b { font: 700 1.1rem/1 var(--hand); color: var(--charcoal); }
+.setup .hang { width: 100%; padding: 14px; font-size: 1rem; }
+
+/* ------------------------------------------------------------------ responsive */
+@media (max-width: 1100px) {
+  .studio { grid-template-columns: minmax(0, 1fr) minmax(240px, 300px); }
+  .sitters { grid-column: 1 / -1; }
+  .seat-row { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
+  .salon { display: none; }
+}
+
+@media (max-width: 760px) {
+  .topbar { grid-template-columns: 1fr auto; padding-top: 10px; }
+  .room-title { grid-column: 1 / -1; grid-row: 1; justify-content: center; }
+  .topbar-left { grid-row: 2; }
+  .topbar-right { grid-row: 2; }
+  .round-chip { display: none; }
+  .studio { grid-template-columns: minmax(0, 1fr); padding-top: 4px; gap: 14px; }
+  .sitters { grid-row: 1; }
+  .sitters .wall-label { display: none; }
+  .seat-row { display: flex; overflow-x: auto; gap: 8px; padding: 10px 2px 8px; scroll-snap-type: x mandatory; scrollbar-width: none; }
+  .sitter { flex: 0 0 auto; min-width: 150px; scroll-snap-align: start; padding: 6px 10px 6px 6px; }
+  .sitter-name { font-size: 1.1rem; }
+  .frame { width: 100%; border-width: 24px 16px 16px 16px; border-image-width: 24px 16px 16px 16px; }
+  .clock { right: -8px; bottom: -10px; width: 54px; }
+  .tools { grid-template-columns: auto 1fr; grid-template-areas: "palette brushes" "buttons buttons"; }
+  .palette { width: 120px; }
+  .slips { max-height: 60vh; }
+  .salon { display: block; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atelier-rays, .atelier-motes { animation: none; }
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+}
