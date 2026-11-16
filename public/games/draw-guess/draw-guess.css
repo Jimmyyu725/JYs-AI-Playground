@@ -478,6 +478,7 @@ body {
   font-size: 0.9rem;
 }
 .notice[hidden] { display: none; }
+.notice-prompt { margin: 6px 0 0; font: 600 1.15rem/1.25 var(--hand); color: var(--kit-muted); max-width: 46ch; }
 .notice[data-tone="error"] { box-shadow: inset 4px 0 0 var(--vermilion), var(--kit-shadow); }
 
 /* ------------------------------------------------------------------ the wall of slips */

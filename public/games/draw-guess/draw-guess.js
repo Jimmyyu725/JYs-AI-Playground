@@ -1,5 +1,6 @@
 import { backToLobby, characterPicker, drawer, loadCharacters, loadModels, modelPicker, seat as seatFigure, setSeatExpression, toast } from "/shared/kit.js";
 import { sfx } from "/shared/sfx.js";
+import { atelier } from "/games/draw-guess/atelier-sfx.js";
 import { speak } from "/shared/speech.js";
 
 const API = "/api/draw-guess";
@@ -59,6 +60,7 @@ function modelLabel(config) {
 
 const serverNow = () => Date.now() + clockOffset;
 const humanSeat = () => (state?.humanSeat ?? -1);
+const humanSeatOf = (snapshot) => (snapshot?.humanSeat ?? -1);
 const isArena = () => state?.mode === "arena";
 
 // ------------------------------------------------------------------ setup drawer
@@ -242,6 +244,9 @@ function updateSeats() {
     else if (passed) caption = "Passed";
     node.caption.textContent = caption;
     node.caption.dataset.busy = String(Boolean(thinking));
+    const insight = state.insights?.[seatIndex]?.text;
+    if (insight) node.card.title = `${node.player.name} was thinking: ${insight}`;
+    else node.card.removeAttribute("title");
     let expression = "neutral";
     if (over) expression = view.result?.winners.includes(seatIndex) ? "triumphant" : "defeated";
     else if (solved) expression = "triumphant";
@@ -567,6 +572,7 @@ function renderNotice() {
       chip.dataset.gain = String(gain > 0);
       points.append(chip);
     }
+    if (round.prompt) lines.append(el("p", "notice-prompt", `${state.players[round.drawerSeat].name} told the easel: “${round.prompt}”`));
     lines.append(points);
     notice.append(lines);
     const next = el("button", "hang", view.turnNumber >= view.totalTurns ? "See the results" : "Next round");
@@ -654,6 +660,7 @@ function render(next) {
   const round = next.view.round;
   if (round.number !== renderedRound) {
     renderedRound = round.number;
+    if (humanSeatOf(next) >= 0 && round.drawerSeat === humanSeatOf(next) && next.view.phase === "choosing") atelier.knock();
     promptMode = "paint";
     draftPrompt = "";
     lastOwnGuesses = 0;
@@ -751,6 +758,7 @@ const sketchPad = (() => {
     if (!current) return;
     const events = event.getCoalescedEvents?.() ?? [event];
     for (const item of events) current.points.push(point(item));
+    atelier.scratch();
     redraw();
   });
   const end = () => { current = null; };
@@ -803,7 +811,7 @@ function buildTools() {
       blobButtons.forEach((other) => other.setAttribute("aria-checked", String(other === button)));
       eraser.setAttribute("aria-pressed", "false");
       document.documentElement.style.setProperty("--brush-color", blob.color);
-      sfx.play("stoneClick");
+      atelier.swish();
     });
     palette.append(button);
     return button;
@@ -913,7 +921,8 @@ function onGameEvent(event) {
   const me = humanSeat();
   switch (event.type) {
     case "guess_correct":
-      sfx.play(event.seat === me ? "win" : "chipClack");
+      atelier.chord();
+      if (event.seat === me) sfx.play("win");
       break;
     case "guess_wrong":
       sfx.play("tileClack");
@@ -926,7 +935,7 @@ function onGameEvent(event) {
       sfx.play("error");
       break;
     case "round_over":
-      sfx.play("cupSlam");
+      atelier.duskBell();
       break;
     case "game_over":
       sfx.play("win");
