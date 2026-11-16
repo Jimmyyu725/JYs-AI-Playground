@@ -48,9 +48,17 @@ function restore() {
   }
 }
 
+// Every state sent out carries a rising `seq`, so a client can drop an HTTP response that
+// arrives after a newer state pushed over SSE.
+let seq = 0;
+function snapshot(current) {
+  seq += 1;
+  return { ...current.publicState(), seq };
+}
+
 function broadcastState() {
   recordResult();
-  if (table) channel.broadcast("state", table.publicState());
+  if (table) channel.broadcast("state", snapshot(table));
 }
 
 function requireTable() {
@@ -153,15 +161,15 @@ export function register(app, ctx) {
   if (table?.phase === "complete") recordOnce(table, "game", () => null);
 
   app.get("/api/xiangqi/state", (_request, response) => {
-    response.json(table ? table.publicState() : null);
+    response.json(table ? snapshot(table) : null);
   });
 
-  app.get("/api/xiangqi/events", channel.handler(() => table?.publicState() ?? null));
+  app.get("/api/xiangqi/events", channel.handler(() => table ? snapshot(table) : null));
 
   app.post("/api/xiangqi/game", (request, response, next) => {
     try {
       startTable(new XiangqiTable(request.body ?? {}));
-      response.status(201).json(table.publicState());
+      response.status(201).json(snapshot(table));
     } catch (error) {
       next(error);
     }
@@ -179,7 +187,7 @@ export function register(app, ctx) {
         throw error;
       }
       persist();
-      response.json(current.publicState());
+      response.json(snapshot(current));
       broadcastState();
       schedule(version);
     } catch (error) {
@@ -193,7 +201,7 @@ export function register(app, ctx) {
       if (!current.aiError) throw httpError(409, "There is no paused AI request to retry");
       current.clearAIError();
       persist();
-      response.json(current.publicState());
+      response.json(snapshot(current));
       broadcastState();
       schedule(version);
     } catch (error) {
@@ -206,7 +214,7 @@ export function register(app, ctx) {
       const current = requireTable();
       current.pauseArena();
       persist();
-      response.json(current.publicState());
+      response.json(snapshot(current));
       broadcastState();
     } catch (error) {
       next(error);
@@ -218,7 +226,7 @@ export function register(app, ctx) {
       const current = requireTable();
       current.resumeArena();
       persist();
-      response.json(current.publicState());
+      response.json(snapshot(current));
       broadcastState();
       schedule(version);
     } catch (error) {

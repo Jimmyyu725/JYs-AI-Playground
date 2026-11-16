@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#262a36" />
+    <title>Xiangqi 象棋 — Moon Gate Pavilion</title>
+    <link rel="icon" href="data:," />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500;1,600&family=Noto+Serif:wght@400;600&family=Noto+Serif+TC:wght@500;900&display=swap" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=LXGW+WenKai+TC:wght@700&family=Ma+Shan+Zheng&display=swap&text=%E5%B8%A5%E4%BB%95%E7%9B%B8%E4%BF%A5%E5%82%8C%E7%82%AE%E5%85%B5%E5%B0%87%E5%A3%AB%E8%B1%A1%E8%BB%8A%E9%A6%AC%E7%A0%B2%E5%8D%92%E6%A5%9A%E6%B2%B3%E6%BC%A2%E7%95%8C%E8%B1%A1%E6%A3%8B%E5%8B%9D%E8%B2%A0%E5%92%8C%E8%BB%8D%E5%89%8D%E4%B8%AD%E5%BE%8C%E9%80%B2%E9%80%80%E5%B9%B3%E4%B8%80%E4%BA%8C%E4%B8%89%E5%9B%9B%E4%BA%94%E5%85%AD%E4%B8%83%E5%85%AB%E4%B9%9D%E7%B4%85%E9%BB%91%E8%AA%8D%E8%BC%B8123456789" />
+    <link rel="stylesheet" href="/shared/kit.css" />
+    <link rel="stylesheet" href="/games/xiangqi/xiangqi.css" />
+  </head>
+  <body>
+    <div class="scene" aria-hidden="true">
+      <div class="moonglow"></div>
+      <div class="fog fog-a"></div>
+      <div class="fog fog-b"></div>
+      <div class="petals" id="petals"></div>
+    </div>
+
+    <header class="xq-top">
+      <div class="xq-nav" id="nav"></div>
+      <h1 class="xq-title">
+        <span class="brush" lang="zh-Hant">象棋</span>
+        <span class="latin">Xiangqi <small>Moon Gate Pavilion</small></span>
+      </h1>
+      <div class="xq-tools" id="tools"></div>
+    </header>
+
+    <main class="xq-main" id="main">
+      <section class="seat-block" id="seat-top" data-pos="top"></section>
+
+      <section class="board-stage" aria-label="Board">
+        <div class="lantern-pool" aria-hidden="true"></div>
+        <div class="board-frame">
+          <div class="board" id="board">
+            <svg class="grid" id="grid" viewBox="0 0 900 1000" aria-hidden="true"></svg>
+            <div class="river" aria-hidden="true"><span lang="zh-Hant" id="river-left">楚 河</span><span lang="zh-Hant" id="river-right">漢 界</span></div>
+            <div class="marks" id="marks"></div>
+            <div class="pieces" id="pieces" role="grid" aria-label="Xiangqi pieces"></div>
+            <div class="seal" id="seal" aria-hidden="true"><span lang="zh-Hant">將</span></div>
+          </div>
+        </div>
+        <div class="result-card" id="result" hidden>
+          <span class="result-glyph" id="result-glyph" lang="zh-Hant">勝</span>
+          <h2 id="result-title">Red wins</h2>
+          <p id="result-copy"></p>
+          <div class="result-actions">
+            <button type="button" class="xq-button" id="result-new">New game</button>
+            <button type="button" class="xq-button ghost" id="result-close">Look at the board</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="status-card" id="status" aria-live="polite">
+        <p class="status-line" id="status-line">Open the setup to sit down at the table.</p>
+        <p class="status-thought" id="status-thought"></p>
+        <div class="status-actions" id="status-actions"></div>
+      </section>
+
+      <section class="seat-block" id="seat-bottom" data-pos="bottom"></section>
+
+      <aside class="scroll-panel" aria-label="Move scroll">
+        <header class="scroll-head"><h2>Move scroll</h2><span id="move-count">—</span></header>
+        <ol class="move-list" id="moves"></ol>
+        <div class="insight" id="insight" hidden></div>
+      </aside>
+    </main>
+
+    <script type="module" src="/games/xiangqi/xiangqi.js"></script>
+  </body>
+</html>
