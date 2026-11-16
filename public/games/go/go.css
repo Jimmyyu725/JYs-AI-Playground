@@ -107,6 +107,13 @@ button {
   background: radial-gradient(ellipse 70% 55% at 50% 35%, var(--amber), transparent 70%);
   mix-blend-mode: soft-light;
   opacity: calc(0.55 - var(--dusk) * 0.45);
+  animation: lantern 9s ease-in-out infinite alternate;
+}
+@keyframes lantern {
+  to {
+    scale: 1.05;
+    translate: 0.8% 0.5%;
+  }
 }
 .room-light::after {
   background: linear-gradient(180deg, #1d2552, var(--yoru));
@@ -141,6 +148,7 @@ body:has(.kit-drawer[data-open="true"]) .room-art {
 }
 .title-block h1 {
   margin: 0;
+  white-space: nowrap;
   font: 700 1.7rem/1.1 var(--font-display);
   text-shadow: 0 2px 18px rgb(20 10 4 / 0.6);
 }
@@ -1056,6 +1064,14 @@ body:has(.kit-drawer[data-open="true"]) .room-art {
 /* ---------- Narrower screens: stack, board first ---------- */
 
 @media (max-width: 1099px) {
+  .title-block p,
+  .chip-wide {
+    display: none;
+  }
+  .kit-back,
+  .kit-drawer-toggle.new-game {
+    white-space: nowrap;
+  }
   .room {
     display: flex;
     flex-direction: column;
@@ -1176,6 +1192,7 @@ body:has(.kit-drawer[data-open="true"]) .room-art {
   .kit-drawer.shoji {
     transition: none;
   }
+  .room-light::before,
   .kit-drawer.shoji[data-open="true"],
   .seat-card[data-thinking="true"] .steam,
   .live[data-on="true"]::before,
