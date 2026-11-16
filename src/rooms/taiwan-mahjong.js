@@ -169,10 +169,13 @@ async function runAIChain() {
 function buildAISeats(body, count) {
   const requested = Array.isArray(body.aiPlayers) ? body.aiPlayers.slice(0, count) : [];
   const cast = seatCharacters(count, requested.map((seat) => seat?.characterId));
-  return cast.map((character, index) => ({
-    character,
-    aiConfig: normalizeModelConfig(id, requested[index] ?? {}),
-  }));
+  return cast.map((character, index) => {
+    try {
+      return { character, aiConfig: normalizeModelConfig(id, requested[index] ?? {}) };
+    } catch (error) {
+      throw httpError(400, error.message);
+    }
+  });
 }
 
 function route(handler) {
