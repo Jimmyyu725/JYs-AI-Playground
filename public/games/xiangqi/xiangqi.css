@@ -287,7 +287,7 @@ body:has(.seat-inner[data-active="true"] .kit-seat:not([data-character-id])) .mo
   --board-w: min(calc((100dvh - 120px) * 0.86), calc(100vw - 720px), 760px);
   display: grid;
   grid-template-columns: minmax(220px, 280px) var(--board-w) minmax(260px, 330px);
-  grid-template-rows: auto auto 1fr auto;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
   grid-template-areas:
     "top board scroll"
     "status board scroll"
@@ -297,7 +297,9 @@ body:has(.seat-inner[data-active="true"] .kit-seat:not([data-character-id])) .mo
   column-gap: clamp(20px, 2.4vw, 40px);
   row-gap: 14px;
   padding: 10px clamp(16px, 3vw, 32px) 24px;
-  min-height: calc(100dvh - 70px);
+  /* A fixed height on wide screens: the side rails share it and the talk log gives way. */
+  height: calc(100dvh - 70px);
+  min-height: 560px;
 }
 #seat-top { grid-area: top; }
 #seat-bottom { grid-area: bottom; }
@@ -680,6 +682,7 @@ body[data-flipped="true"] .glyph {
   color: #f3b0a6;
 }
 .model-tag {
+  white-space: nowrap;
   justify-self: start;
   font-size: 0.75rem;
   padding: 2px 10px;
@@ -782,11 +785,18 @@ body[data-flipped="true"] .glyph {
 
 .talk-log {
   grid-area: talk;
-  align-self: start;
-  display: grid;
+  align-self: stretch;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
   gap: 8px;
-  max-height: 100%;
   overflow: hidden;
+  /* Newest line at the bottom; older ones fade out under the status card. */
+  mask-image: linear-gradient(to bottom, transparent, black 36px);
+}
+.talk-line {
+  flex: none;
 }
 .talk-log:empty {
   display: none;
@@ -1187,6 +1197,7 @@ body[data-flipped="true"] .glyph {
 
 @media (max-width: 1180px) {
   .xq-main {
+    height: auto;
     --board-w: min(calc((100dvh - 120px) * 0.86), calc(100vw - 420px), 720px);
     grid-template-columns: minmax(220px, 300px) var(--board-w);
     grid-template-areas:
@@ -1223,7 +1234,7 @@ body[data-flipped="true"] .glyph {
   }
   .seat-inner {
     grid-template-columns: auto 1fr auto;
-    grid-template-areas: "ring meta tray";
+    grid-template-areas: "ring meta" "tray tray";
     padding: 8px 12px;
     border-radius: 14px;
   }
@@ -1237,8 +1248,7 @@ body[data-flipped="true"] .glyph {
     font-size: 1.1rem;
   }
   .tray {
-    justify-content: flex-end;
-    max-width: 46vw;
+    justify-content: flex-start;
   }
   .tray-piece {
     width: 20px;

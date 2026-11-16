@@ -305,7 +305,9 @@ function renderStatus() {
   if (state.status === "complete") {
     line.textContent = state.resultText ?? "The game is over.";
     card.dataset.tone = "done";
-    actions.append(button("New game", () => setup.open()), ...reviewButtons());
+    actions.append(button("New game", () => setup.open()));
+    // The result card carries the review buttons; once it is dismissed they move here.
+    if (resultDismissedFor === state.createdAt) actions.append(...reviewButtons());
   } else if (state.aiError) {
     card.dataset.tone = "error";
     line.textContent = `${state.aiError.playerName} could not move: ${state.aiError.message}`;
@@ -422,6 +424,7 @@ function showReview(review) {
   box.replaceChildren(head, el("p", "review-body", review.review), turning, advice);
   resultDismissedFor = state?.createdAt ?? null;
   renderResult();
+  renderStatus();
   box.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "nearest" });
 }
 
@@ -863,6 +866,7 @@ async function boot() {
   $("result-close").addEventListener("click", () => {
     resultDismissedFor = state?.createdAt ?? null;
     renderResult();
+    renderStatus();
   });
   startPetals();
   const initial = await request("/api/xiangqi/state").catch(() => null);
