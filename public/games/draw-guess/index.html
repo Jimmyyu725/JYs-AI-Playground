@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#3d1f14" />
+    <title>Draw &amp; Guess 你画我猜 — JYs AI Playground</title>
+    <link rel="icon" href="data:," />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,400..800,0..100,0..1;1,9..144,400..800,0..100,0..1&family=Instrument+Sans:wght@400;500;600&family=Ma+Shan+Zheng&display=swap" />
+    <link rel="stylesheet" href="/shared/kit.css" />
+    <link rel="stylesheet" href="/games/draw-guess/draw-guess.css" />
+  </head>
+  <body>
+    <div class="atelier" aria-hidden="true">
+      <div class="atelier-bg"></div>
+      <div class="atelier-rays"></div>
+      <div class="atelier-dusk"></div>
+      <div class="atelier-motes"></div>
+    </div>
+
+    <header class="topbar">
+      <div class="topbar-left" id="topbar-left"></div>
+      <h1 class="room-title">
+        <span class="title-zh" lang="zh">你画我猜</span>
+        <span class="title-en">Draw <em>&amp;</em> Guess</span>
+      </h1>
+      <div class="topbar-right" id="topbar-right">
+        <span class="round-chip" id="round-chip">Atelier closed</span>
+      </div>
+    </header>
+
+    <main class="studio" id="studio">
+      <section class="sitters" aria-label="Players">
+        <h2 class="wall-label">Around the easel</h2>
+        <div class="seat-row" id="seat-row"></div>
+        <div class="salon" id="salon" hidden>
+          <h2 class="wall-label">The salon</h2>
+          <div class="salon-grid" id="salon-grid"></div>
+        </div>
+      </section>
+
+      <section class="stage" aria-label="Canvas">
+        <div class="tape" id="tape">
+          <span class="tape-word" id="tape-word">Pull up a stool</span>
+          <span class="tape-meta" id="tape-meta"></span>
+        </div>
+        <div class="frame" id="frame">
+          <div class="frame-inner" id="frame-inner">
+            <img class="painting" id="painting" alt="" hidden />
+            <canvas class="sketch" id="sketch" width="1024" height="1024" hidden></canvas>
+            <div class="frame-panel" id="frame-panel"></div>
+            <img class="stamp" id="stamp" src="/assets/rooms/draw-guess/splatter-amber.webp" alt="" hidden />
+          </div>
+          <div class="clock" id="clock" hidden><span id="clock-text">60</span></div>
+        </div>
+        <div class="tools" id="tools" hidden>
+          <div class="palette" id="palette" role="radiogroup" aria-label="Paint colour">
+            <img src="/assets/rooms/draw-guess/palette.webp" alt="" draggable="false" />
+          </div>
+          <div class="brushes" role="radiogroup" aria-label="Brush size" id="brushes"></div>
+          <div class="tool-buttons">
+            <button type="button" class="tool" id="tool-eraser" aria-pressed="false" title="Rag (eraser)">Rag</button>
+            <button type="button" class="tool" id="tool-undo" title="Undo">Undo</button>
+            <button type="button" class="tool" id="tool-clear" title="Clear">Clear</button>
+            <button type="button" class="hang" id="tool-submit">Hang it</button>
+          </div>
+        </div>
+        <form class="guess-bar" id="guess-bar" hidden autocomplete="off">
+          <input id="guess-input" name="guess" maxlength="60" placeholder="Your guess…" aria-label="Your guess" />
+          <button type="submit" class="hang">Guess</button>
+          <button type="button" class="ghost" id="pass-button">Pass</button>
+        </form>
+        <div class="notice" id="notice" hidden></div>
+      </section>
+
+      <section class="wall" aria-label="Guesses and table talk">
+        <h2 class="wall-label">Pinned to the wall</h2>
+        <ol class="slips" id="slips" aria-live="polite"></ol>
+      </section>
+    </main>
+
+    <script type="module" src="/games/draw-guess/draw-guess.js"></script>
+  </body>
+</html>
