@@ -226,7 +226,7 @@ function expressionFor(player) {
     if (result.deltas?.[player.seat] < 0) return "defeated";
     return "neutral";
   }
-  if (state.aiThinking?.seat === player.seat) return "thinking";
+  if (state.aiThinking?.seat === player.seat || state.aiThinking?.seats?.includes(player.seat)) return "thinking";
   return "neutral";
 }
 

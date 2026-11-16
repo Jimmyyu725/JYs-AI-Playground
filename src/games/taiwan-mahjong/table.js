@@ -73,6 +73,16 @@ export class TaiwanMahjongTable {
     return seats.find((seat) => !this.players[seat].isHuman) ?? null;
   }
 
+  /** Every AI seat whose decision is due now: one on a turn, several in a claim window. */
+  aiSeatsToAct() {
+    if (this.aiError || (this.mode === "arena" && this.arenaPaused)) return [];
+    return getSeatsToAct(this.state).filter((seat) => !this.players[seat].isHuman);
+  }
+
+  seatStillToAct(seat) {
+    return getSeatsToAct(this.state).includes(seat);
+  }
+
   humanAction(action) {
     if (this.humanSeat === null) throw Object.assign(new Error("This is an arena table; nobody human is seated"), { status: 409 });
     if (!getSeatsToAct(this.state).includes(this.humanSeat)) throw Object.assign(new Error("It is not your decision right now"), { status: 409 });

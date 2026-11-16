@@ -120,37 +120,41 @@ async function runAIChain() {
   try {
     for (;;) {
       if (!live()) return;
-      const seat = current.nextAISeat();
-      if (seat === null) break;
-      const player = current.players[seat];
-      current.aiThinking = { seat, playerName: player.name, status: `Asking ${player.aiConfig.model}…`, startedAt: Date.now(), retry: null };
+      // In a claim window every AI seat with an option is asked at once; on its own turn, one seat.
+      const seats = current.aiSeatsToAct();
+      if (seats.length === 0) break;
+      const first = current.players[seats[0]];
+      const names = seats.map((seat) => current.players[seat].name).join(" and ");
+      current.aiThinking = { seat: seats[0], seats, playerName: names, status: `Asking ${first.aiConfig.model}…`, startedAt: Date.now(), retry: null };
       broadcastState();
-      try {
-        const result = await current.playAISeat(seat, (request) => decide(request, {
-          onStatus(status) {
-            if (!live() || !current.aiThinking) return;
-            current.aiThinking = { ...current.aiThinking, status };
-            channel.broadcast("ai_stream", { phase: "status", seat, status });
-          },
-          onSummaryDelta(delta) {
-            if (live()) channel.broadcast("ai_stream", { phase: "summary_delta", seat, delta });
-          },
-        }), {
-          onRetry({ retryNumber, maxRetries, error }) {
-            if (!live()) return;
-            current.aiThinking = { ...current.aiThinking, status: `${error}. Retrying (${retryNumber}/${maxRetries})…`, retry: retryNumber };
-            broadcastState();
-          },
-        });
-        if (!live()) return;
-        current.aiThinking = null;
-        if (result?.talk) channel.broadcast("table_talk", result.talk);
-        channel.broadcast("ai_move", { seat, label: result?.decision?.label ?? "" });
-      } catch (error) {
-        if (!live()) return;
-        current.setAIError(seat, publicError(error));
-        channel.broadcast("ai_stream", { phase: "error", seat, message: current.aiError.message });
-      }
+      const outcomes = await Promise.allSettled(seats.map((seat) => current.playAISeat(seat, (request) => decide(request, {
+        onStatus(status) {
+          if (!live() || !current.aiThinking) return;
+          current.aiThinking = { ...current.aiThinking, status };
+          channel.broadcast("ai_stream", { phase: "status", seat, status });
+        },
+        onSummaryDelta(delta) {
+          if (live()) channel.broadcast("ai_stream", { phase: "summary_delta", seat, delta });
+        },
+      }), {
+        onRetry({ retryNumber, maxRetries, error }) {
+          if (!live()) return;
+          current.aiThinking = { ...current.aiThinking, status: `${current.players[seat].name}: ${error}. Retrying (${retryNumber}/${maxRetries})…`, retry: retryNumber };
+          broadcastState();
+        },
+      })));
+      if (!live()) return;
+      current.aiThinking = null;
+      outcomes.forEach((outcome, index) => {
+        const seat = seats[index];
+        if (outcome.status === "fulfilled") {
+          if (outcome.value?.talk) channel.broadcast("table_talk", outcome.value.talk);
+          if (outcome.value) channel.broadcast("ai_move", { seat, label: outcome.value.decision.label });
+        } else if (current.seatStillToAct(seat) && !current.aiError) {
+          current.setAIError(seat, publicError(outcome.reason));
+          channel.broadcast("ai_stream", { phase: "error", seat, message: current.aiError.message });
+        }
+      });
       persist(current);
       broadcastState();
     }

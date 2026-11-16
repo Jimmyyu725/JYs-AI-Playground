@@ -145,6 +145,31 @@ test("a human move that closes the claim window clears a pause on the AI seat it
   assert.fail("no seed produced a shared claim window");
 });
 
+test("claim-window AI seats can be asked at once; late answers to a closed window are dropped", async () => {
+  let windows = 0;
+  for (let seed = 1; seed < 40 && windows < 5; seed += 1) {
+    const table = new TaiwanMahjongTable({ mode: "arena", aiSeats: seats(4), length: "single", seed });
+    let delay = 0;
+    const decide = async (request) => {
+      delay = (delay + 7) % 13;
+      await new Promise((resolve) => setTimeout(resolve, delay));
+      return { output: { actionId: 1 }, tableTalk: "" };
+    };
+    for (let step = 0; step < 600 && table.state.phase !== "gameOver"; step += 1) {
+      const due = table.aiSeatsToAct();
+      if (due.length === 0) break;
+      if (due.length > 1) windows += 1;
+      const outcomes = await Promise.allSettled(due.map((seat) => table.playAISeat(seat, decide)));
+      assert.ok(outcomes.every((outcome) => outcome.status === "fulfilled"), "no seat fails because another answered first");
+      const tiles = table.state.wall.length + table.state.players.reduce((sum, player) => sum
+        + player.hand.length + player.discards.length + player.flowers.length
+        + player.melds.reduce((count, meld) => count + meld.tiles.length, 0), 0);
+      assert.equal(tiles, 144);
+    }
+  }
+  assert.ok(windows > 0, "some claim window had two AI seats");
+});
+
 test("a saved table round-trips through JSON", () => {
   const table = new TaiwanMahjongTable({ mode: "human-vs-ai", aiSeats: seats(3), seed: 9, humanName: "Jay" });
   const restored = TaiwanMahjongTable.fromJSON(JSON.parse(JSON.stringify(table.toJSON())), getCharacter);
