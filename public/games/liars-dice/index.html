@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#140d08" />
+    <title>大话骰 Liar's Dice — JYs AI Playground</title>
+    <link rel="icon" href="data:," />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Pirata+One&family=Alegreya:ital,wght@0,400;0,500;0,700;1,400&family=Alegreya+SC:wght@500;700&family=Ma+Shan+Zheng&display=swap"
+    />
+    <link rel="stylesheet" href="/shared/kit.css" />
+    <link rel="stylesheet" href="/games/liars-dice/liars-dice.css" />
+  </head>
+  <body>
+    <div class="hold" aria-hidden="true"><div class="hold-art"></div><div class="lantern-glow"></div></div>
+
+    <header class="deckhead">
+      <div class="deckhead-left" id="nav-slot"></div>
+      <h1 class="room-title">
+        <span class="title-zh" lang="zh">大话骰</span>
+        <span class="title-en">Liar's Dice</span>
+      </h1>
+      <div class="deckhead-right" id="tools-slot"></div>
+    </header>
+
+    <main class="tavern" id="tavern" data-mode="idle">
+      <section class="table-stage" aria-label="Dice table">
+        <div class="round-strip" id="round-strip">
+          <span class="strip-item"><small>Round</small><strong id="round-number">–</strong></span>
+          <span class="strip-item"><small>Dice afloat</small><strong id="dice-total">–</strong></span>
+          <span class="strip-item rule-badge" id="rule-badge">Ones wild</span>
+        </div>
+
+        <ol class="crew" id="crew" aria-label="Players"></ol>
+
+        <div class="bid-plaque" id="bid-plaque" aria-live="polite">
+          <p class="plaque-empty" id="plaque-empty">The table is quiet. Open the setup to seat a crew.</p>
+          <div class="plaque-bid" id="plaque-bid" hidden>
+            <span class="plaque-quantity" id="plaque-quantity">3</span>
+            <span class="plaque-times">×</span>
+            <span class="plaque-die" id="plaque-die"></span>
+            <span class="plaque-by" id="plaque-by"></span>
+          </div>
+          <p class="turn-line" id="turn-line"></p>
+        </div>
+
+        <div class="ai-pause" id="ai-pause" hidden>
+          <p id="ai-pause-text"></p>
+          <button type="button" class="brass-button" id="retry-ai">Retry the request</button>
+        </div>
+
+        <section class="tray" id="tray" aria-label="Your dice and bid">
+          <div class="tray-hand">
+            <span class="tray-label" id="hand-label">Your cup</span>
+            <div class="hand" id="hand"></div>
+          </div>
+          <div class="tray-controls" id="bid-controls">
+            <div class="stepper" role="group" aria-label="Quantity">
+              <button type="button" class="step" id="qty-down" aria-label="Fewer dice">−</button>
+              <output class="qty" id="qty" aria-live="polite">1</output>
+              <button type="button" class="step" id="qty-up" aria-label="More dice">+</button>
+            </div>
+            <span class="tray-times" aria-hidden="true">×</span>
+            <div class="face-row" id="face-row" role="radiogroup" aria-label="Face"></div>
+            <button type="button" class="brass-button raise" id="raise-button">Raise</button>
+            <button type="button" class="seal" id="liar-button" aria-describedby="liar-hint">
+              <span class="seal-ring" aria-hidden="true"></span><span class="seal-text">Liar!</span>
+            </button>
+            <button type="button" class="sea-button" id="calza-button" title="Calza: claim the bid is exactly right">Spot on</button>
+            <small class="liar-hint" id="liar-hint">Hold to call</small>
+          </div>
+          <div class="tray-arena" id="arena-controls" hidden>
+            <span class="tray-label">AI arena · every cup is open to you</span>
+            <button type="button" class="brass-button" id="arena-toggle">Pause</button>
+          </div>
+        </section>
+      </section>
+
+      <aside class="ship-log" aria-label="Ship's log">
+        <header class="log-head">
+          <h2>Ship's log</h2>
+          <span class="log-sub" id="log-sub">bids, calls and table talk</span>
+        </header>
+        <ol class="log-list" id="log-list"></ol>
+        <div class="thinking" id="thinking" hidden></div>
+      </aside>
+    </main>
+
+    <div class="reveal" id="reveal" hidden aria-live="assertive">
+      <div class="reveal-stamp" id="reveal-stamp">Liar!</div>
+      <p class="reveal-text" id="reveal-text"></p>
+    </div>
+
+    <section class="result-card" id="result-card" hidden aria-label="Game result">
+      <h2 class="result-title" id="result-title"></h2>
+      <ol class="placements" id="placements"></ol>
+      <div class="review-buttons" id="review-buttons"></div>
+      <article class="review" id="review" hidden></article>
+      <div class="result-actions">
+        <button type="button" class="brass-button" id="again-button">Deal a new game</button>
+        <button type="button" class="sea-button" id="close-result">Look at the table</button>
+      </div>
+    </section>
+
+    <script type="module" src="/games/liars-dice/liars-dice.js"></script>
+  </body>
+</html>
