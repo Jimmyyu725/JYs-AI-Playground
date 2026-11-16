@@ -356,7 +356,15 @@ function renderYou() {
   renderFan();
 }
 
-function blade({ className = "", art = null, glyph = "", title, note, disabled = false, onClick, index = 0, count = 1 }) {
+function unavailableReason(type, me) {
+  if (me.coins >= 10 && type !== "coup") return "At 10 coins you must Coup";
+  if (type === "coup") return "Needs 7 coins";
+  if (type === "assassinate") return "Needs 3 coins";
+  if (type === "steal") return "Nobody has coins to steal";
+  return "Not available now";
+}
+
+function blade({ className = "", art = null, glyph = "", title, note, disabled = false, onClick, index = 0, count = 1, hint = "" }) {
   const node = el("button", `blade ${className}`.trim());
   node.type = "button";
   const offset = index - (count - 1) / 2;
@@ -369,6 +377,7 @@ function blade({ className = "", art = null, glyph = "", title, note, disabled =
   label.append(el("b", null, title), el("small", null, note));
   node.append(icon, label);
   node.disabled = disabled;
+  if (hint) node.title = hint;
   if (onClick) node.addEventListener("click", onClick);
   return node;
 }
@@ -406,6 +415,7 @@ function renderFan() {
             note: info.note,
             disabled: options.length === 0,
             className: pickedTarget === type ? "picked" : "",
+            hint: options.length ? "" : unavailableReason(type, me),
             onClick: () => {
               if (!info.targeted) return act(options[0].action);
               pickedTarget = pickedTarget === type ? null : type;
