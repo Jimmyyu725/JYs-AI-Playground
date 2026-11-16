@@ -54,7 +54,7 @@ function niceTicks(min, max, count = 4) {
 }
 
 /** Rating paths of the top six entrants over this game's recent matches, aligned so every path ends "now". */
-function trend(ladder, registry) {
+function trend(ladder, registry, width = 600) {
   const top = ladder.ratings.slice(0, 6);
   const paths = ratingPaths(ladder.ratings, ladder.recentMatches);
   const series = top.map((entry, index) => ({ entry, color: LINE_COLORS[index], points: paths[entry.key] ?? [entry.rating] }));
@@ -62,8 +62,8 @@ function trend(ladder, registry) {
   const values = series.flatMap((line) => line.points).concat(BASELINE);
   const low = Math.min(...values) - 8;
   const high = Math.max(...values) + 8;
-  const W = 600;
-  const H = 240;
+  const W = Math.round(Math.min(600, Math.max(300, width)));
+  const H = Math.round(W * 0.42);
   const pad = { left: 40, right: 12, top: 12, bottom: 22 };
   const x = (index) => pad.left + (index / (length - 1)) * (W - pad.left - pad.right);
   const y = (value) => pad.top + (1 - (value - low) / (high - low)) * (H - pad.top - pad.bottom);
@@ -94,26 +94,26 @@ function trend(ladder, registry) {
   return wrap;
 }
 
-/** Overall view: how many recorded matches each room has, in each room's own light. */
+/** Overall view: how many recorded matches each room has, one bar per room in that room's own light. */
 function roomActivity(counts, catalog) {
   const rows = catalog.games
     .map((game) => [game.id, counts[game.id] ?? 0, game])
     .filter(([, count, game]) => isOpen(game) || count > 0);
   const max = Math.max(1, ...rows.map(([, count]) => count));
-  const H = rows.length * 34 + 6;
-  const chart = svg("svg", { viewBox: `0 0 600 ${H}`, class: "rooms-svg", role: "img", "aria-label": "Recorded matches by room" });
-  rows.forEach(([gameId, count, game], index) => {
-    const name = game.name;
-    const top = index * 34 + 6;
-    const width = (count / max) * 380;
-    chart.append(
-      Object.assign(svg("text", { x: 0, y: top + 17, class: "room-label" }), { textContent: name }),
-      svg("rect", { x: 170, y: top + 4, width: 380, height: 18, rx: 9, class: "room-track" }),
-      svg("rect", { x: 170, y: top + 4, width: Math.max(width, count ? 18 : 0), height: 18, rx: 9, fill: roomLight(gameId).glow, class: "room-bar" }),
-      Object.assign(svg("text", { x: 560, y: top + 17, class: "room-count" }), { textContent: String(count) }),
+  const list = el("ol", "rooms-list");
+  list.setAttribute("aria-label", "Recorded matches by room");
+  for (const [gameId, count, game] of rows) {
+    const row = el("li", "room-row");
+    row.style.setProperty("--glow", roomLight(gameId).glow);
+    const bar = svg("svg", { viewBox: "0 0 100 10", preserveAspectRatio: "none", class: "room-svg", "aria-hidden": "true" });
+    bar.append(
+      svg("rect", { x: 0, y: 0, width: 100, height: 10, rx: 5, class: "room-track" }),
+      svg("rect", { x: 0, y: 0, width: count ? Math.max((count / max) * 100, 4) : 0, height: 10, rx: 5, class: "room-bar" }),
     );
-  });
-  return chart;
+    row.append(el("span", "room-label", game.name), bar, el("span", "room-count", String(count)));
+    list.append(row);
+  }
+  return list;
 }
 
 function matchItem(match, { cast, registry, catalog }) {
@@ -167,6 +167,14 @@ async function main() {
   const perGameCounts = Object.fromEntries(playedGames.map((gameId) => [gameId, gameLadders[gameId].matchCount]));
   document.querySelector("#match-count").textContent = overview.matchCount ? String(overview.matchCount) : "no";
 
+  const leader = overview.overall.find((entry) => entry.kind !== "human");
+  if (leader) {
+    document.querySelector("#leader-rating").textContent = String(leader.rating);
+    document.querySelector("#leader-name").textContent = entrantLabel(leader, registry);
+    document.querySelector("#leader-record").textContent = `${leader.wins} wins · ${leader.losses} losses${leader.draws ? ` · ${leader.draws} draws` : ""} across ${leader.matches} matches`;
+    document.querySelector("#leader").hidden = false;
+  }
+
   const tabRow = document.querySelector("#ladder-tabs");
   const nameOf = (id) => (id === "overall" ? "Overall" : catalog.games.find((game) => game.id === id)?.name ?? id);
   for (const id of tabs) {
@@ -201,7 +209,7 @@ async function main() {
       isOverall
         ? roomActivity(perGameCounts, catalog)
         : ladder.ratings.length
-          ? trend(ladder, registry)
+          ? trend(ladder, registry, document.querySelector("#trend-chart").clientWidth)
           : el("p", "chart-empty", "The trend appears after the first finished game."),
     );
     document.querySelector("#recent-note").textContent = matches.length ? `The last ${matches.length}, newest first.` : "";

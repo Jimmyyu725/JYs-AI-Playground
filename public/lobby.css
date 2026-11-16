@@ -952,3 +952,18 @@ body.is-entering .door:not(.is-chosen) {
   color: var(--night);
   border-color: var(--ink);
 }
+@media (min-width: 960px) {
+  .page-intro:has(.intro-aside) {
+    display: grid;
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+    column-gap: 48px;
+  }
+  .page-intro:has(.intro-aside) > :not(.intro-aside) {
+    grid-column: 1;
+  }
+  .intro-aside {
+    grid-column: 2;
+    grid-row: 1 / span 4;
+    align-self: center;
+  }
+}

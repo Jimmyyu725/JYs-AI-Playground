@@ -1,5 +1,5 @@
 // The House: the full roster with personality, voice and a record built from recent ladder matches.
-import { characterRecords, mergeMatches, numberWord } from "/assets/lobby/house-data.js";
+import { characterRecords, mergeMatches, numberWord, pickTrio } from "/assets/lobby/house-data.js";
 import { el, getJSON, loadCast, mountHouseBar, portrait } from "/assets/lobby/house-ui.js";
 
 const grid = document.querySelector("#cast-grid");
@@ -42,6 +42,24 @@ function card(character, record, gameNames, index) {
   return item;
 }
 
+function fan(cast) {
+  const list = document.querySelector("#intro-fan");
+  list.replaceChildren(
+    ...pickTrio(cast, { count: 5 }).map((character, index) => {
+      const item = el("li");
+      item.style.setProperty("--who", character.color);
+      item.style.setProperty("--spread", index - 2);
+      item.style.setProperty("--dist", Math.abs(index - 2));
+      const link = el("a");
+      link.href = `#${character.id}`;
+      link.setAttribute("aria-label", `${character.name}, ${character.title}`);
+      link.append(portrait(character, { eager: true }), el("span", "fan-name", character.shortName));
+      item.append(link);
+      return item;
+    }),
+  );
+}
+
 function applyFilter() {
   const query = search.value.trim().toLowerCase();
   let visible = 0;
@@ -62,6 +80,7 @@ async function main() {
   ]);
   const gameNames = Object.fromEntries(catalog.games.map((game) => [game.id, game.name]));
   const records = characterRecords(matches);
+  fan(cast);
   grid.replaceChildren(...cast.map((character, index) => card(character, records[character.id], gameNames, index)));
   document.querySelector("#cast-count").textContent = numberWord(cast.length).toLowerCase();
   note.textContent = matches.length

@@ -192,3 +192,60 @@
     font-size: 0.95rem;
   }
 }
+
+/* A fan of five portraits beside the title, reshuffled on every visit. */
+.intro-fan {
+  position: relative;
+  height: 340px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.intro-fan li {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 150px;
+  translate: calc(-50% + var(--spread) * 82px) calc(var(--dist) * 18px);
+  rotate: calc(var(--spread) * 7deg);
+  transform-origin: 50% 120%;
+  z-index: calc(10 - var(--dist));
+  transition: translate 0.5s var(--ease), rotate 0.5s var(--ease), scale 0.5s var(--ease);
+}
+.intro-fan li:hover {
+  scale: 1.08;
+  z-index: 20;
+}
+.intro-fan a {
+  display: block;
+  text-decoration: none;
+}
+.intro-fan .portrait {
+  border: 3px solid color-mix(in oklab, var(--who) 60%, var(--night));
+  box-shadow: 0 24px 50px -20px rgb(0 0 0 / 0.8), 0 0 40px -12px var(--who);
+}
+.intro-fan span.fan-name {
+  display: block;
+  margin-top: 8px;
+  text-align: center;
+  font: italic 400 1.05rem/1 var(--font-display);
+  color: var(--ink-soft);
+}
+@media (max-width: 959px) {
+  .intro-fan {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .intro-fan li {
+    animation: fan-open 0.9s var(--ease) both;
+    animation-delay: calc(var(--dist) * 0.08s);
+  }
+  @keyframes fan-open {
+    from {
+      translate: -50% 40px;
+      rotate: 0deg;
+      opacity: 0;
+    }
+  }
+}
