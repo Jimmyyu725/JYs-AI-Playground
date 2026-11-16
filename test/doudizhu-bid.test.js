@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { AIDecisionError } from "../src/platform/decision-gateway.js";
 import { requestDoudizhuBidWithRetry, validateBidDecision } from "../src/games/doudizhu-ai.js";
+import { DouDizhuGame } from "../src/games/doudizhu-game.js";
 
 const snapshotWithBid = (currentBid) => ({ table: { currentBid }, actor: { hand: [] } });
 
@@ -56,4 +57,16 @@ test("a bid that stays invalid pauses after two automatic retries", async () => 
     /invalid bid score/,
   );
   assert.equal(calls, 3);
+});
+
+test("the bottom three stay hidden from the public state and the AI snapshot until a landlord takes them", () => {
+  const game = new DouDizhuGame({ gameMode: "arena" });
+  assert.deepEqual(game.publicState().bottomCards, []);
+  assert.equal(game.publicState().bottomRevealed, false);
+  assert.deepEqual(game.aiSnapshot().table.bottomCards, []);
+  const bottom = [...game.bottomCards];
+  game.applyBid(game.currentActorSeat, 3);
+  assert.equal(game.publicState().bottomRevealed, true);
+  assert.deepEqual(game.publicState().bottomCards, bottom);
+  assert.deepEqual(game.aiSnapshot().table.bottomCards, bottom);
 });

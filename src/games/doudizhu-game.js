@@ -594,7 +594,8 @@ export class DouDizhuGame {
         landlordSeat: this.landlordSeat,
         currentBid: this.highestBid,
         highestBidderSeat: this.highestBidderSeat,
-        bottomCards: [...this.bottomCards],
+        // The bottom three stay face down until a landlord takes them.
+        bottomCards: this.landlordSeat === null ? [] : [...this.bottomCards],
         players: this.players.map((player) => ({
           seat: player.seat,
           name: player.name,
@@ -651,8 +652,8 @@ export class DouDizhuGame {
       landlordSeat: this.landlordSeat,
       highestBid: this.highestBid,
       highestBidderSeat: this.highestBidderSeat,
-      bottomCards: [...this.bottomCards],
-      bottomRevealed: this.phase !== "bidding" || this.landlordSeat !== null,
+      bottomCards: this.landlordSeat === null ? [] : [...this.bottomCards],
+      bottomRevealed: this.landlordSeat !== null,
       lastPlay: this.lastPlay,
       leaderSeat: this.leaderSeat,
       bombsPlayed: this.bombsPlayed,
