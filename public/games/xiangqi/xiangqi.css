@@ -544,6 +544,8 @@ body[data-flipped="true"] .glyph {
 
 .seat-block {
   align-self: start;
+  position: relative;
+  z-index: 6;
 }
 #seat-bottom {
   align-self: end;

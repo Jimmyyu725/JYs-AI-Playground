@@ -3,7 +3,7 @@
 
 import { backToLobby, characterPicker, drawer, loadCharacters, loadModels, modelPicker, prefersReducedMotion, seat, toast } from "/shared/kit.js";
 import { sfx } from "/shared/sfx.js";
-import { bindTableTalk } from "/shared/speech.js";
+import { speak } from "/shared/speech.js";
 
 const GLYPHS = {
   red: { K: "帥", A: "仕", B: "相", N: "傌", R: "俥", C: "炮", P: "兵" },
@@ -699,7 +699,28 @@ function connect() {
     else if (message.type === "state") accept(message.payload);
     else if (message.type === "ai_stream") onStream(message.payload);
   });
-  bindTableTalk(events, (speaker) => seatElements[speaker], { placement: "right" });
+  const spoken = new Set();
+  events.addEventListener("message", (event) => {
+    let message;
+    try {
+      message = JSON.parse(event.data);
+    } catch {
+      return;
+    }
+    if (message?.type !== "table_talk" || spoken.has(message.payload?.id)) return;
+    spoken.add(message.payload.id);
+    say(message.payload);
+  });
+}
+
+// Speech bubble beside the speaker's seat card: to the right of the rail on wide screens,
+// towards the board (below the top seat, above the bottom seat) on phones.
+function say({ speaker, text }) {
+  const block = seatElements[speaker]?.closest(".seat-inner");
+  if (!block) return;
+  const phone = matchMedia("(max-width: 760px)").matches;
+  const isTop = block.parentElement?.id === "seat-top";
+  speak(block, text, { placement: phone ? (isTop ? "bottom" : "top") : "right" });
 }
 
 function onStream(payload) {
