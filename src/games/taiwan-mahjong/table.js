@@ -78,6 +78,8 @@ export class TaiwanMahjongTable {
     if (!getSeatsToAct(this.state).includes(this.humanSeat)) throw Object.assign(new Error("It is not your decision right now"), { status: 409 });
     if (!isLegalAction(this.state, this.humanSeat, action)) throw Object.assign(new Error("That move is not legal here"), { status: 400 });
     this.state = applyAction(this.state, this.humanSeat, action);
+    // A paused AI seat whose decision the human's move made moot (the claim window closed) is no longer stuck.
+    if (this.aiError && !getSeatsToAct(this.state).includes(this.aiError.seat)) this.aiError = null;
   }
 
   nextHand() {

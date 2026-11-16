@@ -13,7 +13,7 @@ import {
   transcript as createTranscript,
 } from "/shared/kit.js";
 import { sfx } from "/shared/sfx.js";
-import { bindTableTalk } from "/shared/speech.js";
+import { speak } from "/shared/speech.js";
 import { tileElement, tileName } from "/games/taiwan-mahjong/tiles.js";
 
 const ROOM = "taiwan-mahjong";
@@ -194,9 +194,13 @@ function meldElement(meld, size) {
     return group;
   }
   const tiles = meld.type === "concealedKong" ? meld.tiles.map((tile, index) => (index === 0 || index === 3 ? null : tile)) : meld.tiles;
+  let marked = false;
   tiles.forEach((tile) => {
     const item = tileElement(tile, { size });
-    if (tile && tile === meld.calledTile && meld.type !== "concealedKong") item.classList.add("is-called");
+    if (!marked && tile && tile === meld.calledTile && meld.type !== "concealedKong") {
+      item.classList.add("is-called");
+      marked = true;
+    }
     group.append(item);
   });
   return group;
@@ -626,7 +630,7 @@ function render() {
   table.dataset.empty = String(!state);
   if (!state) {
     const cup = el("img", "mj-neon mj-empty-teacup");
-    cup.src = "/assets/rooms/taiwan-mahjong/neon-teacup.webp";
+    cup.src = "/assets/rooms/taiwan-mahjong/neon-tile.webp";
     cup.alt = "";
     const open = el("button", "mj-primary", "Open a table 開桌");
     open.type = "button";
@@ -777,11 +781,25 @@ async function boot() {
       }
     }
   });
-  bindTableTalk(events, (speaker) => seatFigures.get(Number(speaker)) ?? $(`seat-${posOf(Number(speaker))}`), {
-    placement: "bottom",
-    onTalk(talk) {
-      transcript.add({ who: talk.playerName, text: talk.text, kind: "talk" });
-    },
+  // Table talk: the bubble opens toward the middle of the table from each seat.
+  const heard = new Set();
+  events.addEventListener("message", (event) => {
+    let message;
+    try {
+      message = JSON.parse(event.data);
+    } catch {
+      return;
+    }
+    const talk = message?.type === "table_talk" ? message.payload : null;
+    if (!talk || heard.has(talk.id)) return;
+    heard.add(talk.id);
+    const seat = Number(talk.speaker);
+    const pos = posOf(seat);
+    const anchor = seatFigures.get(seat) ?? $(`seat-${pos}`);
+    const phone = matchMedia("(max-width: 720px)").matches;
+    const placement = phone ? (pos === "bottom" ? "top" : "bottom") : { top: "bottom", bottom: "top", left: "right", right: "left" }[pos];
+    speak(anchor, talk.text, { placement });
+    transcript.add({ who: talk.playerName, text: talk.text, kind: "talk" });
   });
   if (prefersReducedMotion()) document.body.dataset.motion = "reduced";
 }

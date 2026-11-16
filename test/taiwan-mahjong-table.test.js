@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { AI_CHARACTERS, getCharacter } from "../src/platform/characters.js";
-import { getSeatsToAct } from "../src/games/taiwan-mahjong/engine.js";
+import { applyAction as applyEngineAction, getSeatsToAct } from "../src/games/taiwan-mahjong/engine.js";
 import { listNumberedActions } from "../src/games/taiwan-mahjong/ai-view.js";
 import { MAX_AUTOMATIC_RETRIES, TaiwanMahjongTable } from "../src/games/taiwan-mahjong/table.js";
 
@@ -112,6 +112,37 @@ test("an answer that went stale because the human answered the same claim window
   };
   const result = await table.playAISeat(second, interleaved);
   assert.ok(result === null || result.decision.ok);
+});
+
+test("a human move that closes the claim window clears a pause on the AI seat it made moot", () => {
+  for (let seed = 1; seed < 300; seed += 1) {
+    const table = new TaiwanMahjongTable({ mode: "human-vs-ai", aiSeats: seats(3), seed });
+    let found = false;
+    for (let step = 0; step < 300 && !["handOver", "gameOver"].includes(table.state.phase); step += 1) {
+      const toAct = getSeatsToAct(table.state);
+      const humanPung = toAct.includes(0) && toAct.length > 1 && table.publicState().humanActions.some((action) => action.type === "pung");
+      if (table.state.phase === "claim" && humanPung) {
+        found = true;
+        break;
+      }
+      const seat = toAct[0];
+      const options = listNumberedActions(table.state, seat);
+      const pick = options.find((entry) => entry.action.type === "pass") ?? options[options.length - 1];
+      if (seat === 0) table.humanAction(pick.action);
+      else table.state = applyEngineAction(table.state, seat, pick.action);
+    }
+    if (!found) continue;
+    const aiSeat = getSeatsToAct(table.state).find((seat) => seat !== 0);
+    table.setAIError(aiSeat, "network down");
+    table.humanAction({ type: "pung" });
+    if (getSeatsToAct(table.state).includes(aiSeat)) {
+      assert.ok(table.aiError, "the AI seat still has to answer, so the pause stays");
+    } else {
+      assert.equal(table.aiError, null);
+    }
+    return;
+  }
+  assert.fail("no seed produced a shared claim window");
 });
 
 test("a saved table round-trips through JSON", () => {
