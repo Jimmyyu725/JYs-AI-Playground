@@ -96,6 +96,12 @@ function cardFace(code, { size = "md", tag = "div" } = {}) {
   return card;
 }
 
+function cardLabel(code) {
+  if (code === "SJ") return "small joker";
+  if (code === "BJ") return "big joker";
+  return `${RANK_LABEL[code[0]] ?? code[0]}${SUITS[code[1]]?.glyph ?? ""}`;
+}
+
 function rankWord(code) {
   if (code === "SJ") return "small joker";
   if (code === "BJ") return "big joker";
@@ -294,7 +300,7 @@ function renderBottomCards() {
 }
 
 function trickKeyOf(play) {
-  return play ? `${state.handNumber}:${play.seat}:${play.cards.join(",")}` : `${state.handNumber}:none`;
+  return play ? `${state.handNumber}:${play.seat}:${play.cards.join(",")}` : `${state.handNumber}:none:${state.phase}`;
 }
 
 function renderTrick() {
@@ -518,7 +524,7 @@ function renderControls() {
   if (state.aiError) hint = "A model request is paused. Retry it on the table.";
   else if (state.phase === "complete") hint = "The hand is settled.";
   else if (myTurn && state.phase === "bidding") hint = state.highestBid ? `Beat ${state.highestBid} or pass. A bid of 3 takes the seat at once.` : "Bid for the landlord seat, or pass. A bid of 3 takes it at once.";
-  else if (myTurn) hint = leading ? "You lead: tap cards for any legal combo." : `Beat ${state.lastPlay ? state.lastPlay.description : "the play"}, or pass.`;
+  else if (myTurn) hint = leading ? "You lead: tap cards for any legal combo." : `Beat ${state.lastPlay ? `${describe(state.lastPlay)} ${state.lastPlay.cards.map(cardLabel).join(" ")}` : "the play"}, or pass.`;
   else if (state.aiThinking) hint = `${state.aiThinking.playerName} is ${state.phase === "bidding" ? "weighing a bid" : "choosing cards"}…`;
   else if (humanTable) hint = "Waiting for the next player.";
   if (myTurn && selected.size) hint = `${selected.size} selected: ${[...selected].map(rankWord).join(" ")}`;
