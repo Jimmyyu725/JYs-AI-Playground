@@ -38,6 +38,8 @@ function restore() {
   try {
     table = LiarsDiceTable.fromSave(JSON.parse(fs.readFileSync(savePath, "utf8")));
     tableVersion += 1;
+    // A finished game was recorded before the restart; mark it so it is not recorded twice.
+    if (table.isComplete) recordOnce(table, "game", () => null);
   } catch (error) {
     if (error?.code !== "ENOENT") console.error(`Ignoring the saved Liar's Dice table: ${String(error?.message || error)}`);
   }

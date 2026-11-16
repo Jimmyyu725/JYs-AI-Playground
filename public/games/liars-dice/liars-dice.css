@@ -473,7 +473,7 @@ button { font: inherit; color: inherit; }
 }
 .log-who { font: 700 0.9rem var(--ld-caps); margin-right: 6px; color: color-mix(in oklab, var(--who-color, var(--ld-ink-sepia)) 55%, var(--ld-ink-sepia)); }
 .log-bid { display: inline-flex; align-items: center; gap: 4px; vertical-align: middle; }
-.log-item[data-kind="round"] { margin-top: 8px; font: 400 1.1rem var(--ld-display); }
+.log-item[data-kind="round"] { margin-top: 8px; font: 700 0.98rem var(--ld-caps); letter-spacing: 0.02em; }
 .log-item[data-kind="round"]::before { background: transparent; box-shadow: none; content: "✦"; top: 0.15em; left: -26px; width: auto; height: auto; color: var(--ld-ink-sepia); }
 .log-item[data-kind="call"] { color: #6b1210; font-weight: 700; }
 .log-item[data-kind="call"]::before { content: "✕"; background: none; box-shadow: none; color: var(--ld-oxblood); font: 700 1rem/1 sans-serif; top: 0.3em; left: -25px; }

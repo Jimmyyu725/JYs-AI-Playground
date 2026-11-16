@@ -198,7 +198,7 @@ setupForm.addEventListener("submit", async (event) => {
   button.disabled = true;
   try {
     applyState(await post("/game", body));
-    if (matchMedia("(max-width: 720px)").matches || body.gameMode === "human") setup.close();
+    setup.close();
   } catch (error) {
     toast(error.message, { tone: "error" });
   } finally {
@@ -383,7 +383,7 @@ function renderFaces() {
 
 function renderTray() {
   const arena = state.gameMode === "arena";
-  $("bid-controls").hidden = arena;
+  $("bid-controls").hidden = arena || state.phase === "complete";
   $("arena-controls").hidden = !arena;
   $("tray").dataset.turn = String(Boolean(state.human?.canAct));
   if (arena) {
