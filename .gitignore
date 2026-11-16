@@ -12,3 +12,5 @@ tmp/
 .playground-data/
 npm-debug.log*
 .server.log
+*.log
+logs/
