@@ -817,6 +817,52 @@ button {
   color: var(--seal);
 }
 
+.ladder {
+  display: grid;
+  gap: 4px;
+}
+.ladder[hidden] {
+  display: none;
+}
+.ladder h3 {
+  margin: 4px 0 0;
+  font: 600 0.78rem/1.2 var(--font-display);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--kit-muted);
+}
+.ladder ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: rank;
+  display: grid;
+  gap: 2px;
+}
+.ladder li {
+  counter-increment: rank;
+  display: grid;
+  grid-template-columns: 1.4em 1fr auto 3.2ch;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 0.84rem;
+}
+.ladder li::before {
+  content: counter(rank);
+  font: 600 1rem/1 var(--font-display);
+  font-variant-numeric: oldstyle-nums;
+  color: var(--kit-muted);
+}
+.ladder small {
+  color: var(--kit-muted);
+  font-variant-numeric: tabular-nums;
+}
+.ladder b {
+  font: 600 1.05rem/1 var(--font-display);
+  font-variant-numeric: oldstyle-nums;
+  text-align: end;
+}
+
 .rail-actions {
   display: flex;
   flex-wrap: wrap;

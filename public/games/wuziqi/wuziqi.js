@@ -36,6 +36,8 @@ const ui = {
   resultCopy: $("result-copy"),
   reviewActions: $("review-actions"),
   review: $("review"),
+  ladder: $("ladder"),
+  ladderList: $("ladder-list"),
   newGame: $("new-game-button"),
   arenaToggle: $("arena-toggle"),
   resign: $("resign-button"),
@@ -372,7 +374,7 @@ function resultText() {
   const youWon = winner.isHuman;
   const youLost = loser.isHuman;
   const kicker = youWon ? "胜 · You win" : youLost ? "负 · You lose" : "胜负 · Result";
-  if (result.reason === "resignation") return { kicker, title: `${winner.name} wins`, copy: `${loser.name} laid down the brush and resigned after ${state.moveNumber} moves.` };
+  if (result.reason === "resignation") return { kicker, title: `${winner.name} wins`, copy: `${loser.name} laid down the brush and resigned after ${state.moveNumber} ${state.moveNumber === 1 ? "move" : "moves"}.` };
   return { kicker, title: `${winner.name} wins`, copy: `${STONE_NAME[result.winner]} joined ${result.winningLine.length} stones in a row on move ${state.moveNumber}.` };
 }
 
@@ -452,6 +454,32 @@ async function requestReview(color, button) {
   }
 }
 
+/** Elo for this room (model@effort and the shared human entry), fetched once per finished game. */
+let ladderFor = "";
+async function renderLadder() {
+  if (ladderFor === gameKey) return;
+  ladderFor = gameKey;
+  try {
+    const ladder = await api("/api/ladder/wuziqi");
+    const rows = (ladder.ratings ?? []).slice(0, 5).map((entry) => {
+      const item = document.createElement("li");
+      const name = document.createElement("span");
+      const model = entry.kind === "human" ? null : registry?.models.find((candidate) => candidate.id === entry.model);
+      name.textContent = entry.kind === "human" ? "House guests" : `${model?.shortLabel ?? model?.label ?? entry.model} · ${entry.reasoningEffort}`;
+      const rating = document.createElement("b");
+      rating.textContent = Math.round(entry.rating);
+      const record = document.createElement("small");
+      record.textContent = `${entry.wins}–${entry.losses}${entry.draws ? `–${entry.draws}` : ""}`;
+      item.append(name, record, rating);
+      return item;
+    });
+    ui.ladderList.replaceChildren(...rows);
+    ui.ladder.hidden = rows.length === 0;
+  } catch {
+    ui.ladder.hidden = true;
+  }
+}
+
 function renderRail() {
   const thinking = state.aiThinking;
   ui.liveLeaf.hidden = !thinking;
@@ -476,6 +504,7 @@ function renderRail() {
     ui.resultTitle.textContent = text.title;
     ui.resultCopy.textContent = text.copy;
     renderReview();
+    renderLadder();
   }
   ui.arenaToggle.hidden = state.gameMode !== "arena" || complete;
   ui.arenaToggle.textContent = state.arena?.paused ? "Resume the arena" : "Pause the arena";
