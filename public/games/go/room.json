@@ -1,0 +1,6 @@
+{
+  "pitch": "Chinese-rules Go on 9, 13, or 19 lines in a Kyoto tea room at dusk, against a character who reads the board with you.",
+  "world": "A Kyoto tea room at dusk: tatami, glowing shoji, a kaya goban, and a kettle on the hearth.",
+  "palette": { "bg": "#1b1824", "surface": "#2e211a", "paper": "#efe4cf", "ink": "#1d1915", "accent": "#e39a52", "highlight": "#d9ac62", "danger": "#b8321f" },
+  "hero": "/assets/rooms/go/hero-desktop.webp"
+}

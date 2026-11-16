@@ -798,6 +798,15 @@ body:has(.kit-drawer[data-open="true"]) .room-art {
   font-size: 0.78rem !important;
   color: color-mix(in oklab, var(--sumi) 70%, transparent);
 }
+.slip .ladder {
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+  color: color-mix(in oklab, var(--sumi) 66%, transparent);
+  font-variant-numeric: tabular-nums;
+}
+.slip .ladder:empty {
+  display: none;
+}
 .territory-key {
   inline-size: 10px;
   block-size: 10px;

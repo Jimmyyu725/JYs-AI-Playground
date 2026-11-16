@@ -445,6 +445,19 @@ function button(label, className, onClick) {
   return node;
 }
 
+// The house ladder line on the result slip: this table's ratings after the game was recorded.
+async function showLadder(target) {
+  try {
+    const { ratings } = await request("/api/ladder/go", undefined, { track: false });
+    const keys = state.players.map((player) => (player.isHuman ? "human" : `${player.aiConfig.model}@${player.aiConfig.reasoningEffort}`));
+    const shown = ratings.filter((rating) => keys.includes(rating.key));
+    if (!shown.length) return;
+    target.textContent = `Go ladder · ${shown.map((rating) => `${rating.kind === "human" ? "You" : `${modelLabel(rating.model)} ${rating.reasoningEffort}`} ${rating.rating}`).join(" · ")}`;
+  } catch {
+    // The ladder line is optional.
+  }
+}
+
 function renderNotice() {
   const notice = el.notice;
   const key = JSON.stringify([state.aiError, state.phase, state.result, state.review, state.reviewPending, state.gameMode]);
@@ -471,6 +484,10 @@ function renderNotice() {
       legend.innerHTML = '<i class="territory-key black"></i>Black area <i class="territory-key white"></i>White area';
       notice.append(legend);
     }
+    const ladder = document.createElement("p");
+    ladder.className = "ladder";
+    notice.append(ladder);
+    showLadder(ladder);
     if (state.review) {
       const review = document.createElement("div");
       review.className = "review";
