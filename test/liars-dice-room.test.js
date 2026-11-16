@@ -212,6 +212,26 @@ test("three rejected answers pause with an illegal_move error", async () => {
   assert.equal(calls, LIARS_DICE_MAX_ATTEMPTS);
 });
 
+test("an unparseable model answer is retried like an illegal one", async () => {
+  const table = openingTable();
+  const option = bidOption(table, 3);
+  let calls = 0;
+  const result = await requestLiarsDiceMove({
+    state: table.state,
+    seat: 1,
+    seatNames: table.seatNames,
+    character: table.players[1].character,
+    modelConfig: table.players[1].aiConfig,
+    requestDecision: async () => {
+      calls += 1;
+      if (calls === 1) throw new AIDecisionError("The model's structured decision could not be parsed", "invalid_json");
+      return { output: { option: option.option, quantity: 2, face: 3, explanation: "Threes." } };
+    },
+  });
+  assert.equal(result.attempts, 2);
+  assert.deepEqual(result.action, { type: "bid", quantity: 2, face: 3 });
+});
+
 test("a gateway failure is not retried", async () => {
   const table = openingTable();
   let calls = 0;

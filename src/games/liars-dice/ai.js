@@ -7,6 +7,8 @@ import { AIDecisionError, requestStructuredDecision } from "../../platform/decis
 import { buildAIView, buildInstructions, DECISION_SCHEMA, parseDecision } from "./ai-view.js";
 
 export const LIARS_DICE_MAX_ATTEMPTS = 3;
+// Gateway errors that mean "the model answered, but not with a usable decision": retried like an illegal move.
+const MALFORMED_CODES = new Set(["invalid_json", "empty_output"]);
 
 // The gateway adds its own required tableTalk string (with the character's voice), so the
 // engine schema's nullable tableTalk is removed here to avoid declaring the field twice.
@@ -47,17 +49,24 @@ export async function requestLiarsDiceMove({
   let retry = null;
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     const view = buildAIView(state, seat, { seatNames, character });
-    const response = await requestDecision({
-      gameId: "liars-dice",
-      modelConfig,
-      tableTalk: { voice: character?.voice ?? "" },
-      instructions: buildInstructions(view, retry),
-      input: view,
-      schemaName: "liars_dice_decision",
-      schema: GATEWAY_SCHEMA,
-    }, callbacks);
-    const output = response?.output ?? {};
-    const parsed = parseDecision(state, seat, { ...output, tableTalk: null });
+    let response;
+    let parsed;
+    try {
+      response = await requestDecision({
+        gameId: "liars-dice",
+        modelConfig,
+        tableTalk: { voice: character?.voice ?? "" },
+        instructions: buildInstructions(view, retry),
+        input: view,
+        schemaName: "liars_dice_decision",
+        schema: GATEWAY_SCHEMA,
+      }, callbacks);
+    } catch (error) {
+      if (!(error instanceof AIDecisionError) || !MALFORMED_CODES.has(error.code)) throw error;
+      parsed = { ok: false, error: { code: "malformed", message: error.message } };
+    }
+    const output = response?.output ?? null;
+    parsed ??= parseDecision(state, seat, { ...(output ?? {}), tableTalk: null });
     if (parsed.ok) {
       return {
         action: parsed.action,
