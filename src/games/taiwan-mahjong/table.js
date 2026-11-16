@@ -176,6 +176,7 @@ export class TaiwanMahjongTable {
       }),
       turnDrew: state.phase === "discard" ? state.turn.drew : null,
       log: state.log.slice(-60),
+      logTotal: state.log.length,
       history: state.history,
       standings: state.phase === "gameOver" ? this.standings() : null,
       humanActions: this.humanSeat === null ? [] : getLegalActions(state, this.humanSeat),

@@ -1,0 +1,6 @@
+{
+  "status": "live",
+  "nameZh": "台灣麻將",
+  "pitch": "Sixteen-tile Taiwanese mahjong in a 2 a.m. Taipei parlour: chow, pung, kong and tai against three sharp-eyed regulars, or watch four characters play it out.",
+  "palette": { "bg": "#0f1714", "felt": "#194632", "accent": "#ff4fb8", "highlight": "#3ef0e0", "warm": "#f2b04a" }
+}

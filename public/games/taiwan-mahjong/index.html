@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0f1714" />
+    <title>Taiwan Mahjong 台灣麻將 — JYs AI Playground</title>
+    <link rel="icon" href="data:," />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Monoton&family=ZCOOL+QingKe+HuangYou&family=IBM+Plex+Sans+Condensed:wght@400;600&family=IBM+Plex+Mono:wght@500&family=Noto+Sans+TC:wght@500;700&display=swap" />
+    <link rel="stylesheet" href="/shared/kit.css" />
+    <link rel="stylesheet" href="/games/taiwan-mahjong/mahjong.css" />
+  </head>
+  <body class="mj">
+    <div class="mj-room" aria-hidden="true">
+      <div class="mj-rain"></div>
+      <div class="mj-smoke"></div>
+      <div class="mj-fan"></div>
+    </div>
+
+    <header class="mj-top">
+      <div class="mj-top-left" id="top-left"></div>
+      <h1 class="mj-brand">
+        <span class="mj-brand-neon">Mahjong</span>
+        <span class="mj-brand-zh">台灣麻將</span>
+      </h1>
+      <div class="mj-chips" id="chips" aria-live="polite"></div>
+      <div class="mj-top-right" id="top-right"></div>
+    </header>
+
+    <main class="mj-layout">
+      <section class="mj-table" id="table" aria-label="Mahjong table">
+        <div class="mj-lamp" aria-hidden="true"></div>
+        <div class="mj-seat" data-pos="top" id="seat-top"></div>
+        <div class="mj-seat" data-pos="left" id="seat-left"></div>
+        <div class="mj-seat" data-pos="right" id="seat-right"></div>
+        <div class="mj-center" id="center">
+          <div class="mj-river" data-pos="top" id="river-top"></div>
+          <div class="mj-river" data-pos="left" id="river-left"></div>
+          <div class="mj-hub" id="hub">
+            <img class="mj-neon mj-arrow" id="arrow" src="/assets/rooms/taiwan-mahjong/neon-arrow.webp" alt="" />
+            <div class="mj-hub-body" id="hub-body"></div>
+          </div>
+          <div class="mj-river" data-pos="right" id="river-right"></div>
+          <div class="mj-river" data-pos="bottom" id="river-bottom"></div>
+        </div>
+        <div class="mj-result" id="result" hidden></div>
+        <div class="mj-seat" data-pos="bottom" id="seat-bottom"></div>
+      </section>
+
+      <section class="mj-dock" id="dock" aria-label="Your hand">
+        <div class="mj-prompt" id="prompt" aria-live="polite"></div>
+        <div class="mj-own-melds" id="own-melds"></div>
+        <div class="mj-actions" id="actions"></div>
+        <div class="mj-hand" id="hand"></div>
+      </section>
+
+      <aside class="mj-side" id="side">
+        <div class="mj-thinking" id="thinking" hidden>
+          <img class="mj-neon mj-teacup" src="/assets/rooms/taiwan-mahjong/neon-teacup.webp" alt="" />
+          <div>
+            <strong id="thinking-who"></strong>
+            <span id="thinking-status"></span>
+            <p class="mj-thinking-summary" id="thinking-summary"></p>
+          </div>
+        </div>
+        <div class="mj-error" id="ai-error" hidden></div>
+        <div class="mj-scores" id="scores" aria-label="Scores"></div>
+        <div id="transcript-slot"></div>
+      </aside>
+    </main>
+
+    <script type="module" src="/games/taiwan-mahjong/mahjong.js"></script>
+  </body>
+</html>
