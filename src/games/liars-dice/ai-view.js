@@ -166,7 +166,7 @@ Current bid: ${view.currentBid ? `${view.currentBid.label} by ${view.currentBid.
 Your options:
 ${options}
 
-Answer with "option" set to one number from the list. For a bid option also set "face" to that option's face and "quantity" to a number in its range. For Liar or Calza set quantity and face to null. "tableTalk" is an optional in-character line said aloud (at most ${TABLE_TALK_MAX} characters; bluffing is part of the game), or null. "explanation" is a private one or two sentence rationale.${retryText}`;
+Answer with "option" set to one number from the list. For a bid option also set "face" to that option's face and "quantity" to a number in its range. For Liar or Calza set quantity and face to null. "tableTalk" is an optional in-character line said aloud (at most ${TABLE_TALK_MAX} characters; bluffing is part of the game; an empty string or null stays quiet). "explanation" is a private one or two sentence rationale.${retryText}`;
 }
 
 function failure(code, message) {

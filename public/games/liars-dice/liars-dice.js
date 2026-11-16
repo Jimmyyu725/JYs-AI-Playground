@@ -7,10 +7,10 @@ import {
   loadCharacters,
   loadModels,
   modelPicker,
+  portraitUrl,
   prefersReducedMotion,
   seat as seatFigure,
   setSeatCaption,
-  setSeatExpression,
   toast,
 } from "/shared/kit.js";
 import { sfx } from "/shared/sfx.js";
@@ -65,6 +65,34 @@ function die(face, { size = "md", state: mark = "" } = {}) {
 }
 
 const counts = (reveal, value) => value === reveal.bid.face || (reveal.onesWild && reveal.bid.face !== 1 && value === 1);
+
+// Portrait expressions. Not every character has every expression painted yet: a missing one
+// falls back to the neutral portrait (and is remembered), instead of dropping to initials for good.
+const missingPortraits = new Set();
+function setExpression(figure, expression) {
+  figure.dataset.expression = expression;
+  const id = figure.dataset.characterId;
+  const frame = figure.querySelector(".kit-portrait");
+  if (!id || !frame) return;
+  const wanted = missingPortraits.has(`${id}/${expression}`) ? "neutral" : expression;
+  if (missingPortraits.has(`${id}/neutral`)) return;
+  let image = frame.querySelector("img[data-own]");
+  if (!image) {
+    frame.querySelector("img")?.remove();
+    image = el("img");
+    image.alt = "";
+    image.dataset.own = "";
+    frame.append(image);
+  }
+  const url = portraitUrl(id, wanted);
+  if (image.getAttribute("src") === url) return;
+  image.onerror = () => {
+    missingPortraits.add(`${id}/${wanted}`);
+    if (wanted !== "neutral") image.src = portraitUrl(id, "neutral");
+    else image.remove();
+  };
+  image.src = url;
+}
 
 // ---------------------------------------------------------------------------
 // Setup drawer
@@ -257,7 +285,7 @@ function renderCrew() {
       entry.item.dataset.open = String(Boolean(seatState.dice));
       const thinking = state.aiThinking?.seat === seatState.seat;
       const won = state.phase === "complete" && state.winnerSeat === seatState.seat;
-      setSeatExpression(entry.figure, won ? "triumphant" : seatState.eliminated ? "defeated" : thinking ? "thinking" : "neutral");
+      setExpression(entry.figure, won ? "triumphant" : seatState.eliminated ? "defeated" : thinking ? "thinking" : "neutral");
     }
     const player = state.players[seatState.seat];
     const status = state.aiThinking?.seat === seatState.seat ? "thinking…" : seatState.eliminated ? "out of dice" : captionFor(player);
@@ -535,7 +563,7 @@ function playReveal(reveal) {
     entry.under.replaceChildren(...dice.map((face) => die(face, { size: "xs", state: counts(reveal, face) ? "match" : "dim" })));
     entry.item.style.setProperty("--lift-delay", `${60 * seat}ms`);
     const outcome = reveal.loserSeat === seat ? "defeated" : reveal.gainerSeat === seat || (reveal.type === "dudo" && (seat === reveal.callerSeat || seat === reveal.bid.seat)) ? "triumphant" : null;
-    if (outcome) setSeatExpression(entry.figure, outcome);
+    if (outcome) setExpression(entry.figure, outcome);
     entry.item.dataset.loser = String(reveal.loserSeat === seat);
   }
   if (state.humanSeat !== null) {
@@ -550,7 +578,7 @@ function playReveal(reveal) {
   let text;
   if (reveal.type === "dudo") {
     text = reveal.outcome === "bid_holds"
-      ? `${caller} called ${bidder} a liar, but there were ${reveal.count}: ${plural(reveal.bid.quantity, reveal.bid.face)} holds. ${c("loses", "lose")} a die.`
+      ? `${caller} called ${bidder} a liar, but there were ${reveal.count}, so ${plural(reveal.bid.quantity, reveal.bid.face)} holds. ${c("loses", "lose")} a die.`
       : `${caller} caught ${bidder}: only ${reveal.count} for ${plural(reveal.bid.quantity, reveal.bid.face)}. ${b("loses", "lose")} a die.`;
   } else {
     text = reveal.outcome === "exact"
@@ -577,7 +605,11 @@ function playReveal(reveal) {
 function shakeCups() {
   if (prefersReducedMotion()) return;
   sfx.play("diceRoll");
+  setTimeout(() => sfx.play("cupSlam"), 700);
   for (const entry of crewBySeat.values()) {
+    // Shaken mouth-up, then slammed down over the dice.
+    entry.cup.src = `${ASSETS}/dice-cup.png`;
+    setTimeout(() => (entry.cup.src = `${ASSETS}/dice-cup-down.png`), 560);
     entry.cup.animate(
       [
         { transform: "rotate(0) translateY(0)" },
