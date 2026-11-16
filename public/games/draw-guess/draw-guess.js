@@ -634,7 +634,7 @@ function renderSalon() {
   $("salon-grid").replaceChildren(...pieces.map((item) => {
     const figure = el("figure", "salon-piece");
     const image = el("img");
-    image.src = item.imageRef;
+    image.src = `${item.imageRef}?thumb`;
     image.alt = `${state.players[item.drawerSeat]?.name}'s ${item.word}`;
     image.loading = "lazy";
     figure.append(image, el("figcaption", "", item.word));

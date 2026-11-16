@@ -289,6 +289,20 @@ function imagePath(imageRef) {
   return path.join(imageDir, name);
 }
 
+/** Drops pictures from tables older than a few days so the data folder does not grow forever. */
+function pruneImages(maxAgeMs = 3 * 24 * 3600 * 1000) {
+  try {
+    if (!fs.existsSync(imageDir)) return;
+    const cutoff = Date.now() - maxAgeMs;
+    for (const name of fs.readdirSync(imageDir)) {
+      const file = path.join(imageDir, name);
+      if (fs.statSync(file).mtimeMs < cutoff) fs.rmSync(file, { force: true });
+    }
+  } catch (error) {
+    console.error(`Draw & Guess image cleanup failed: ${String(error?.message || error)}`);
+  }
+}
+
 function storeImage(buffer) {
   fs.mkdirSync(imageDir, { recursive: true });
   const name = `${table.tableId.slice(0, 8)}-r${table.state.round.number}-${randomUUID().slice(0, 8)}.png`;
@@ -547,6 +561,13 @@ export function register(app, ctx) {
       } else {
         response.set("Cache-Control", "private, max-age=3600");
       }
+      if (request.query.thumb !== undefined) {
+        // Salon thumbnails: a 512 px copy instead of the full-size original.
+        const key = `${request.params.name}@thumb`;
+        if (!blurCache.has(key)) blurCache.set(key, blurredPngDataUrl(fs.readFileSync(file), 0));
+        response.set("Content-Type", "image/png");
+        return response.send(Buffer.from(blurCache.get(key).split(",")[1], "base64"));
+      }
       response.sendFile(file, { dotfiles: "allow" });
     } catch (error) {
       next(error.status ? error : httpError(404, "No such image"));
@@ -556,6 +577,7 @@ export function register(app, ctx) {
   app.post("/api/draw-guess/game", (request, response, next) => {
     try {
       const next = buildTable(request.body ?? {});
+      pruneImages();
       if (table?.breakTimer) clearTimeout(table.breakTimer);
       tableVersion += 1;
       table = next;
