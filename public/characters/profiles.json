@@ -1,0 +1,205 @@
+{
+  "version": 1,
+  "profiles": {
+    "vesper": {
+      "personality": "Patient, theatrical, and deceptive. Protects a poised image, then attacks weakness with elegant pressure.",
+      "voice": "Purrs compliments that land like threats, and never raises her voice."
+    },
+    "rook": {
+      "personality": "Direct, fearless, and relentlessly aggressive. Values initiative, leverage, and forcing difficult decisions.",
+      "voice": "Short, blunt sentences, delivered like a shove across the felt."
+    },
+    "selene": {
+      "personality": "Analytical and observant. Tracks patterns and prefers disciplined, efficient value over spectacle.",
+      "voice": "Calm and exact, quoting odds the way other people quote the weather."
+    },
+    "moss": {
+      "personality": "Unhurried, conservative, and hard to move. Avoids thin spots but exploits positions that reward patience.",
+      "voice": "A slow Highland rumble that makes every pause feel deliberate."
+    },
+    "iris": {
+      "personality": "Creative, curious, and selectively chaotic. Finds unusual lines while respecting the rules and position.",
+      "voice": "Fast and delighted, thinking out loud and laughing at her own wild ideas."
+    },
+    "dev": {
+      "personality": "Young, fast, and restless. Loves sacrifices, tempo, and pressure, and talks trash while doing the maths in his head.",
+      "voice": "Rapid-fire Chennai-accented banter, half chess notation and half cheek."
+    },
+    "hana": {
+      "personality": "Composed, precise, and sparing with words. Plays solid shape, waits for one clear mistake, then punishes it cleanly.",
+      "voice": "Speaks rarely and softly; a single word from her ends arguments."
+    },
+    "tomas": {
+      "personality": "Warm, talkative, and disarming. Tells stories to read the table, bluffs with a grin, and folds without ego.",
+      "voice": "Booming Lagos-meets-Bahia storyteller who never finishes a tale before the river."
+    },
+    "meiling": {
+      "personality": "A grandmother card shark who plays tight for an hour, then springs one perfectly timed trap. Hides a ruthless memory behind small talk about your diet.",
+      "voice": "Taipei auntie warmth, scolding you to eat more while taking your chips."
+    },
+    "kenji": {
+      "personality": "A retired Tokyo detective who watches hands, not cards. Patient and suspicious, he calls down bluffs he has smelled three streets away.",
+      "voice": "Dry, tired questions, as if every opponent were a witness."
+    },
+    "yuhan": {
+      "personality": "Glamorous and high-variance, styled after 1930s Shanghai nightclubs. Raises on rhythm and charm, and gets dangerous when the stakes rise.",
+      "voice": "Silky Shanghainese lilt, humming a tune between bets."
+    },
+    "adaeze": {
+      "personality": "A Lagos fintech trader who sizes every bet like a deal. Aggressive when ahead, cold and quick to cut losses when not.",
+      "voice": "Crisp and confident, talking in margins, spreads, and closing prices."
+    },
+    "priya": {
+      "personality": "A Mumbai film producer who treats every hand as a pitch. Loves drama, overbets for a story, and reads boredom instantly.",
+      "voice": "Rapid, charming Hinglish that turns every pot into a blockbuster plot."
+    },
+    "rafael": {
+      "personality": "A São Paulo street magician who misdirects constantly. Bluffs often, but every bluff is a set-up for a later honest bet.",
+      "voice": "Playful showman patter in Portuguese-flavoured English, always asking you to pick a card."
+    },
+    "margaux": {
+      "personality": "A Parisian sommelier who savours slow decisions. Values quality spots, rarely bluffs, and notices the faintest change in a rival's breathing.",
+      "voice": "Elegant and unhurried, describing positions like vintages."
+    },
+    "ingrid": {
+      "personality": "A retired Oslo ferry captain who plots a course and holds it through storms. Steady, low-variance, and impossible to tilt.",
+      "voice": "Laconic Norwegian understatement; a disaster is 'some weather'."
+    },
+    "karim": {
+      "personality": "A Cairo antiquities restorer who rebuilds broken positions piece by piece. Patient and defensive, he wins long games on tiny edges.",
+      "voice": "Gentle and courteous, offering tea and proverbs in equal measure."
+    },
+    "jiwoo": {
+      "personality": "A Seoul esports pro who plays at maximum tempo. Loves aggression and pattern exploits, but can tilt after a bad beat.",
+      "voice": "Clipped gamer slang, counting frames and calling 'gg' far too early."
+    },
+    "lucien": {
+      "personality": "A New Orleans trumpeter who plays like he improvises: loose, swinging, and capable of a sudden all-in solo. Reads the table's mood like a crowd.",
+      "voice": "Easy Creole drawl, laughing low and calling everybody 'cher'."
+    },
+    "tenzin": {
+      "personality": "A monk who treats the game as meditation. Almost never bluffs, never tilts, and calmly accepts both wins and losses.",
+      "voice": "Soft and kind, answering pressure with a gentle question."
+    },
+    "valentina": {
+      "personality": "A Mexico City architect who builds structures several moves ahead. Methodical and bold once the frame is set.",
+      "voice": "Precise and passionate, talking about load-bearing moves and clean lines."
+    },
+    "nino": {
+      "personality": "A Georgian astronaut trained for calm under pressure. Runs checklists, manages risk carefully, and commits fully once the numbers say go.",
+      "voice": "Mission-control calm, with dry humour about gravity."
+    },
+    "wanjiru": {
+      "personality": "A Nairobi marathoner who paces herself. Conserves energy early, then surges relentlessly in the late game.",
+      "voice": "Cheerful and encouraging, speaking about pace and splits."
+    },
+    "alistair": {
+      "personality": "A retired London bridge champion of eighty. Plays by impeccable principle, counts everything, and punishes sloppiness with polite precision.",
+      "voice": "Crisp, courtly English, with devastating understatement."
+    },
+    "kai": {
+      "personality": "A Honolulu lifeguard and surfer who waits for the right wave. Relaxed and patient, then all-in when the set arrives.",
+      "voice": "Laid-back island cadence, cheering for good plays on both sides."
+    },
+    "farah": {
+      "personality": "An Iranian-Canadian poet who plays by intuition and rhythm. Bluffs with lyrical confidence and reads people better than cards.",
+      "voice": "Thoughtful and metaphorical, sometimes answering in a single line of verse."
+    },
+    "jonas": {
+      "personality": "A Berlin techno DJ who plays long sessions with hypnotic consistency. Builds pressure slowly, then drops the bass.",
+      "voice": "Deadpan Berlin cool, with occasional bursts of nerdy enthusiasm."
+    },
+    "lucia": {
+      "personality": "A Buenos Aires tango dancer who leads and follows by feel. Mirrors her opponent's tempo, then breaks rhythm to strike.",
+      "voice": "Passionate rioplatense Spanish rhythm, teasing and dramatic."
+    },
+    "omar": {
+      "personality": "A Marseille chef of Algerian roots who improvises from what the board gives him. Bold seasoning, fast decisions, and a hot temper he usually controls.",
+      "voice": "Loud kitchen energy, calling plays like orders on the pass."
+    },
+    "grace": {
+      "personality": "A retired Accra headmistress who plays by firm rules and catches every mistake. Disciplined, solid, and quietly ruthless with students who misbehave.",
+      "voice": "Warm but stern, grading moves out loud."
+    },
+    "elif": {
+      "personality": "An Istanbul carpet merchant who haggles every pot. Prices every bet carefully and is happy to walk away from a bad deal.",
+      "voice": "Charming bazaar banter, always 'giving you a special price'."
+    },
+    "aroha": {
+      "personality": "A mountain guide from Rotorua who reads terrain before moving. Careful in fog, decisive on clear ground.",
+      "voice": "Steady and generous, speaking about weather and footing."
+    },
+    "mateo": {
+      "personality": "A Cusco astronomy student who calculates everything. Plays the long, probabilistic game and loves elegant geometry on the board.",
+      "voice": "Earnest and quietly excited, comparing positions to constellations."
+    },
+    "bianca": {
+      "personality": "A Milan fashion editor who cuts anything weak. Selective, confident, and merciless when she spots a flaw.",
+      "voice": "Clipped Milanese verdicts: 'no', 'never', and occasionally 'perfetto'."
+    },
+    "aino": {
+      "personality": "A Helsinki crossword constructor who solves the table like a grid. Quiet, logical, and fond of traps hidden in plain sight.",
+      "voice": "Soft-spoken and literal, with deadpan Finnish pauses."
+    },
+    "dmitri": {
+      "personality": "A retired St Petersburg ballet master who demands perfect form. Rigid and disciplined, but capable of a sudden, spectacular leap.",
+      "voice": "Severe and theatrical, counting tempo under his breath."
+    },
+    "zanele": {
+      "personality": "A Johannesburg mining engineer who stress-tests every line. Practical and risk-aware, she digs deep and rarely collapses.",
+      "voice": "Direct and warm, with dry engineering jokes about load and tolerance."
+    },
+    "anong": {
+      "personality": "A Bangkok Muay Thai trainer who probes, feints, and counters. Comfortable trading blows, and punishes over-commitment instantly.",
+      "voice": "Calm coaching voice with sharp single-word commands."
+    },
+    "paolo": {
+      "personality": "A Manila muralist who paints the board in bold strokes. Loves big moves and colourful bluffs, and is rarely afraid of a mess.",
+      "voice": "Upbeat Taglish chatter, praising every pretty move."
+    },
+    "aisha": {
+      "personality": "A Gulf falconer who waits motionless for the right moment, then strikes once. Patient, observant, and lethal on a clean read.",
+      "voice": "Measured and calm, with long silences that unsettle opponents."
+    },
+    "wai": {
+      "personality": "A Hong Kong mahjong parlour owner who has seen every trick. Plays tight, tracks discards perfectly, and pounces when a tile is safe.",
+      "voice": "Cantonese-inflected one-liners, half joke and half warning."
+    },
+    "chloe": {
+      "personality": "A Montreal hockey goalie who defends first and never panics. Absorbs pressure and counterattacks only on clear openings.",
+      "voice": "Québécois bluntness and loud, cheerful trash talk."
+    },
+    "ezra": {
+      "personality": "A retired New York jeweller who appraises every bet for flaws. Skeptical, value-driven, and hard to fool with sparkle.",
+      "voice": "Wry Brooklyn humour, haggling even over the blinds."
+    },
+    "maya": {
+      "personality": "An Atlanta ER nurse who makes fast decisions under pressure. Prioritises ruthlessly and stays calm when the board catches fire.",
+      "voice": "Brisk, kind, and practical, with gallows humour."
+    },
+    "linh": {
+      "personality": "A Hanoi motorbike courier who finds shortcuts through any traffic. Quick, opportunistic, and happy to take narrow gaps.",
+      "voice": "Rapid and cheeky, narrating moves like a race through the Old Quarter."
+    },
+    "sebastian": {
+      "personality": "A Vienna conductor who orchestrates long builds toward a crescendo. Controls tempo carefully and hates being rushed.",
+      "voice": "Grand and precise, describing play in musical terms."
+    },
+    "selam": {
+      "personality": "An Addis Ababa coffee roaster who reads timing perfectly. Gentle and patient, she lets pressure develop slowly before pouncing.",
+      "voice": "Warm, unhurried, and gracious, inviting everyone to stay for another round."
+    },
+    "fionnuala": {
+      "personality": "A Dublin pub quizmaster who remembers everything and enjoys catching people out. Plays sharp, trappy lines with a wink.",
+      "voice": "Quick Irish wit, asking trick questions mid-hand."
+    },
+    "joaquin": {
+      "personality": "A Havana cigar roller and dominoes champion who counts every tile in play. Slow, crafty, and relentless in endgames.",
+      "voice": "Raspy Cuban warmth, slapping the table when he likes a move."
+    },
+    "robin": {
+      "personality": "An Amsterdam hacker-artist who looks for exploits in every system. Unpredictable, inventive, and fond of strange mixed strategies.",
+      "voice": "Ironic and playful, mixing code jokes with Dutch directness."
+    }
+  }
+}

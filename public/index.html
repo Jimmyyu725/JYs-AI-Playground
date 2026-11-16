@@ -3,132 +3,97 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#080b0a" />
-    <meta name="description" content="JYs AI Playground — a private collection of casino-inspired games powered by OpenAI." />
+    <meta name="theme-color" content="#0b0e26" />
+    <meta name="description" content="JYs AI Playground: a corridor of game rooms where you play against, or watch, fifty AI characters on GPT-6 and DeepSeek models." />
     <title>JYs AI Playground</title>
     <link rel="icon" href="data:," />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@300..700&family=Geist+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&family=Noto+Serif+SC:wght@500;700&display=swap" />
+    <link rel="preload" as="image" href="/assets/lobby/corridor-desktop.webp" media="(min-aspect-ratio: 1/1)" />
+    <link rel="preload" as="image" href="/assets/lobby/corridor-phone.webp" media="(max-aspect-ratio: 1/1)" />
     <link rel="stylesheet" href="/lobby.css" />
   </head>
-  <body>
-    <div class="lobby-backdrop" aria-hidden="true"></div>
-    <div class="lobby-noise" aria-hidden="true"></div>
+  <body class="page-corridor">
+    <div class="corridor-art" aria-hidden="true"></div>
+    <div class="corridor-haze" aria-hidden="true"></div>
 
-    <header class="lobby-header">
-      <a class="brand" href="/" aria-label="JYs AI Playground home">
-        <span class="brand-seal">JY</span>
-        <span>
-          <strong>JYs AI Playground</strong>
-          <small>Private rooms · Intelligent rivals</small>
-        </span>
+    <header class="house-bar">
+      <a class="monogram" href="/" aria-label="JYs AI Playground, the corridor">
+        <span class="monogram-mark" aria-hidden="true">JY</span>
+        <span class="monogram-text"><strong>JYs AI Playground</strong><small>The corridor</small></span>
       </a>
-      <div class="house-status">
-        <span class="live-dot"></span>
-        <span>OpenAI house online</span>
-        <span class="divider"></span>
-        <span>No local fallback</span>
+      <nav class="house-nav" aria-label="House">
+        <a href="/" aria-current="page">Doors</a>
+        <a href="/characters/">The House</a>
+        <a href="/ladder/">Ladder</a>
+      </nav>
+      <div class="house-tools">
+        <p class="house-status" id="house-status" data-state="checking" role="status">
+          <span class="status-lamp" aria-hidden="true"></span>
+          <span class="status-text">Checking the house…</span>
+        </p>
+        <span id="mute-slot"></span>
       </div>
     </header>
 
     <main>
-      <section class="hero" aria-labelledby="hero-title">
-        <div class="hero-ornament" aria-hidden="true"><i></i><span>EST. 2026</span><i></i></div>
-        <p class="eyebrow">Three tables · One private house</p>
-        <h1 id="hero-title">Choose your game.<br /><em>Meet your mind.</em></h1>
-        <p class="hero-copy">Play against distinct AI characters or take the spectator's chair and watch them challenge one another—without turn timers or hidden local substitutes.</p>
-        <a class="primary-cta" href="#game-floor">Enter the game floor <span aria-hidden="true">↓</span></a>
+      <section class="corridor-hero" aria-labelledby="hero-title">
+        <p class="kicker"><span id="room-count">Nine</span> rooms · fifty minds · one house</p>
+        <h1 id="hero-title">Every door opens <em>onto another world.</em></h1>
+        <p class="hero-copy">
+          Walk the corridor and pick a room. Sit down against AI characters who bluff, read and needle in their own
+          voices, or take the spectator's chair and let them play each other. You choose the model and how hard it
+          thinks, seat by seat.
+        </p>
+        <div class="hero-actions">
+          <a class="lamp-button" href="#doors">Walk the corridor <span aria-hidden="true">↓</span></a>
+          <a class="ghost-button" href="/characters/">Meet the house</a>
+        </div>
       </section>
 
-      <section class="floor" id="game-floor" aria-labelledby="floor-title">
-        <div class="section-heading">
+      <section class="trio" aria-labelledby="trio-title">
+        <header class="trio-head">
           <div>
-            <p class="eyebrow">The game floor</p>
-            <h2 id="floor-title">Select a room</h2>
+            <p class="kicker">In the corridor tonight</p>
+            <h2 id="trio-title">Three regulars are waiting for a game.</h2>
           </div>
-          <p>Human vs AI · AI vs AI</p>
-        </div>
-
-        <div class="game-grid">
-          <a class="game-card holdem" href="/games/holdem/">
-            <div class="card-art" aria-hidden="true">
-              <span class="suit suit-one">♠</span>
-              <span class="suit suit-two">♥</span>
-              <span class="table-ring"></span>
-              <span class="game-glyph">A</span>
-            </div>
-            <div class="game-copy">
-              <span class="room-status live"><i></i> Live table</span>
-              <p class="game-number">Room 01</p>
-              <h3>Texas Hold’em</h3>
-              <p>Read the table, manage the pot, and face a cast of AI personalities—or watch the entire room play itself.</p>
-              <span class="enter-link">Enter the Luna Room <b aria-hidden="true">↗</b></span>
-            </div>
-          </a>
-
-          <a class="game-card go" href="/games/go/">
-            <div class="card-art" aria-hidden="true">
-              <span class="go-grid"></span>
-              <span class="stone black"></span>
-              <span class="stone white"></span>
-              <span class="game-glyph">囲</span>
-            </div>
-            <div class="game-copy">
-              <span class="room-status soon" id="go-status"><i></i> Opening soon</span>
-              <p class="game-number">Room 02</p>
-              <h3>Go <small>围棋</small></h3>
-              <p>Fight for influence and territory across a living board, with every capture and ko judged by the house.</p>
-              <span class="enter-link">Preview the Go room <b aria-hidden="true">↗</b></span>
-            </div>
-          </a>
-
-          <a class="game-card wuziqi" href="/games/wuziqi/">
-            <div class="card-art" aria-hidden="true">
-              <span class="gomoku-grid"></span>
-              <span class="win-line"></span>
-              <span class="game-glyph">五</span>
-            </div>
-            <div class="game-copy">
-              <span class="room-status soon" id="wuziqi-status"><i></i> Opening soon</span>
-              <p class="game-number">Room 03</p>
-              <h3>Wuziqi <small>五子棋</small></h3>
-              <p>Build pressure one intersection at a time in a fast, tactical contest of five connected stones.</p>
-              <span class="enter-link">Preview the Wuziqi room <b aria-hidden="true">↗</b></span>
-            </div>
-          </a>
-
-          <a class="game-card doudizhu" href="/games/doudizhu/">
-            <div class="card-art" aria-hidden="true">
-              <span class="dd-card-one" aria-hidden="true">斗</span>
-              <span class="dd-card-two" aria-hidden="true">♠</span>
-              <span class="game-glyph">斗</span>
-            </div>
-            <div class="game-copy">
-              <span class="room-status soon" id="doudizhu-status"><i></i> Opening soon</span>
-              <p class="game-number">Room 04</p>
-              <h3>Dou Dizhu <small>斗地主</small></h3>
-              <p>Bid to become the landlord, then shed every card against two farmers—bombs and rockets double the pot.</p>
-              <span class="enter-link">Preview the Landlord Room <b aria-hidden="true">↗</b></span>
-            </div>
-          </a>
-        </div>
+          <button class="ghost-button shuffle-button" id="shuffle-trio" type="button">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h3.5c4 0 6 10 10 10H21M3 17h3.5c1.6 0 2.8-1.6 3.8-3.6M21 7h-4.5c-1.6 0-2.8 1.6-3.8 3.6M18 4l3 3-3 3M18 14l3 3-3 3"/></svg>
+            Someone else
+          </button>
+        </header>
+        <ol class="trio-list" id="trio-list" aria-live="polite"></ol>
       </section>
 
-      <section class="house-rules" aria-labelledby="rules-title">
-        <div class="rules-intro">
-          <p class="eyebrow">The house promise</p>
-          <h2 id="rules-title">Every move belongs to the model you choose.</h2>
+      <section class="doors" id="doors" aria-labelledby="doors-title">
+        <header class="doors-head">
+          <p class="kicker">The rooms</p>
+          <h2 id="doors-title">Choose a door</h2>
+          <p class="doors-note" id="doors-note">Lit doors are open tonight. The rest are still being dressed.</p>
+        </header>
+        <ol class="door-row" id="door-row"></ol>
+      </section>
+
+      <section class="ledger" aria-labelledby="ledger-title">
+        <div class="ledger-board">
+          <p class="kicker">The ladder</p>
+          <h2 id="ledger-title">Who is winning in this house</h2>
+          <ol class="ledger-list" id="ledger-list"><li class="ledger-empty">Reading the ladder…</li></ol>
+          <a class="ghost-button" href="/ladder/">Open the full ladder</a>
         </div>
-        <div class="rule-list">
-          <article><span>01</span><div><strong>Your model, your depth</strong><p>Select GPT-6.1 Sol, Terra, GPT-6 Luna or Astra, or DeepSeek, and the reasoning effort for every AI seat.</p></div></article>
-          <article><span>02</span><div><strong>Visible decisions</strong><p>Public rationales and supported reasoning summaries stay in a persistent transcript.</p></div></article>
-          <article><span>03</span><div><strong>No substitute player</strong><p>API failures pause the room for retry. A local heuristic never takes the model's turn.</p></div></article>
-        </div>
+        <ul class="promises" aria-label="House rules">
+          <li><span>i</span><div><strong>Your model, your depth</strong><p>Choose GPT-6.1 Sol or Terra, GPT-6 Luna or Astra, or DeepSeek, and the reasoning effort, for every AI seat.</p></div></li>
+          <li><span>ii</span><div><strong>Characters, not bots</strong><p>Every table seats a random cast from the fifty. Reroll a seat, or ask for someone by name.</p></div></li>
+          <li><span>iii</span><div><strong>No stand-ins</strong><p>If a model call fails, the room pauses for a retry. A local heuristic never plays a model's turn.</p></div></li>
+        </ul>
       </section>
     </main>
 
-    <footer>
+    <footer class="house-foot">
       <span>JYs AI Playground</span>
-      <span>Powered only by the OpenAI API</span>
-      <span id="key-summary">Checking private room access…</span>
+      <span id="provider-summary">Checking providers…</span>
+      <span><a href="/characters/">The House</a> · <a href="/ladder/">Ladder</a></span>
     </footer>
 
     <script type="module" src="/lobby.js"></script>
