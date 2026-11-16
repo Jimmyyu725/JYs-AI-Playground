@@ -1,0 +1,17 @@
+{
+  "venue": "Salon Riviera",
+  "tagline": "A 1960s Monte Carlo card salon at night: emerald velvet, brass, and the sea beyond the windows.",
+  "hero": "/assets/rooms/holdem/hero-desktop.webp",
+  "heroPhone": "/assets/rooms/holdem/hero-phone.webp",
+  "palette": {
+    "background": "#0E1A14",
+    "surface": "#0F3B26",
+    "surfaceAlt": "#4A1520",
+    "ink": "#F1E4C8",
+    "muted": "#A89F86",
+    "accent": "#C9A24A",
+    "highlight": "#9DB8D9",
+    "danger": "#C23B4B"
+  },
+  "fonts": { "display": "Italiana", "body": "Cormorant Garamond", "rank": "Playfair Display" }
+}
