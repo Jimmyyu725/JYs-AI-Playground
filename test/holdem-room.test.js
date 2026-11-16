@@ -85,3 +85,13 @@ test("new tables seat a random distinct cast and honour pinned characters", () =
   }
   assert.ok(casts.size > 1, "casts should vary between tables");
 });
+
+test("a hand review sees the public record, shown hands and its own cards only", async () => {
+  const { reviewInput } = await import("../src/games/holdem/review.js");
+  const table = new PokerGame({ opponentCount: 3 });
+  const reviewer = table.players[1];
+  const input = reviewInput(table, reviewer);
+  assert.deepEqual(input.reviewer.ownHoleCards, reviewer.holeCards);
+  for (const player of input.players) assert.equal(player.shownCards, null, "no cards are shown before a showdown");
+  assert.ok(input.log.every((line) => typeof line === "string"));
+});
