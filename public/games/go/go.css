@@ -521,6 +521,12 @@ body:has(.kit-drawer[data-open="true"]) .room-art {
   backdrop-filter: blur(14px) saturate(1.1);
   transition: border-color 0.5s var(--ease), box-shadow 0.5s var(--ease);
 }
+.seat-card {
+  z-index: 1;
+}
+.seat-card:has(.kit-speech) {
+  z-index: 6;
+}
 .seat-card:empty {
   display: none;
 }

@@ -171,7 +171,7 @@ const opposite = (color) => (color === "black" ? "white" : "black");
 const modelLabel = (id) => registry?.models.find((model) => model.id === id)?.label ?? id;
 const playerOf = (color) => state?.players.find((player) => player.color === color);
 const coordinate = (row, column, size) => `${COLUMN_LABELS[column]}${size - row}`;
-const isWide = () => matchMedia("(min-width: 900px)").matches;
+const isWide = () => matchMedia("(min-width: 1100px)").matches;
 
 function parseCoordinate(text, size) {
   const match = /^([A-HJ-T])(\d{1,2})$/.exec(String(text).toUpperCase());
@@ -513,6 +513,9 @@ function renderNotice() {
   notice.classList.toggle("hidden", !notice.childElementCount);
 }
 
+// OpenAI summaries arrive as Markdown with bold section titles; show them as plain prose.
+const plain = (text) => String(text ?? "").replace(/\*\*(.+?)\*\*\s*/g, "$1 · ").replace(/\s+/g, " ").trim();
+
 function renderReading() {
   const thinking = state.aiThinking;
   el.liveDot.textContent = thinking ? "Live" : "Idle";
@@ -520,11 +523,11 @@ function renderReading() {
   if (thinking) {
     const seconds = Math.max(0, Math.round((Date.now() - thinking.startedAt) / 1000));
     el.readingWho.textContent = `${thinking.playerName} · ${thinking.status ?? "Reading"} (${seconds}s)`;
-    el.readingText.textContent = liveSummary || "Waiting for a reasoning summary…";
+    el.readingText.textContent = plain(liveSummary) || "Waiting for a reasoning summary…";
   } else {
     const latest = state.aiInsights[0];
     el.readingWho.textContent = latest ? `${latest.playerName} · move ${latest.moveNumber} · ${(latest.latencyMs / 1000).toFixed(1)}s` : "No model request is active.";
-    el.readingText.textContent = latest ? latest.summary || latest.explanation : "Public rationales and supported reasoning summaries appear here and stay in the record below.";
+    el.readingText.textContent = latest ? plain(latest.summary || latest.explanation) : "Public rationales and supported reasoning summaries appear here and stay in the record below.";
   }
 }
 
@@ -794,8 +797,7 @@ events.onmessage = (event) => {
     if (state) renderReading();
   } else if (message.type === "table_talk") {
     const card = el.seats[message.payload.speaker];
-    const anchor = card?.querySelector(".kit-portrait");
-    if (anchor) speak(anchor, message.payload.text, { placement: isWide() ? "right" : "bottom" });
+    if (card?.childElementCount) speak(card, message.payload.text, { placement: isWide() ? "right" : "bottom" });
   }
 };
 events.onerror = () => {
@@ -806,7 +808,7 @@ setInterval(() => {
   if (state?.aiThinking) renderReading();
 }, 1000);
 
-matchMedia("(min-width: 900px)").addEventListener("change", () => {
+matchMedia("(min-width: 1100px)").addEventListener("change", () => {
   for (const card of Object.values(el.seats)) card.dataset.key = "";
   if (state) render(state);
 });
