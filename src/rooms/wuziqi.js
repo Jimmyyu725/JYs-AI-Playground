@@ -1,7 +1,7 @@
-import { requestWuziqiDecision } from "../games/wuziqi-ai.js";
+import { requestWuziqiDecisionWithRetry, requestWuziqiReview } from "../games/wuziqi-ai.js";
 import { WuziqiGame } from "../games/wuziqi-game.js";
 import { pushTableTalk } from "../platform/table-talk.js";
-import { createMatchRecorder, participantFrom, publicError, sendSSE } from "../platform/room-kit.js";
+import { createMatchRecorder, httpError, participantFrom, publicError, sendSSE } from "../platform/room-kit.js";
 
 export const id = "wuziqi";
 export const defaults = { model: "gpt-6-luna", reasoningEffort: "low" };
@@ -72,17 +72,30 @@ async function runWuziqiAIChain(version) {
       broadcastWuziqiState();
 
       try {
-        const snapshot = table.aiSnapshot();
-        const decision = await requestWuziqiDecision(snapshot, actor.aiConfig, {
-          onStatus(status) {
-            if (wuziqiGame !== table || version !== wuziqiGameVersion) return;
-            table.aiThinking = { ...table.aiThinking, status };
-            broadcastWuziqi("ai_stream", { phase: "status", color, playerName: actor.name, status });
-            broadcastWuziqiState();
+        const current = () => wuziqiGame === table && version === wuziqiGameVersion;
+        const { decision } = await requestWuziqiDecisionWithRetry({
+          snapshotFactory: () => table.aiSnapshot(),
+          modelConfig: actor.aiConfig,
+          callbacks: {
+            onStatus(status) {
+              if (!current()) return;
+              table.aiThinking = { ...table.aiThinking, status };
+              broadcastWuziqi("ai_stream", { phase: "status", color, playerName: actor.name, status });
+              broadcastWuziqiState();
+            },
+            onSummaryDelta(delta) {
+              if (!current()) return;
+              broadcastWuziqi("ai_stream", { phase: "summary_delta", color, playerName: actor.name, delta });
+            },
           },
-          onSummaryDelta(delta) {
-            if (wuziqiGame !== table || version !== wuziqiGameVersion) return;
-            broadcastWuziqi("ai_stream", { phase: "summary_delta", color, playerName: actor.name, delta });
+          shouldContinue: current,
+          onRetry({ error, retryNumber, maxRetries }) {
+            if (!current()) return;
+            const message = publicError(error);
+            table.recordAIRetry(color, message, retryNumber, maxRetries);
+            table.aiThinking = { ...table.aiThinking, status: `${message}. Retrying automatically (${retryNumber}/${maxRetries})…` };
+            broadcastWuziqi("ai_stream", { phase: "started", color, playerName: actor.name, summary: "", automaticRetry: true, retryNumber, maxRetries });
+            broadcastWuziqiState();
           },
         });
 
@@ -194,6 +207,32 @@ export function register(app, ctx) {
       broadcastWuziqiState();
       scheduleWuziqiAITurn(wuziqiGameVersion);
     } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post("/api/wuziqi/review", (request, response, next) => {
+    try {
+      const table = requireWuziqiGame();
+      if (table.review?.status === "pending") throw httpError(409, "A review is already being written");
+      const snapshot = table.reviewSnapshot(request.body?.color);
+      const reviewer = table.players.find((player) => player.color === snapshot.reviewer.color);
+      table.setReview({ status: "pending", color: reviewer.color, playerName: reviewer.name, characterId: reviewer.character?.id ?? null });
+      response.status(202).json(table.publicState());
+      broadcastWuziqiState();
+      requestWuziqiReview(snapshot, reviewer.aiConfig)
+        .then((review) => {
+          if (wuziqiGame !== table) return;
+          table.setReview({ ...table.review, status: "done", ...review });
+          broadcastWuziqiState();
+        })
+        .catch((error) => {
+          if (wuziqiGame !== table) return;
+          table.setReview({ ...table.review, status: "error", error: publicError(error) });
+          broadcastWuziqiState();
+        });
+    } catch (error) {
+      if (!error.status) error.status = 409;
       next(error);
     }
   });

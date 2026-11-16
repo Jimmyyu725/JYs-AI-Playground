@@ -25,7 +25,9 @@ export class WuziqiGame {
     this.moveNumber = 0;
     this.board = Array(this.boardSize * this.boardSize).fill(null);
     this.lastMove = null;
+    this.moves = [];
     this.result = null;
+    this.review = null;
     this.logs = [];
     this.aiInsights = [];
     this.aiThinking = null;
@@ -126,6 +128,7 @@ export class WuziqiGame {
     const coordinate = wuziqiCoordinate(row, column, this.boardSize);
     player.lastAction = coordinate;
     this.lastMove = { action: "place", color, row, column, coordinate, moveNumber: this.moveNumber };
+    this.moves.push({ moveNumber: this.moveNumber, color, row, column, coordinate });
     this._log("move", `${player.name} plays ${coordinate}.`, { color, row, column });
 
     const winningLine = this._winningLine(row, column, color);
@@ -175,6 +178,37 @@ export class WuziqiGame {
       action: String(action ?? ""),
       at: new Date().toISOString(),
     });
+  }
+
+  recordAIRetry(color, message, retryNumber, maxRetries) {
+    const player = this.players.find((candidate) => candidate.color === color);
+    this._log("system", `${player.name}'s rejected move was not played. Retrying automatically (${retryNumber}/${maxRetries}): ${message}`, { color, retryNumber, maxRetries });
+  }
+
+  /** The AI players who can be asked for a post-game review (the human's opponent, or either arena seat). */
+  reviewers() {
+    return this.players.filter((player) => !player.isHuman);
+  }
+
+  reviewSnapshot(color) {
+    if (this.phase !== "complete") throw new Error("The game is not finished yet");
+    const reviewer = this.reviewers().find((player) => player.color === color) ?? this.reviewers()[0];
+    if (!reviewer) throw new Error("There is no AI player to review this game");
+    return {
+      game: "Wuziqi / freestyle Gomoku",
+      boardSize: this.boardSize,
+      reviewer: { color: reviewer.color, name: reviewer.name, title: reviewer.character.title, personality: reviewer.character.personality, voice: reviewer.character.voice ?? "", role: "player" },
+      players: this.players.map((player) => ({ color: player.color, name: player.name, isHuman: player.isHuman })),
+      result: { winner: this.result.winner, reason: this.result.reason, winningLine: (this.result.winningLine ?? []).map(([row, column]) => wuziqiCoordinate(row, column, this.boardSize)) },
+      moves: this.moves.map((move) => ({ moveNumber: move.moveNumber, color: move.color, coordinate: move.coordinate })),
+      finalBoardRows: Array.from({ length: this.boardSize }, (_, row) =>
+        this.board.slice(row * this.boardSize, (row + 1) * this.boardSize).map((cell) => cell === "black" ? "B" : cell === "white" ? "W" : ".").join(""),
+      ),
+    };
+  }
+
+  setReview(review) {
+    this.review = review;
   }
 
   setAIError(color, message) {
@@ -242,7 +276,9 @@ export class WuziqiGame {
       moveNumber: this.moveNumber,
       board: Array.from({ length: this.boardSize }, (_, row) => this.board.slice(row * this.boardSize, (row + 1) * this.boardSize)),
       lastMove: this.lastMove,
+      moves: this.moves.map((move) => ({ ...move })),
       result: this.result,
+      review: this.review,
       arena: this.isArenaMode ? { paused: this.arenaPaused } : null,
       model: models.size === 1 ? aiConfigs[0].model : "mixed",
       reasoningEffort: efforts.size === 1 ? aiConfigs[0].reasoningEffort : "mixed",
