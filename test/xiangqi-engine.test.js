@@ -401,3 +401,33 @@ test("public and player views expose the full board but only the mover's legal m
   const captured = play(createXiangqiGame(), "b2b9");
   assert.deepEqual(publicView(captured).captured, { red: [], black: ["n"] });
 });
+
+// Small deterministic PRNG (mulberry32) so random games are reproducible.
+function seededRng(seed) {
+  let value = seed >>> 0;
+  return () => {
+    value = (value + 0x6d2b79f5) >>> 0;
+    let mixed = Math.imul(value ^ (value >>> 15), 1 | value);
+    mixed = (mixed + Math.imul(mixed ^ (mixed >>> 7), 61 | mixed)) ^ mixed;
+    return ((mixed ^ (mixed >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+test("random games keep every invariant and survive save/restore", () => {
+  for (let seed = 1; seed <= 12; seed += 1) {
+    const rng = seededRng(seed);
+    let state = createXiangqiGame({ maxPlies: 160, rng, colorAssignment: "random", participants: ["a", "b"] });
+    while (state.status === "active") {
+      const moves = legalMoves(state);
+      assert.ok(moves.length > 0, "an active game always has a legal move");
+      const mover = state.turn;
+      const pick = moves[Math.floor(rng() * moves.length)];
+      state = applyAction(state, { type: "move", move: pick.move });
+      assert.equal(isInCheck(state.board, mover), false, `seed ${seed}: ${pick.move} left the mover in check`);
+      assert.equal(state.history.at(-1).check, isInCheck(state.board, state.turn));
+      assert.equal(state.positions.length, state.ply + 1);
+    }
+    assert.ok(scoreGame(state));
+    assert.deepEqual(restoreGame(JSON.parse(JSON.stringify(serializeGame(state)))), state);
+  }
+});
