@@ -59,7 +59,7 @@ test("reaction windows describe the claim and offer pass or challenge", () => {
   let state = newGame({ coins: [3, 2, 2] });
   state = applyAction(state, 0, { type: "assassinate", target: 1 });
   const view = buildCoupAiView(state, 1);
-  assert.match(view.situation, /Ada declared assassinate against YOU claiming Assassin/);
+  assert.match(view.situation, /Ada declared assassinate against YOU claiming Assassin \(the 3-coin cost is already paid/);
   assert.deepEqual(view.legalActions.map((entry) => entry.action.type), ["pass", "challenge"]);
   assert.match(view.legalActions[1].label, /Challenge Ada's claim to hold Assassin/);
   assert.deepEqual(view.pendingAction, { type: "assassinate", actor: 0, target: 1, claim: "Assassin" });

@@ -44,7 +44,8 @@ function situationText(state, seat) {
     if (!pending) return "";
     const target = pending.target === null ? "" : ` against ${pending.target === seat ? "YOU" : name(pending.target)}`;
     const claim = pending.claim ? ` claiming ${pending.claim}` : "";
-    return `${pending.actor === seat ? "You" : name(pending.actor)} declared ${pending.type.replace("_", " ")}${target}${claim}`;
+    const paid = pending.paid ? ` (the ${pending.paid}-coin cost is already paid and shown in the coin counts)` : "";
+    return `${pending.actor === seat ? "You" : name(pending.actor)} declared ${pending.type.replace("_", " ")}${target}${claim}${paid}`;
   };
   switch (state.phase) {
     case "action":
