@@ -20,7 +20,10 @@ let recordOnce = () => null;
 let savePath = null;
 let arenaTimer = null;
 
-function decide({ instructions, input, modelConfig, voice }, callbacks) {
+// Tests replace the model call through ctx.decide; the server always uses the real gateway.
+let decide = gatewayDecide;
+
+function gatewayDecide({ instructions, input, modelConfig, voice }, callbacks) {
   return requestStructuredDecision({
     gameId: id,
     modelConfig,
@@ -190,6 +193,7 @@ function route(handler) {
 
 export function register(app, ctx) {
   recordOnce = createMatchRecorder(ctx.results, id);
+  if (typeof ctx.decide === "function") decide = ctx.decide;
   savePath = ctx.dataDir ? path.join(ctx.dataDir, "taiwan-mahjong-table.json") : null;
 
   app.get("/api/taiwan-mahjong/state", (_request, response) => {
