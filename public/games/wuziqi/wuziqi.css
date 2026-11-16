@@ -16,7 +16,8 @@
   --jade: #d3e0cd;
   --cinnabar: #7e1f1a;
   --dusk-glow: #da8f6f;
-  --font-text: "Noto Serif SC", "Songti SC", "SimSun", serif;
+  /* Latin Noto Serif first so quotes and apostrophes stay proportional; CJK falls through to the Song face. */
+  --font-text: "Noto Serif", "Noto Serif SC", "Songti SC", "SimSun", serif;
   --font-display: "Cormorant Garamond", "Ma Shan Zheng", serif;
   --font-brush: "Ma Shan Zheng", "Cormorant Garamond", serif;
   --paper-tex: url("/assets/rooms/wuziqi/paper.webp");
@@ -740,6 +741,13 @@ button {
 }
 .review[hidden] {
   display: none;
+}
+@media (min-width: 1100px) {
+  .review {
+    max-block-size: 44dvh;
+    overflow: auto;
+    scrollbar-width: thin;
+  }
 }
 .review strong {
   font: 600 1.1rem/1.2 var(--font-display);

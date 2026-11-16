@@ -484,12 +484,12 @@ function renderTurnLine() {
 /* ---------- Brush record (transcript) ---------- */
 function recordEntries() {
   const entries = [];
-  for (const entry of state.logs ?? []) {
+  for (const entry of [...(state.logs ?? [])].reverse()) {
     if (seenRecord.has(entry.id)) continue;
     const kind = entry.kind === "move" ? "move" : entry.kind === "result" ? "result" : entry.kind === "error" ? "error" : "system";
     entries.push({ id: entry.id, at: Date.parse(entry.at), who: entry.kind === "move" ? `${entry.moveNumber}.` : "", text: entry.text, kind });
   }
-  for (const insight of state.aiInsights ?? []) {
+  for (const insight of [...(state.aiInsights ?? [])].reverse()) {
     if (seenRecord.has(insight.id)) continue;
     const source = SUMMARY_SOURCE[insight.summarySource] ?? "rationale";
     entries.push({ id: insight.id, at: Date.parse(insight.at) - 1, who: insight.playerName, text: `${plainSummary(insight.summary || insight.explanation)} (${source}, ${(insight.latencyMs / 1000).toFixed(1)}s)`, kind: "reasoning" });

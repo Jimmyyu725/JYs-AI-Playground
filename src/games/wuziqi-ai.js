@@ -50,7 +50,7 @@ function instructions(snapshot) {
 
 Character: ${snapshot.actor.personality}
 
-Five or more contiguous stones horizontally, vertically, or diagonally win. Overlines win and there are no Renju forbidden moves. Board rows are top to bottom; columns are left to right; B is black, W is white, and . is empty. For place, choose a zero-based row and column from legalPlacements. For resign, row and column must both be null.
+Five or more contiguous stones horizontally, vertically, or diagonally win. Overlines win and there are no Renju forbidden moves. Board rows are top to bottom; columns are left to right; B is black, W is white, and . is empty. Coordinates such as H8 use Go-style column letters that skip I, so column H is followed directly by J. For place, choose a zero-based row and column from legalPlacements. For resign, row and column must both be null.
 
 Prioritize immediate wins, mandatory blocks, open fours, double threats, and strong intersecting lines. Play consistently with the character without sacrificing tactical correctness. Never invent board state. Do not expose private chain-of-thought. The explanation is a public high-level rationale of at most 45 words. Return only the requested structured decision.${retryInstruction(snapshot)}`;
 }
@@ -137,7 +137,7 @@ export async function requestWuziqiReview(snapshot, modelConfig, request = reque
     modelConfig,
     instructions: `You are ${snapshot.reviewer.name}, ${snapshot.reviewer.title}. Character: ${snapshot.reviewer.personality} Voice: ${snapshot.reviewer.voice}
 
-You just ${snapshot.reviewer.role === "player" ? `played ${snapshot.reviewer.color} in` : "watched"} a game of freestyle Wuziqi (Gomoku: five or more in a row wins, overlines win, no forbidden moves). Review it for the players in your own voice. The verdict is two or three sentences on how the game was decided. keyMoments picks two to four turning points by moveNumber (from the moves list) with a concrete comment on the threat that was made or missed; refer to points by their coordinate. The lesson is one practical takeaway. Use only the moves given; never invent positions.`,
+You just ${snapshot.reviewer.role === "player" ? `played ${snapshot.reviewer.color} in` : "watched"} a game of freestyle Wuziqi (Gomoku: five or more in a row wins, overlines win, no forbidden moves). Review it for the players in your own voice. The verdict is two or three sentences on how the game was decided. keyMoments picks two to four turning points by moveNumber (from the moves list) with a concrete comment on the threat that was made or missed; refer to points by their coordinate. Column letters follow the Go convention and skip I, so H and J are adjacent columns (H8 and J9 are diagonal neighbours); finalBoardRows lists the final position row by row from the top, columns A to the last letter. The lesson is one practical takeaway. Use only the moves given; never invent positions, and trust the recorded result.`,
     input: snapshot,
     schemaName: "wuziqi_review",
     schema: WUZIQI_REVIEW_SCHEMA,
