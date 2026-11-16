@@ -252,3 +252,51 @@ export async function requestDoudizhuPlayWithRetry({
 
   throw previousError;
 }
+
+const REVIEW_SCHEMA = {
+  type: "object",
+  properties: {
+    review: { type: "string", minLength: 1, maxLength: 900 },
+  },
+  required: ["review"],
+  additionalProperties: false,
+};
+
+/** Builds the public, post-game material a character reviews: who sat where and every logged move. */
+export function reviewInput(table, seat) {
+  const reviewer = table.players[seat];
+  return {
+    reviewer: { seat, name: reviewer.name, role: seat === table.landlordSeat ? "landlord" : "farmer" },
+    players: table.players.map((player) => ({
+      seat: player.seat,
+      name: player.name,
+      role: player.seat === table.landlordSeat ? "landlord" : "farmer",
+      cardsLeft: player.hand.length,
+    })),
+    result: table.result,
+    moves: table.logs
+      .filter((entry) => entry.handNumber === table.handNumber && ["bid", "play", "hand", "result"].includes(entry.kind))
+      .map((entry) => entry.text),
+  };
+}
+
+/** A short in-character review of the finished hand, written by one of the AI seats. */
+export async function requestDoudizhuReview(table, seat, callbacks = {}) {
+  const reviewer = table.players[seat];
+  if (!reviewer || reviewer.isHuman) throw new AIDecisionError("Only an AI seat can review the hand", "invalid_review");
+  const character = reviewer.character ?? {};
+  const instructions = `You are ${reviewer.name}, ${character.title ?? "a regular"} at a Dou Dizhu table in an old Shanghai lane on New Year's Eve.
+Character: ${character.personality ?? ""}
+Voice: ${character.voice ?? ""}
+
+The hand is over. Review it for the other players in your own voice: name the two or three moments that decided it (a bid, a bomb, a lead, a pass), what you or others should have done differently, and one lesson. Use only the public record in the input. At most 120 words, plain text, no Markdown.`;
+  const response = await requestStructuredDecision({
+    gameId: "doudizhu",
+    modelConfig: reviewer.aiConfig,
+    instructions,
+    input: reviewInput(table, seat),
+    schemaName: "doudizhu_review",
+    schema: REVIEW_SCHEMA,
+  }, callbacks);
+  return String(response.output.review ?? "").trim().slice(0, 900);
+}

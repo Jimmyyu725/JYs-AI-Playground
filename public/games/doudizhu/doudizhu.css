@@ -253,7 +253,9 @@ body[data-strain="2"] .bulb-pool { animation: bulb-strain 0.9s steps(1, end) inf
   gap: 12px 18px;
   padding: 0 clamp(12px, 2vw, 24px) 14px;
   min-height: 0;
-  height: calc(100dvh - 64px);
+}
+@media (min-width: 1101px) {
+  body { height: 100dvh; }
 }
 .table { grid-column: 1; grid-row: 1; }
 .hand-dock { grid-column: 1; grid-row: 2; }
@@ -580,6 +582,30 @@ body[data-mode="arena"] .table { grid-row: 1 / 3; }
   rotate: 12deg;
   opacity: 0.85;
 }
+.table-notice { max-height: min(72dvh, 640px); overflow: auto; overscroll-behavior: contain; }
+.reviews { display: grid; gap: 8px; width: 100%; margin-top: 4px; }
+.review-asks { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+.review-ask {
+  border: 1px dashed color-mix(in oklab, var(--seat-color) 70%, var(--ink));
+  background: transparent;
+  color: #4b3d33;
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+.review-ask:hover:not(:disabled) { background: color-mix(in oklab, var(--seat-color) 14%, transparent); }
+.review-ask:disabled { opacity: 0.6; cursor: default; }
+.review {
+  margin: 0;
+  padding: 8px 12px;
+  text-align: left;
+  border-left: 4px solid var(--seat-color);
+  background: rgb(20 16 20 / 0.05);
+  border-radius: 0 6px 6px 0;
+}
+.review strong { font-size: 0.85rem; }
+.review p { margin: 2px 0 0; font-size: 0.86rem; color: var(--ink); white-space: pre-wrap; }
 .notice-buttons { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 6px; }
 .table-notice .lane-button.ghost { color: var(--ink); border-color: rgb(20 16 20 / 0.35); }
 
@@ -737,7 +763,7 @@ body[data-mode="arena"] .table { grid-row: 1 / 3; }
   color: var(--brass);
 }
 .setup-section h3 small { display: block; margin-top: 3px; font: 400 0.75rem/1.3 var(--font-body); color: var(--kit-muted); }
-.mode-pick label { cursor: pointer; }
+.mode-pick label { position: relative; cursor: pointer; }
 .mode-pick input { position: absolute; opacity: 0; pointer-events: none; }
 .mode-pick label span {
   display: grid;
@@ -850,11 +876,15 @@ body[data-mode="arena"] .table { grid-row: 1 / 3; }
 }
 
 /* Seat fans adapt to their own column width. */
-.seat-cards { display: flex; justify-content: center; width: 100%; container-type: inline-size; }
-.seat-cards .card + .card { margin-left: max(calc(var(--w) * -0.78), min(calc(var(--w) * -0.3), calc((100cqi - var(--w)) / max(var(--n) - 1, 1) - var(--w)))); }
+.seat-cards { display: grid; justify-items: center; gap: 4px; width: 100%; container-type: inline-size; }
+.fan-row { display: flex; justify-content: center; max-width: 100%; }
+.fan-row .card + .card { margin-left: max(calc(var(--w) * -0.8), min(calc(var(--w) * -0.42), calc((100cqi - var(--w)) / max(var(--n) - 1, 1) - var(--w)))); }
 .seat-cards[data-layout="backs"] { padding-top: 6px; }
 .seat-cards[data-layout="backs"] .card + .card { margin-left: calc(var(--w) * -0.7); }
 .seat-cards[data-layout="backs"] .card { transform-origin: 50% 160%; rotate: calc((var(--i) - (var(--n) - 1) / 2) * 3deg); }
+.seat-cards[data-layout="faces"] .fan-row + .fan-row { margin-top: -26px; }
+body[data-mode="arena"] .seat-me { grid-template-columns: auto minmax(0, 1fr); align-items: center; justify-items: stretch; padding-top: 0; }
+body[data-mode="arena"] .seat-me .seat-card { justify-self: end; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }

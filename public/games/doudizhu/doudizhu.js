@@ -3,7 +3,7 @@ import {
   prefersReducedMotion, seat as kitSeat, toast, transcript,
 } from "/shared/kit.js";
 import { sfx } from "/shared/sfx.js";
-import { bindTableTalk } from "/shared/speech.js";
+import { bindTableTalk, speak } from "/shared/speech.js";
 import { laneSfx } from "/games/doudizhu/lane-sfx.js";
 
 const ART = "/assets/rooms/doudizhu";
@@ -221,17 +221,26 @@ function renderSeat(index) {
   view.action.textContent = actionText(player, index);
   view.action.dataset.kind = /pass|不/i.test(view.action.textContent) ? "pass" : view.action.textContent ? "move" : "";
 
-  // Arena reveals every hand; otherwise AI hands are a fan of card backs.
-  const faces = state.gameMode === "arena" ? player.hand : Array.from({ length: Math.min(player.cardCount, 20) }, () => "BACK");
+  // Arena reveals every hand, in rows of ten so the corners stay readable; otherwise AI hands are a fan of backs.
+  const arena = state.gameMode === "arena";
+  const faces = arena ? player.hand : Array.from({ length: Math.min(player.cardCount, 20) }, () => "BACK");
   const signature = faces.join(",");
   if (view.cards.dataset.signature !== signature) {
     view.cards.dataset.signature = signature;
-    view.cards.dataset.layout = state.gameMode === "arena" ? "faces" : "backs";
-    view.cards.replaceChildren(...faces.map((code, cardIndex) => {
-      const card = cardFace(code, { size: "xs" });
-      card.style.setProperty("--i", cardIndex);
-      card.style.setProperty("--n", faces.length);
-      return card;
+    view.cards.dataset.layout = arena ? "faces" : "backs";
+    const rowSize = arena ? 10 : 20;
+    const rows = [];
+    for (let start = 0; start < faces.length; start += rowSize) rows.push(faces.slice(start, start + rowSize));
+    view.cards.replaceChildren(...rows.map((row) => {
+      const line = el("div", "fan-row");
+      line.style.setProperty("--n", row.length);
+      line.append(...row.map((code, cardIndex) => {
+        const card = cardFace(code, { size: arena ? "sm" : "xs" });
+        card.style.setProperty("--i", cardIndex);
+        card.style.setProperty("--n", row.length);
+        return card;
+      }));
+      return line;
     }));
   }
 }
@@ -240,7 +249,7 @@ function actionText(player, index) {
   if (state.phase === "bidding") {
     if (player.bid === 0) return "不叫 Pass";
     if (player.bid) return `叫 ${player.bid}`;
-    return state.currentActorSeat === index ? "…" : "";
+    return "";
   }
   // A pass only matters while the trick it passed on is still on the table.
   if (state.phase === "playing" && player.lastAction === "Passed" && state.lastPlay) return "不出 Pass";
@@ -554,13 +563,56 @@ function renderNotice() {
   buttons.append(again, change);
   dom.notice.append(el("span", "notice-headline", headline), el("strong", null, sub), el("p", null, breakdown));
   if (result.spring !== "none") dom.notice.append(el("span", "spring-stamp", result.spring === "spring" ? "春天" : "反春"));
-  dom.notice.append(buttons);
+  dom.notice.append(buttons, reviewPanel());
   const resultKey = `${state.handNumber}:${result.winner}:${result.score}`;
   if (seen.resultKey !== null && seen.resultKey !== resultKey) {
     sfx.play(iWon || !me || state.gameMode === "arena" ? "win" : "error");
     if (result.spring !== "none") laneSfx.firecrackers(22);
   }
   seen.resultKey = resultKey;
+}
+
+/* ---------- Post-game review by a character ---------- */
+
+const reviews = new Map(); // `${handNumber}:${seat}` -> { status: "loading" | "done", text }
+
+function reviewPanel() {
+  const panel = el("div", "reviews");
+  const asks = el("div", "review-asks");
+  for (const player of state.players.filter((candidate) => !candidate.isHuman)) {
+    const key = `${state.handNumber}:${player.seat}`;
+    const entry = reviews.get(key);
+    const ask = el("button", "review-ask", entry?.status === "loading" ? `${player.character?.shortName ?? player.name} is thinking…` : `Ask ${player.character?.shortName ?? player.name} to review this game`);
+    ask.type = "button";
+    ask.disabled = Boolean(entry);
+    ask.style.setProperty("--seat-color", player.character?.color ?? "#e0a43c");
+    ask.addEventListener("click", () => askReview(player.seat));
+    asks.append(ask);
+    if (entry?.status === "done") {
+      const note = el("blockquote", "review");
+      note.style.setProperty("--seat-color", player.character?.color ?? "#e0a43c");
+      note.append(el("strong", null, player.name), el("p", null, entry.text));
+      panel.append(note);
+    }
+  }
+  panel.prepend(asks);
+  return panel;
+}
+
+async function askReview(seat) {
+  const key = `${state.handNumber}:${seat}`;
+  reviews.set(key, { status: "loading" });
+  renderNotice();
+  try {
+    const result = await api("/api/doudizhu/review", { seat });
+    reviews.set(key, { status: "done", text: result.review });
+    record.add({ who: `${result.playerName} reviews`, text: result.review, kind: "reasoning" });
+  } catch (error) {
+    reviews.delete(key);
+    sfx.play("error");
+    toast(error.message, { tone: "error" });
+  }
+  if (state?.phase === "complete") renderNotice();
 }
 
 /* ---------- Stakes, elapsed time, ledger ---------- */
@@ -803,11 +855,14 @@ events.addEventListener("message", (event) => {
   }
 });
 events.addEventListener("error", () => toast("Live updates dropped. Reconnecting…", { tone: "error", duration: 2500 }));
-bindTableTalk(events, (speaker) => {
-  const player = state?.players[speaker];
-  if (player?.isHuman && state.gameMode !== "arena") return dom.handDock;
-  return dom.seats[speaker]?.querySelector(".seat-card") ?? null;
-}, { placement: "bottom" });
+// Table talk rises from the seat like steam: below the top seats, above the bottom one.
+bindTableTalk(events, () => null, {
+  onTalk(talk) {
+    const anchor = dom.seats[talk.speaker]?.querySelector(".seat-card");
+    if (!anchor || anchor.closest("[hidden]")) return;
+    speak(anchor, talk.text, { placement: talk.speaker === 0 ? "top" : "bottom" });
+  },
+});
 
 async function bootstrap() {
   try {
