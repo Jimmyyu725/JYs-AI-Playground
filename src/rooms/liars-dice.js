@@ -142,9 +142,10 @@ async function runAIChain(version) {
           latencyMs,
           attempts: decision.attempts,
         });
-        if (talk) channel.broadcast("table_talk", talk);
         afterAction(current, seat, decision.action, reveal);
         broadcastState();
+        // After the state, so the ship's log writes the bid before the line said with it.
+        if (talk) channel.broadcast("table_talk", talk);
       } catch (error) {
         if (!live(current)) return;
         const message = publicError(error);

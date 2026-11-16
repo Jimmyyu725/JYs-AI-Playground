@@ -121,6 +121,18 @@ setupForm.innerHTML = `
     <label class="check"><input type="checkbox" name="palifico" checked /><span><strong>Palifico</strong> — first drop to one die: ones are not wild, face is locked</span></label>
   </fieldset>
   <button type="submit" class="brass-button deal">Shake the cups</button>
+  <details class="rules-sheet">
+    <summary>How the table plays</summary>
+    <ul>
+      <li>Everyone shakes five dice under a cup and sees only their own.</li>
+      <li>A bid claims “at least this many of this face on the whole table”. Ones are wild and count toward every other face; nobody opens a round on ones.</li>
+      <li>Raise with more dice, or the same number on a higher face. Moving to ones needs half the count (rounded up); leaving ones needs double plus one.</li>
+      <li><strong>Liar!</strong> lifts every cup. If the bid holds, the caller loses a die; if not, the bidder does.</li>
+      <li><strong>Spot on</strong> claims the bid is exact: right wins a die back, wrong loses one.</li>
+      <li><strong>Palifico</strong>: the first time someone drops to one die, the next round has no wild ones and the opening face is locked.</li>
+      <li>Whoever loses a die opens the next round. The last cup with dice wins.</li>
+    </ul>
+  </details>
 `;
 setup.body.append(setupForm);
 
@@ -277,6 +289,7 @@ function renderCrew() {
     if (!entry) continue;
     const active = state.phase === "bidding" && state.currentSeat === seatState.seat;
     entry.item.dataset.active = String(active);
+    entry.item.dataset.thinking = String(state.aiThinking?.seat === seatState.seat);
     entry.item.dataset.out = String(seatState.eliminated);
     entry.figure.dataset.active = String(active);
     renderTally(entry.tally, seatState.diceCount, max);

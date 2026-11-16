@@ -230,6 +230,14 @@ button { font: inherit; color: inherit; }
 .mate[data-open="true"] .under-dice,
 .tavern[data-reveal="lifting"] .under-dice { opacity: 1; }
 .tavern[data-reveal="lifting"] .cup { translate: 0 -62%; rotate: -12deg; opacity: 0.55; }
+/* The seat that is thinking fiddles with its cup. */
+.mate[data-thinking="true"]:not([data-open="true"]) .cup { animation: ponder 1.8s ease-in-out infinite; }
+@keyframes ponder {
+  0%, 100% { rotate: 0deg; }
+  20% { rotate: -3deg; translate: 0 -2px; }
+  45% { rotate: 2deg; }
+  70% { rotate: -1deg; translate: 0 -1px; }
+}
 .mate[data-loser="true"] .kit-portrait { box-shadow: 0 0 0 3px var(--ld-oxblood), 0 0 22px var(--ld-oxblood); }
 
 .mate .kit-seat { --seat-size: 60px; gap: 2px; text-align: center; justify-items: center; }
@@ -337,6 +345,9 @@ button { font: inherit; color: inherit; }
 .tray-hand { display: grid; gap: 6px; }
 .tray-label { font: 700 0.82rem var(--ld-caps); letter-spacing: 0.06em; color: var(--ld-parchment); }
 .hand { display: flex; gap: 8px; min-height: 44px; }
+.hand .die { transition: translate 0.2s var(--kit-ease), rotate 0.2s var(--kit-ease), box-shadow 0.2s; }
+.hand .die:hover { translate: 0 -4px; rotate: -4deg; box-shadow: inset 0 -2px 3px rgb(90 60 30 / 0.35), 0 10px 14px rgb(0 0 0 / 0.5); }
+.tray-controls:has(.seal.holding) .tray-times { color: var(--ld-oxblood); }
 .tray-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; }
 .tray-arena { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
 .tray-times { font: 400 1.6rem var(--ld-display); color: var(--ld-parchment); }
@@ -596,6 +607,20 @@ button { font: inherit; color: inherit; }
 .seat-model-row { display: grid; gap: 4px; margin-top: 8px; }
 .seat-model-name { font: 700 0.82rem var(--ld-caps); color: var(--kit-muted); }
 .deal { justify-self: stretch; font-size: 1.1rem; padding: 12px; }
+.rules-sheet {
+  padding: 10px 14px;
+  border-radius: 8px;
+  color: var(--ld-ink-sepia);
+  background: var(--ld-chart) center / cover, var(--ld-parchment);
+}
+.rules-sheet summary { cursor: pointer; font: 400 1.25rem var(--ld-display); }
+.rules-sheet ul { margin: 8px 0 2px; padding-left: 18px; display: grid; gap: 4px; font-size: 0.9rem; }
+
+/* The tray re-flows by its own width, not the viewport's. */
+@container stage (max-width: 700px) {
+  .tray { justify-content: center; }
+  .tray-hand { justify-items: center; }
+}
 
 /* ---- Phone ---- */
 @media (max-width: 860px) {
@@ -634,4 +659,5 @@ button { font: inherit; color: inherit; }
   .hold-art, .lantern-glow, .cup-zone::before, .rule-badge[data-palifico="true"] { animation: none; }
   .log-item, .reveal-stamp, .reveal-text, .reveal::before, .result-card { animation: none; }
   .cup, .die, .face-pick, .tray, .seal { transition: none; }
+  .mate[data-thinking="true"] .cup { animation: none; }
 }
