@@ -383,11 +383,15 @@ function renderDock() {
     tiles.splice(tiles.lastIndexOf(state.drawnTile), 1);
     drawn = state.drawnTile;
   }
+  let liftedOne = false; // identical tiles: lift only one copy
   const make = (tile, extra = "") => {
     const button = tileElement(tile, { size: "lg", button: true, extraClass: extra });
     const playable = discards.has(tile);
     button.disabled = !playable || busy;
-    if (tile === selectedTile) button.classList.add("is-selected");
+    if (tile === selectedTile && !liftedOne) {
+      button.classList.add("is-selected");
+      liftedOne = true;
+    }
     button.addEventListener("click", () => onHandTile(tile));
     button.addEventListener("dblclick", () => discard(tile));
     return button;
