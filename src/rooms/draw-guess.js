@@ -353,12 +353,12 @@ async function runImageJob() {
 // ---------------------------------------------------------------------------
 // AI seats
 
-function insightFrom(seat, response, action) {
+function insightFrom(seat, response) {
   const summary = String(response?.reasoningSummary ?? "").trim().slice(0, 600);
   if (!summary) return;
-  const isDrawer = seat === table.state.round?.drawerSeat;
-  const solved = action.type === "guess" && table.state.round?.solvedOrder.includes(seat);
-  table.insights[seat] = { seat, text: summary, round: table.state.round?.number ?? 0, audience: isDrawer || solved ? "knowers" : "all" };
+  // A drawer's notes name the word and a guesser's notes list candidate answers, so a human
+  // guesser sees them only once they know the word (solved, or the round is over).
+  table.insights[seat] = { seat, text: summary, round: table.state.round?.number ?? 0, audience: "knowers" };
 }
 
 async function runAiSeat(seat) {
@@ -386,7 +386,7 @@ async function runAiSeat(seat) {
     });
     if (!isCurrent() || !decision) return;
     const check = applyActionSafely(decision.action);
-    if (check) insightFrom(seat, decision.response, decision.action);
+    if (check) insightFrom(seat, decision.response);
     const reveal = revealAt(current.state, Date.now());
     const wait = reveal.nextChangeAt ? Math.min(10000, Math.max(1500, reveal.nextChangeAt - Date.now() + 200)) : 1500;
     current.nextGuessAt[seat] = Date.now() + wait;
