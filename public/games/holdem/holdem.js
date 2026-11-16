@@ -41,7 +41,7 @@ const PIPS = {
   10: [[30, 18], [70, 18], [50, 29], [30, 39], [70, 39], [30, 61], [70, 61], [50, 71], [30, 82], [70, 82]],
 };
 // Seat ellipse radii (percent of the table) in the phone layout; they match --rx / --ry in holdem.css.
-const PHONE_RX = 39;
+const PHONE_RX = 40;
 const PHONE_RY = 40;
 const CHIP_DENOMS = [
   [500, "black"],
@@ -60,6 +60,11 @@ const el = (tag, className, text) => {
 };
 const fmt = (value) => Number(value ?? 0).toLocaleString("en-US");
 const motion = () => !prefersReducedMotion();
+// Browsers refuse audio before the first gesture and log a warning per attempt; a spectator who
+// never clicks would collect dozens of them, so stay quiet until the page has been touched.
+const play = (name) => {
+  if (navigator.userActivation?.hasBeenActive ?? true) sfx.play(name);
+};
 
 const view = {
   state: null,
@@ -97,7 +102,7 @@ async function act(path, body = {}) {
     applyState(state);
     return state;
   } catch (error) {
-    sfx.play("error");
+    play("error");
     toast(error.message, { tone: "error" });
     return null;
   } finally {
@@ -407,10 +412,10 @@ function renderBoard(state, { newHand }) {
       card.style.setProperty("--deal-delay", `${offset * 140}ms`);
       setTimeout(() => {
         card.classList.remove("is-down");
-        sfx.play("cardFlick");
+        play("cardFlick");
       }, 260 + offset * 140);
     } else if (offset === 0) {
-      sfx.play("cardFlick");
+      play("cardFlick");
     }
     host.append(card);
   });
@@ -663,7 +668,7 @@ async function requestReview(seatNumber) {
     const firstSentence = result.review.match(/^.{20,140}?[.!?](\s|$)/)?.[0] ?? result.review.slice(0, 120);
     speak(view.seatEls.get(seatNumber)?.querySelector(".seat-portrait"), firstSentence.trim(), { placement: "top" });
   } catch (error) {
-    sfx.play("error");
+    play("error");
     toast(`Review failed: ${error.message}`, { tone: "error" });
     $("lens-status").textContent = "The review request failed; you can ask again.";
   } finally {
@@ -678,7 +683,7 @@ function leader(state) {
 }
 
 function send(action, targetTotal = null) {
-  sfx.play(action === "fold" ? "cardFlick" : action === "check" ? "stoneClick" : "chipClack");
+  play(action === "fold" ? "cardFlick" : action === "check" ? "stoneClick" : "chipClack");
   return act("/api/action", { action, targetTotal });
 }
 
@@ -722,6 +727,31 @@ function renderLens(state) {
 
 const ledger = kitTranscript({ title: "Croupier's ledger" });
 $("transcript-slot").append(ledger.el);
+// Keep the ledger on its newest line unless the reader scrolled up. The kit only re-pins on add, so
+// the list came loose whenever the lens above it changed height: a re-render that briefly empties
+// the lens lets the browser clamp scrollTop, and that scroll is not the reader's. So only a scroll
+// right after the reader's own input can unpin it; reaching the bottom pins it again.
+const ledgerList = ledger.el.querySelector(".kit-transcript-list");
+let ledgerFollow = true;
+let ledgerInputAt = -Infinity;
+const followLedger = () => {
+  if (ledgerFollow) ledgerList.scrollTop = ledgerList.scrollHeight;
+};
+for (const type of ["wheel", "touchstart", "pointerdown", "keydown"]) {
+  ledgerList.addEventListener(type, () => (ledgerInputAt = performance.now()), { passive: true });
+}
+ledgerList.addEventListener("scroll", () => {
+  const atBottom = ledgerList.scrollHeight - ledgerList.scrollTop - ledgerList.clientHeight < 24;
+  if (atBottom) ledgerFollow = true;
+  else if (performance.now() - ledgerInputAt < 1500) ledgerFollow = false;
+}, { passive: true });
+new ResizeObserver(followLedger).observe(ledgerList);
+const kitLedgerAdd = ledger.add;
+ledger.add = (entry) => {
+  const item = kitLedgerAdd(entry);
+  followLedger();
+  return item;
+};
 
 function syncLogs(state) {
   const fresh = [...state.logs].reverse().filter((entry) => !view.seenLogs.has(entry.id));
@@ -730,11 +760,7 @@ function syncLogs(state) {
   for (const entry of fresh) {
     view.seenLogs.add(entry.id);
     const kind = entry.kind === "error" ? "system" : entry.kind === "hand" || entry.kind === "street" || entry.kind === "result" ? "system" : "move";
-    // The engine still calls the room by its old name; the ledger speaks for this salon.
-    const text = entry.text
-      .replace(/the Luna Room/g, "Salon Riviera")
-      .replace(/Luna personalities/g, "guests")
-      .replace(/\b([2-9TJQKA])([CDHS])\b/g, (_, rank, suit) => `${RANK_LABELS[rank] ?? rank}${{ C: "♣", D: "♦", H: "♥", S: "♠" }[suit]}`);
+    const text = entry.text.replace(/\b([2-9TJQKA])([CDHS])\b/g, (_, rank, suit) => `${RANK_LABELS[rank] ?? rank}${{ C: "♣", D: "♦", H: "♥", S: "♠" }[suit]}`);
     const item = ledger.add({ text, kind });
     item.dataset.logKind = entry.kind;
   }
@@ -774,17 +800,18 @@ function applyState(state) {
   renderActions();
   renderLens(state);
   syncLogs(state);
+  followLedger();
 
   if (!previous || newTable) return;
   // Sounds and set pieces for what just changed.
   if (newHand) {
-    if (motion()) state.players.forEach((_, index) => setTimeout(() => sfx.play("cardFlick"), index * 90));
+    if (motion()) state.players.forEach((_, index) => setTimeout(() => play("cardFlick"), index * 90));
   } else {
     for (const player of state.players) {
       const before = previous.players[player.seat];
       if (!before) continue;
-      if (player.streetBet > before.streetBet) sfx.play("chipClack");
-      else if (player.lastAction === "Check" && before.lastAction !== "Check") sfx.play("stoneClick");
+      if (player.streetBet > before.streetBet) play("chipClack");
+      else if (player.lastAction === "Check" && before.lastAction !== "Check") play("stoneClick");
     }
   }
   const finished = ["hand_over", "game_over"].includes(state.phase) && !["hand_over", "game_over"].includes(previous.phase);
@@ -792,11 +819,11 @@ function applyState(state) {
     sweepPot(state);
     const human = humanPlayer(state);
     const humanWon = human && (state.lastShowdown?.pots ?? []).some((pot) => pot.winners.includes(human.seat));
-    setTimeout(() => sfx.play(humanWon || !human ? "win" : "chipClack"), 500);
+    setTimeout(() => play(humanWon || !human ? "win" : "chipClack"), 500);
   }
-  if (state.aiError && !previous.aiError) sfx.play("error");
+  if (state.aiError && !previous.aiError) play("error");
   const human = humanPlayer(state);
-  if (human && state.currentActorSeat === human.seat && previous.currentActorSeat !== human.seat) sfx.play("tileClack");
+  if (human && state.currentActorSeat === human.seat && previous.currentActorSeat !== human.seat) play("tileClack");
 }
 
 function connect() {
@@ -812,7 +839,7 @@ function connect() {
     else if (message.type === "ai_stream") onStream(message.payload);
     else if (message.type === "table_talk") {
       const speaker = view.state?.players[message.payload.speaker];
-      ledger.add({ who: speaker?.name ?? message.payload.playerName, text: `“${message.payload.text}”`, kind: "talk" });
+      ledger.add({ who: speaker?.name ?? message.payload.playerName, text: message.payload.text, kind: "talk" }); // the kit adds the quote marks
     }
   });
   bindTableTalk(events, (speaker) => view.seatEls.get(speaker)?.querySelector(".seat-portrait"), { placement: "top" });
@@ -839,6 +866,7 @@ function onStream(payload) {
   } else if (payload.phase === "retry") {
     toast(`${payload.playerName}: ${payload.status}`, { tone: "info" });
   }
+  followLedger();
 }
 
 // ---------------------------------------------------------------- setup drawer
@@ -985,9 +1013,9 @@ function buildSetup(characters, registry) {
       const state = await api("/api/game", body);
       setup.close();
       applyState(state);
-      sfx.play("cardFlick");
+      play("cardFlick");
     } catch (error) {
-      sfx.play("error");
+      play("error");
       toast(error.message, { tone: "error" });
     } finally {
       submit.disabled = false;

@@ -66,8 +66,8 @@ export class PokerGame {
     this._log(
       "system",
       this.gameMode === "arena"
-        ? `AI Arena opens with ${opponentCount} Luna personalities at the table.`
-        : `Welcome to the Luna Room. ${opponentCount} distinct personalities have taken their seats.`,
+        ? `The AI arena opens with ${opponentCount} guests at the table.`
+        : `Welcome to Salon Riviera. ${opponentCount} guests have taken their seats.`,
     );
     this.startNewHand();
   }
@@ -227,6 +227,8 @@ export class PokerGame {
   }
 
   _beginBettingRound(firstToAct) {
+    // The bet each seat last acted against this street; see _raiseReopenedFor.
+    this.actedAtBet = new Map();
     this.pendingSeats = new Set(this.activePlayers().map((player) => player.seat));
     if (firstToAct !== null && this.pendingSeats.has(firstToAct)) {
       this.currentActorSeat = firstToAct;
@@ -242,18 +244,31 @@ export class PokerGame {
     }
   }
 
+  /**
+   * A player who already acted this street may raise again only if the bet has grown by at least a
+   * full raise since then. An all-in for less than a full raise does not reopen the betting for them:
+   * they may only call or fold (standard no-limit rule; several short all-ins can add up to a full raise).
+   */
+  _raiseReopenedFor(player) {
+    const actedAt = this.actedAtBet?.get(player.seat);
+    return actedAt === undefined || this.currentBet - actedAt >= this.minimumRaise;
+  }
+
   legalActionsFor(player = this.currentActor) {
     if (!player || player.seat !== this.currentActorSeat || !player.inHand || player.folded || player.allIn) return null;
     const toCall = Math.max(0, this.currentBet - player.streetBet);
     const callAmount = Math.min(toCall, player.stack);
     const maxTotal = player.streetBet + player.stack;
+    const mayRaise = this._raiseReopenedFor(player);
     const actions = [];
     if (toCall > 0) actions.push("fold", "call");
     else actions.push("check");
 
     let aggressiveAction = null;
     let minimumTotal = null;
-    if (this.currentBet === 0 && player.stack > 0 && maxTotal >= this.bigBlind) {
+    if (!mayRaise) {
+      // Betting is closed to this player; going all-in is allowed only as a call.
+    } else if (this.currentBet === 0 && player.stack > 0 && maxTotal >= this.bigBlind) {
       aggressiveAction = "bet";
       minimumTotal = this.bigBlind;
       actions.push("bet");
@@ -262,7 +277,7 @@ export class PokerGame {
       minimumTotal = this.currentBet + this.minimumRaise;
       actions.push("raise");
     }
-    if (player.stack > 0) actions.push("all_in");
+    if (player.stack > 0 && (mayRaise || player.stack <= toCall)) actions.push("all_in");
 
     return {
       actions: [...new Set(actions)],
@@ -328,6 +343,7 @@ export class PokerGame {
     }
 
     this.pendingSeats.delete(seat);
+    this.actedAtBet.set(seat, this.currentBet);
     if (fullRaise) {
       this.pendingSeats = new Set(this.activePlayers().filter((other) => other.seat !== seat).map((other) => other.seat));
     } else if (this.currentBet > previousCurrentBet) {
@@ -468,7 +484,7 @@ export class PokerGame {
     if (this.livePlayers().length < 2) {
       this.phase = "game_over";
       const winner = this.players.reduce((best, player) => (player.stack > best.stack ? player : best), this.players[0]);
-      this._log("result", `${winner.name} owns the Luna Room.`);
+      this._log("result", `${winner.name} owns Salon Riviera.`);
     } else {
       this.phase = "hand_over";
     }

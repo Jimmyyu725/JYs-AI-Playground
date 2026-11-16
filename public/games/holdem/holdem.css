@@ -957,6 +957,10 @@ body[data-mode="arena"] .seat-model,
   gap: 10px 14px;
   min-inline-size: 0;
 }
+/* overflow: hidden on the buttons lets flex squeeze them below their label; wrap the row instead. */
+.action-panel .brass-button {
+  flex-shrink: 0;
+}
 .action-row {
   display: flex;
   gap: 10px;
@@ -1057,11 +1061,15 @@ body[data-mode="arena"] .seat-model,
   display: flex;
   gap: 6px;
   align-items: center;
+  min-inline-size: 0;
 }
 .review-button {
   white-space: nowrap;
+  flex-shrink: 0;
 }
 .review-select {
+  min-inline-size: 90px;
+  flex: 0 1 auto;
   min-block-size: 46px;
   max-inline-size: 150px;
   border-radius: 999px;
@@ -1297,6 +1305,8 @@ body[data-mode="arena"] .seat-model,
 }
 .setup-field {
   display: grid;
+  /* A label that wraps to two lines (phone width) must not push its control out of line. */
+  align-content: end;
   gap: 4px;
   font-size: 0.85rem;
   letter-spacing: 0.08em;
@@ -1507,9 +1517,10 @@ body[data-mode="arena"] .seat-model,
   }
   .table {
     --card-w: 30px;
-    --seat-w: 92px;
-    --board-card-w: 42px;
-    --rx: 39%;
+    --seat-w: 88px;
+    /* Five board cards must fit between the side seats: 5 x 36 + 4 x 3 = 192px. */
+    --board-card-w: 36px;
+    --rx: 40%;
     --ry: 40%;
     inline-size: 100%;
     aspect-ratio: 0.9;
@@ -1529,7 +1540,7 @@ body[data-mode="arena"] .seat-model,
   .community {
     flex-wrap: wrap;
     justify-content: center;
-    gap: 4px;
+    gap: 3px;
     max-inline-size: 66cqw;
   }
   .pot-plaque strong {
@@ -1576,6 +1587,13 @@ body[data-mode="arena"] .seat-model,
   }
   .seat-tag {
     max-inline-size: 8ch;
+  }
+  /* Side seats stack their chip count over the last action so neither reaches into the board. */
+  .seat:is([data-side="left"], [data-side="right"]) .seat-plate,
+  .table:is([data-players="6"]) .seat[data-side="bottom"]:not(.is-human) .seat-plate {
+    flex-direction: column;
+    align-items: center;
+    line-height: 1.15;
   }
   .dealer-button {
     inline-size: 20px;

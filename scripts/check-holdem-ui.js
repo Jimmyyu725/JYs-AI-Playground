@@ -124,7 +124,8 @@ if (play) {
 
 if (arena) {
   await desktop.click(".kit-drawer-toggle");
-  await desktop.check('input[name="gameMode"][value="arena"]', { force: true });
+  // The radio itself is visually hidden inside its card; click the card like a person would.
+  await desktop.click('.mode-option:has(input[name="gameMode"][value="arena"])');
   await desktop.selectOption('select[name="opponentCount"]', "3");
   await desktop.selectOption('select[name="arenaHandTarget"]', "5");
   for (const select of await desktop.locator(".seat-model-row select").all()) {

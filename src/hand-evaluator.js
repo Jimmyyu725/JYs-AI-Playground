@@ -138,20 +138,28 @@ export function resolveSidePots(players, communityCards, dealerIndex) {
   const pots = [];
   let previousLevel = 0;
 
+  // Layers contested by the same live players form one pot: a folded player's smaller
+  // contribution is dead money in that pot, not a side pot of its own.
+  const layers = [];
   for (const level of contributionLevels) {
     const contributors = players.filter((player) => player.totalCommitted >= level);
     const perContributor = level - previousLevel;
-    const amount = perContributor * contributors.length;
     previousLevel = level;
-    if (amount <= 0) continue;
-
+    if (perContributor <= 0) continue;
     const eligible = contributors.filter((player) => player.inHand && !player.folded);
-    if (!eligible.length) {
-      // No live player can contest this layer, so it was never called. Return each
-      // contributor's chips instead of dropping them, which would destroy chips.
+    if (!eligible.length || (contributors.length === 1 && eligible.length === 1)) {
+      // Nobody else put chips into this layer, so it was never called (or no live player can
+      // contest it): it goes back to whoever put it in instead of being won or destroyed.
       for (const player of contributors) payouts[player.seat] += perContributor;
       continue;
     }
+    const key = eligible.map((player) => player.seat).join(",");
+    const last = layers.at(-1);
+    if (last && last.key === key) last.amount += perContributor * contributors.length;
+    else layers.push({ key, eligible, amount: perContributor * contributors.length });
+  }
+
+  for (const { eligible, amount } of layers) {
     for (const player of eligible) {
       if (!evaluations.has(player.seat)) {
         evaluations.set(player.seat, evaluateBest([...player.holeCards, ...communityCards]));
