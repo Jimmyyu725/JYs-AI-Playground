@@ -238,6 +238,9 @@ button { font: inherit; color: inherit; }
   45% { rotate: 2deg; }
   70% { rotate: -1deg; translate: 0 -1px; }
 }
+.tavern[data-reveal="lifting"] .under-dice .die { animation: tumble 0.34s var(--kit-ease) backwards; animation-delay: calc(var(--i, 0) * 45ms + 180ms); }
+@keyframes tumble { from { translate: 0 -14px; rotate: -40deg; opacity: 0; } }
+.sea-toggle[aria-pressed="true"] { color: #bfe3df; border-color: var(--ld-sea-bright); background: color-mix(in oklab, var(--ld-sea) 85%, transparent); }
 .mate[data-loser="true"] .kit-portrait { box-shadow: 0 0 0 3px var(--ld-oxblood), 0 0 22px var(--ld-oxblood); }
 
 .mate .kit-seat { --seat-size: 60px; gap: 2px; text-align: center; justify-items: center; }
@@ -667,5 +670,5 @@ button { font: inherit; color: inherit; }
   .hold-art, .lantern-glow, .cup-zone::before, .rule-badge[data-palifico="true"] { animation: none; }
   .log-item, .reveal-stamp, .reveal-text, .reveal::before, .result-card { animation: none; }
   .cup, .die, .face-pick, .tray, .seal { transition: none; }
-  .mate[data-thinking="true"] .cup { animation: none; }
+  .mate[data-thinking="true"] .cup, .tavern[data-reveal="lifting"] .under-dice .die { animation: none; }
 }

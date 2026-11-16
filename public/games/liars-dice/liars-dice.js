@@ -604,7 +604,13 @@ function playReveal(reveal) {
   tavern.dataset.reveal = "lifting";
   for (const [seat, entry] of crewBySeat) {
     const dice = reveal.dice[seat] ?? [];
-    entry.under.replaceChildren(...dice.map((face) => die(face, { size: "xs", state: counts(reveal, face) ? "match" : "dim" })));
+    entry.under.replaceChildren(
+      ...dice.map((face, index) => {
+        const node = die(face, { size: "xs", state: counts(reveal, face) ? "match" : "dim" });
+        node.style.setProperty("--i", String(seat * 2 + index));
+        return node;
+      }),
+    );
     entry.item.style.setProperty("--lift-delay", `${60 * seat}ms`);
     const outcome = reveal.loserSeat === seat ? "defeated" : reveal.gainerSeat === seat || (reveal.type === "dudo" && (seat === reveal.callerSeat || seat === reveal.bid.seat)) ? "triumphant" : null;
     if (outcome) setExpression(entry.figure, outcome);
@@ -768,11 +774,92 @@ function applyState(next) {
 }
 
 // ---------------------------------------------------------------------------
+// Optional ambience: a slow brown-noise sea swell and a rare hull creak. Off by default,
+// and silent whenever the shared sound effects are muted.
+
+let sea = null;
+function startSea() {
+  const AudioContextClass = globalThis.AudioContext || globalThis.webkitAudioContext;
+  if (!AudioContextClass || sea) return;
+  const ctx = new AudioContextClass();
+  const seconds = 4;
+  const buffer = ctx.createBuffer(1, ctx.sampleRate * seconds, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  let last = 0;
+  for (let index = 0; index < data.length; index += 1) {
+    last = (last + 0.02 * (Math.random() * 2 - 1)) / 1.02;
+    data[index] = last * 3.2;
+  }
+  const source = ctx.createBufferSource();
+  source.buffer = buffer;
+  source.loop = true;
+  const lowpass = ctx.createBiquadFilter();
+  lowpass.type = "lowpass";
+  lowpass.frequency.value = 420;
+  const swell = ctx.createGain();
+  swell.gain.value = 0.07;
+  const lfo = ctx.createOscillator();
+  lfo.frequency.value = 1 / 9;
+  const depth = ctx.createGain();
+  depth.gain.value = 0.045;
+  lfo.connect(depth).connect(swell.gain);
+  source.connect(lowpass).connect(swell).connect(ctx.destination);
+  source.start();
+  lfo.start();
+  const creak = () => {
+    const noise = ctx.createBufferSource();
+    noise.buffer = buffer;
+    const band = ctx.createBiquadFilter();
+    band.type = "bandpass";
+    band.Q.value = 18;
+    const gain = ctx.createGain();
+    const now = ctx.currentTime;
+    band.frequency.setValueAtTime(260, now);
+    band.frequency.exponentialRampToValueAtTime(720, now + 0.9);
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.22, now + 0.3);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.1);
+    noise.connect(band).connect(gain).connect(ctx.destination);
+    noise.start(now, Math.random() * 2, 1.2);
+    sea.timer = setTimeout(creak, 11000 + Math.random() * 19000);
+  };
+  sea = { ctx, timer: setTimeout(creak, 6000) };
+}
+function stopSea() {
+  if (!sea) return;
+  clearTimeout(sea.timer);
+  sea.ctx.close().catch(() => {});
+  sea = null;
+}
+function seaButton() {
+  const button = el("button", "kit-mute sea-toggle");
+  button.type = "button";
+  button.title = "Sea and hull ambience";
+  const sync = () => {
+    button.setAttribute("aria-pressed", String(Boolean(sea)));
+    button.setAttribute("aria-label", sea ? "Turn the sea ambience off" : "Turn the sea ambience on");
+    button.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M2 9c2.5 0 2.5-2 5-2s2.5 2 5 2 2.5-2 5-2 2.5 2 5 2"/><path d="M2 15c2.5 0 2.5-2 5-2s2.5 2 5 2 2.5-2 5-2 2.5 2 5 2"/></svg>';
+  };
+  button.addEventListener("click", () => {
+    if (sea) stopSea();
+    else if (!sfx.muted) startSea();
+    else toast("Sound is muted. Unmute to hear the sea.");
+    sync();
+  });
+  sfx.onChange((muted) => {
+    if (muted) stopSea();
+    sync();
+  });
+  sync();
+  return button;
+}
+
+// ---------------------------------------------------------------------------
 // Boot
 
 const nav = $("nav-slot");
 nav.append(backToLobby());
-$("tools-slot").append(sfx.muteButton(), setup.toggleButton);
+$("tools-slot").append(seaButton(), sfx.muteButton(), setup.toggleButton);
 setup.toggleButton.textContent = "Setup";
 
 await initSetup();
