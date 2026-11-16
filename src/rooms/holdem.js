@@ -2,6 +2,7 @@ import { PokerGame } from "../poker-game.js";
 import { requestHoldemDecision } from "../openai-player.js";
 import { pushTableTalk } from "../platform/table-talk.js";
 import { createMatchRecorder, participantFrom, publicError, sendSSE } from "../platform/room-kit.js";
+import { decideWithRetries } from "../games/holdem/ai-retry.js";
 
 export const id = "holdem";
 export const defaults = { model: "gpt-6-luna", reasoningEffort: "low" };
@@ -28,11 +29,11 @@ function broadcast(type, payload) {
 
 function recordResult() {
   const table = game;
-  if (!table || !(table.phase === "game_over" || table.arenaFinished)) return;
+  if (!table || !(table.phase === "game_over" || table.arenaFinished || table.cashedOut)) return;
   recordOnce(table, "session", () => ({
     mode: table.gameMode === "arena" ? "arena" : "human-vs-ai",
     participants: table.players.map((player) => participantFrom(player, { score: player.stack })),
-    details: { hands: table.completedHands },
+    details: { hands: table.completedHands, ...(table.cashedOut ? { ending: "cashed_out" } : {}) },
   }));
 }
 
@@ -95,8 +96,7 @@ async function runAIChain(version) {
       broadcastState();
 
       try {
-        const snapshot = table.aiSnapshot();
-        const decision = await requestHoldemDecision(snapshot, actor.aiConfig, {
+        const callbacks = {
           onStatus(status) {
             if (game !== table || version !== gameVersion) return;
             table.aiThinking = { ...table.aiThinking, status };
@@ -107,32 +107,53 @@ async function runAIChain(version) {
             if (game !== table || version !== gameVersion) return;
             broadcast("ai_stream", { phase: "summary_delta", seat, playerName: actor.name, delta });
           },
+        };
+        let stale = false;
+        await decideWithRetries({
+          snapshot: table.aiSnapshot(),
+          request: (snapshot) => requestHoldemDecision(snapshot, actor.aiConfig, callbacks),
+          onRetry({ attempt, error }) {
+            if (game !== table || version !== gameVersion) return;
+            const status = `Answer rejected (${error.message}); asking again, retry ${attempt} of 2…`;
+            table.aiThinking = { ...table.aiThinking, status };
+            broadcast("ai_stream", { phase: "retry", seat, playerName: actor.name, status, attempt });
+            broadcastState();
+          },
+          apply(decision) {
+            if (game !== table || version !== gameVersion) {
+              stale = true;
+              return;
+            }
+            // The engine validates first; only a legal move is narrated and logged.
+            const phaseBefore = table.phase;
+            table.applyAction(seat, decision.action, decision.targetTotal);
+            const latencyMs = performance.now() - startedAt;
+            const visibleSummary = decision.reasoningSummary || decision.explanation;
+            const summarySource = decision.reasoningSource || "public_decision_rationale";
+            const talk = pushTableTalk(table, { speaker: seat, playerName: actor.name, characterId: actor.character?.id ?? null, text: decision.tableTalk });
+            if (talk) broadcast("table_talk", talk);
+            table.recordAIInsight(seat, {
+              summary: visibleSummary,
+              summarySource,
+              explanation: decision.explanation,
+              latencyMs,
+              action: decision.action,
+            });
+            table.aiInsights[table.aiInsights.length - 1].phase = phaseBefore;
+            table.aiThinking = null;
+            broadcast("ai_stream", {
+              phase: "completed",
+              seat,
+              playerName: actor.name,
+              action: decision.action,
+              summary: visibleSummary,
+              summarySource,
+              explanation: decision.explanation,
+              latencyMs: Math.round(latencyMs),
+            });
+          },
         });
-
-        if (game !== table || version !== gameVersion) return;
-        const latencyMs = performance.now() - startedAt;
-        const visibleSummary = decision.reasoningSummary || decision.explanation;
-        const summarySource = decision.reasoningSource || "public_decision_rationale";
-        const talk = pushTableTalk(table, { speaker: seat, playerName: actor.name, characterId: actor.character?.id ?? null, text: decision.tableTalk });
-        if (talk) broadcast("table_talk", talk);
-        table.recordAIInsight(seat, {
-          summary: visibleSummary,
-          summarySource,
-          explanation: decision.explanation,
-          latencyMs,
-          action: decision.action,
-        });
-        table.aiThinking = null;
-        broadcast("ai_stream", {
-          phase: "completed",
-          seat,
-          playerName: actor.name,
-          summary: visibleSummary,
-          summarySource,
-          explanation: decision.explanation,
-          latencyMs: Math.round(latencyMs),
-        });
-        table.applyAction(seat, decision.action, decision.targetTotal);
+        if (stale || game !== table || version !== gameVersion) return;
         broadcastState();
       } catch (error) {
         if (game !== table || version !== gameVersion) return;
@@ -231,6 +252,24 @@ export function register(app, ctx) {
       response.json(table.publicState());
       broadcastState();
       scheduleAITurn(gameVersion);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Ends a human session between hands so the ladder records it (a full table rarely busts everyone).
+  app.post("/api/cash-out", (_request, response, next) => {
+    try {
+      const table = requireGame();
+      if (table.isArenaMode) throw Object.assign(new Error("The arena ends on its own hand target"), { status: 409 });
+      if (table.phase !== "hand_over") throw Object.assign(new Error("Cash out between hands"), { status: 409 });
+      table.cashedOut = true;
+      table.phase = "game_over";
+      table.currentActorSeat = null;
+      const leader = table.players.reduce((best, player) => (player.stack > best.stack ? player : best), table.players[0]);
+      table._log("result", `The table closes after ${table.completedHands} hand${table.completedHands === 1 ? "" : "s"}. ${leader.name} leaves with the most chips (${leader.stack}).`);
+      response.json(table.publicState());
+      broadcastState();
     } catch (error) {
       next(error);
     }
