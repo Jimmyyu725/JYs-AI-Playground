@@ -40,6 +40,9 @@ let lastEventIndex = -1;
 let seenInsights = new Set();
 let revealKey = null;
 let revealing = false;
+// The challenge being revealed: the server has already rolled the next round, but the plaque and
+// the round strip keep showing the challenged bid until the cups come back down.
+let activeReveal = null;
 let lastRound = null;
 let resultShownFor = null;
 let registry = null;
@@ -310,7 +313,7 @@ function renderTally(tally, count, max) {
     marks.push(mark);
   }
   tally.replaceChildren(...marks);
-  tally.setAttribute("aria-label", `${count} dice left`);
+  tally.setAttribute("aria-label", `${count} ${count === 1 ? "die" : "dice"} left`);
 }
 
 function renderCrew() {
@@ -353,7 +356,8 @@ const obj = (seat) => (isHumanSeat(seat) ? "you" : nameOf(seat));
 const verb = (seat, third, base) => `${subj(seat)} ${isHumanSeat(seat) ? base : third}`;
 
 function renderPlaque() {
-  const bid = state.currentBid;
+  const reveal = revealing ? activeReveal : null;
+  const bid = reveal ? reveal.bid : state.currentBid;
   $("plaque-empty").hidden = Boolean(bid) || state.phase === "complete";
   $("plaque-empty").textContent = state.phase === "bidding" ? `Round ${state.round}: ${verb(state.roundStarter, "opens", "open")} the bidding.` : "";
   $("plaque-bid").hidden = !bid;
@@ -362,7 +366,7 @@ function renderPlaque() {
     $("plaque-quantity").textContent = String(bid.quantity);
     $("plaque-die").replaceChildren(die(bid.face, { size: "lg" }));
     $("plaque-die").dataset.face = String(bid.face);
-    $("plaque-by").textContent = `claims ${nameOf(bid.seat)}`;
+    $("plaque-by").textContent = isHumanSeat(bid.seat) ? "your claim" : `claims ${nameOf(bid.seat)}`;
     if (changed && !prefersReducedMotion()) $("plaque-bid").animate([{ transform: "scale(1.12) rotate(-2deg)", opacity: 0.4 }, { transform: "none", opacity: 1 }], { duration: 320, easing: "cubic-bezier(.2,.8,.2,1)" });
   }
   const thinking = state.aiThinking;
@@ -375,11 +379,12 @@ function renderPlaque() {
   else line = `${nameOf(state.currentSeat)} to act.`;
   $("turn-line").textContent = line;
 
-  $("round-number").textContent = String(state.round);
-  $("dice-total").textContent = String(state.totalDice);
+  $("round-number").textContent = String(reveal ? reveal.round : state.round);
+  $("dice-total").textContent = String(reveal ? reveal.dice.flat().length : state.totalDice);
   const badge = $("rule-badge");
-  badge.textContent = state.palifico ? `Palifico · ${nameOf(state.palificoSeat)} on one die · ones not wild` : "Ones are wild";
-  badge.dataset.palifico = String(state.palifico);
+  const palifico = reveal ? reveal.palifico : state.palifico;
+  badge.textContent = palifico ? (reveal ? "Palifico · ones not wild" : `Palifico · ${nameOf(state.palificoSeat)} on one die · ones not wild`) : "Ones are wild";
+  badge.dataset.palifico = String(palifico);
 }
 
 function rangeFor(face) {
@@ -513,7 +518,7 @@ $("arena-toggle").addEventListener("click", async () => {
 // ---------------------------------------------------------------------------
 // Ship's log
 
-function logEntry(kind, html, { who = null, color = null } = {}) {
+function logEntry(kind, html, { who = null, color = null, before = null } = {}) {
   const item = el("li", "log-item");
   item.dataset.kind = kind;
   if (color) item.style.setProperty("--who-color", color);
@@ -524,7 +529,8 @@ function logEntry(kind, html, { who = null, color = null } = {}) {
   item.append(text);
   const list = $("log-list");
   const pinned = list.scrollHeight - list.scrollTop - list.clientHeight < 40;
-  list.append(item);
+  if (before?.parentNode === list) list.insertBefore(item, before);
+  else list.append(item);
   while (list.children.length > 220) list.firstElementChild.remove();
   if (pinned) list.scrollTop = list.scrollHeight;
   return item;
@@ -580,11 +586,15 @@ function renderLog(fresh) {
     lastEventIndex = -1;
     seenInsights = new Set();
   }
-  // A new rationale is written just before the move it explains.
-  for (const insight of state.aiInsights ?? []) {
-    if (seenInsights.has(insight.id)) continue;
+  // In an arena a new rationale is written just before the move it explains. Against a human the
+  // rationales stay sealed until the game ends, then arrive together, each tagged with its round.
+  const unsealed = (state.aiInsights ?? []).filter((insight) => !seenInsights.has(insight.id));
+  const sealed = state.gameMode !== "arena";
+  if (!fresh && sealed && unsealed.length) logEntry("round", "The AI's notes, unsealed");
+  for (const insight of unsealed) {
     seenInsights.add(insight.id);
-    if (!fresh) logEntry("reasoning", insight.explanation, { who: `${nameOf(insight.seat)}'s thinking`, color: colorOf(insight.seat) });
+    const who = `${nameOf(insight.seat)}'s thinking${sealed ? ` · round ${insight.round}` : ""}`;
+    if (!fresh) logEntry("reasoning", insight.explanation, { who, color: colorOf(insight.seat) });
   }
   for (const event of state.events) {
     if (event.index <= lastEventIndex) continue;
@@ -600,6 +610,8 @@ function renderLog(fresh) {
 
 function playReveal(reveal) {
   revealing = true;
+  activeReveal = reveal;
+  renderPlaque();
   const tavern = $("tavern");
   tavern.dataset.reveal = "lifting";
   for (const [seat, entry] of crewBySeat) {
@@ -644,6 +656,7 @@ function playReveal(reveal) {
     $("reveal").hidden = true;
     tavern.dataset.reveal = "";
     revealing = false;
+    activeReveal = null;
     for (const entry of crewBySeat.values()) entry.item.dataset.loser = "false";
     if (state) {
       render();
@@ -688,7 +701,7 @@ function renderResult() {
   $("placements").replaceChildren(
     ...state.result.placements.map((entry) => {
       const item = el("li", "placement");
-      item.append(el("span", "place", `${entry.place}`), el("span", "place-name", nameOf(entry.seat)), el("span", "place-dice", entry.diceLeft ? `${entry.diceLeft} dice left` : ""));
+      item.append(el("span", "place", `${entry.place}`), el("span", "place-name", nameOf(entry.seat)), el("span", "place-dice", entry.diceLeft ? `${entry.diceLeft} ${entry.diceLeft === 1 ? "die" : "dice"} left` : ""));
       return item;
     }),
   );
@@ -882,6 +895,11 @@ events.addEventListener("message", (event) => {
 bindTableTalk(events, (speaker) => crewBySeat.get(speaker)?.figure ?? null, {
   placement: "bottom",
   onTalk(talk) {
-    if (state) logEntry("talk", talk.text, { who: nameOf(talk.speaker), color: colorOf(talk.speaker) });
+    if (!state) return;
+    // A line said with a challenge arrives after the state that already opened the next round:
+    // write it above that round's header, next to the call it belongs to.
+    const last = $("log-list").lastElementChild;
+    const withCall = state.lastReveal?.callerSeat === talk.speaker && state.lastReveal.round === state.round - 1 && state.bids.length === 0;
+    logEntry("talk", talk.text, { who: nameOf(talk.speaker), color: colorOf(talk.speaker), before: withCall && last?.dataset.kind === "round" ? last : null });
   },
 });

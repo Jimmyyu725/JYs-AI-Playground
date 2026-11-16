@@ -150,11 +150,12 @@ export class LiarsDiceTable {
     this.arenaPaused = false;
   }
 
-  recordInsight(seat, { action, explanation, summary, latencyMs, attempts }) {
+  /** `round` is the round the move was made in (a challenge has already rolled the next one). */
+  recordInsight(seat, { round = this.state.round, action, explanation, summary, latencyMs, attempts }) {
     const player = this.players[seat];
     this.aiInsights.push({
       id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
-      round: this.state.round,
+      round,
       seat,
       playerName: player?.name,
       characterId: player?.character?.id ?? null,

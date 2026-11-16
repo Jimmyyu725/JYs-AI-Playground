@@ -134,8 +134,10 @@ async function runAIChain(version) {
         const latencyMs = performance.now() - startedAt;
         const talk = pushTableTalk(current, { speaker: seat, playerName: actor.name, characterId: actor.character?.id ?? null, text: decision.tableTalk });
         current.aiThinking = null;
+        const round = current.state.round;
         const { reveal } = current.act(seat, decision.action);
         current.recordInsight(seat, {
+          round,
           action: describeAction(decision.action),
           explanation: decision.explanation,
           summary: decision.reasoningSummary,

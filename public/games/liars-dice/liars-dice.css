@@ -548,6 +548,8 @@ button { font: inherit; color: inherit; }
   animation: flash 0.32s ease-out both;
   z-index: -1;
 }
+/* The verdict text sits over the plaque: keep the challenged bid, hide the plaque's own lines. */
+.tavern[data-reveal="lifting"] :is(.turn-line, .plaque-by) { visibility: hidden; }
 @keyframes stamp { from { scale: 1.6; opacity: 0; } to { scale: 1; opacity: 1; } }
 @keyframes rise { from { translate: 0 12px; opacity: 0; } }
 @keyframes flash { from { opacity: 0.32; } to { opacity: 0; } }

@@ -128,6 +128,15 @@ test("AI rationales stay hidden from a human opponent until the game ends", () =
   assert.equal(arena.publicState().aiInsights.length, 1);
 });
 
+test("an insight keeps the round its move was made in", () => {
+  const table = new LiarsDiceTable({ gameMode: "arena", seatCount: 3 });
+  assert.equal(table.state.round, 1);
+  table.recordInsight(0, { round: 1, action: "calls Liar!", explanation: "Too many", latencyMs: 5 });
+  table.state = { ...table.state, round: 2 };
+  table.recordInsight(1, { action: "bids 2 × 3s", explanation: "Opening", latencyMs: 5 });
+  assert.deepEqual(table.aiInsights.map((insight) => insight.round), [1, 2]);
+});
+
 test("the gateway schema declares tableTalk only through the gateway", () => {
   assert.equal(GATEWAY_SCHEMA.properties.tableTalk, undefined);
   assert.equal(GATEWAY_SCHEMA.required.includes("tableTalk"), false);
