@@ -168,12 +168,12 @@ async function main() {
   document.querySelector("#match-count").textContent = overview.matchCount ? String(overview.matchCount) : "no";
 
   const leader = overview.overall.find((entry) => entry.kind !== "human");
-  if (leader) {
-    document.querySelector("#leader-rating").textContent = String(leader.rating);
-    document.querySelector("#leader-name").textContent = entrantLabel(leader, registry);
-    document.querySelector("#leader-record").textContent = `${leader.wins} wins · ${leader.losses} losses${leader.draws ? ` · ${leader.draws} draws` : ""} across ${leader.matches} matches`;
-    document.querySelector("#leader").hidden = false;
-  }
+  document.querySelector("#leader-rating").textContent = String(leader?.rating ?? BASELINE);
+  document.querySelector("#leader-name").textContent = leader ? entrantLabel(leader, registry) : "Unclaimed";
+  document.querySelector("#leader-record").textContent = leader
+    ? `${leader.wins} wins · ${leader.losses} losses${leader.draws ? ` · ${leader.draws} draws` : ""} across ${leader.matches} matches`
+    : "The first model to win a game here takes the plaque.";
+  document.querySelector("#leader").hidden = false;
 
   const tabRow = document.querySelector("#ladder-tabs");
   const nameOf = (id) => (id === "overall" ? "Overall" : catalog.games.find((game) => game.id === id)?.name ?? id);

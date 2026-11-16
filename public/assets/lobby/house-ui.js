@@ -79,6 +79,45 @@ export async function mountHouseBar() {
   }
 }
 
+let latchContext = null;
+/** A brass latch and a soft wooden thump as a door swings open; honours the shared mute setting. */
+export function doorLatch() {
+  if (sfx.muted) return;
+  const AudioContextClass = globalThis.AudioContext || globalThis.webkitAudioContext;
+  if (!AudioContextClass) return;
+  latchContext ??= new AudioContextClass();
+  const ctx = latchContext;
+  if (ctx.state === "suspended") ctx.resume().catch(() => {});
+  const now = ctx.currentTime;
+  const out = ctx.createGain();
+  out.gain.value = 0.45;
+  out.connect(ctx.destination);
+  // Latch: a short, bright metallic click.
+  const click = ctx.createOscillator();
+  click.type = "square";
+  click.frequency.setValueAtTime(2400, now);
+  click.frequency.exponentialRampToValueAtTime(900, now + 0.03);
+  const clickGain = ctx.createGain();
+  clickGain.gain.setValueAtTime(0.0001, now);
+  clickGain.gain.exponentialRampToValueAtTime(0.18, now + 0.003);
+  clickGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.05);
+  click.connect(clickGain).connect(out);
+  click.start(now);
+  click.stop(now + 0.06);
+  // Thump: the heavy door settling on its hinges.
+  const thump = ctx.createOscillator();
+  thump.type = "sine";
+  thump.frequency.setValueAtTime(140, now + 0.05);
+  thump.frequency.exponentialRampToValueAtTime(55, now + 0.35);
+  const thumpGain = ctx.createGain();
+  thumpGain.gain.setValueAtTime(0.0001, now + 0.05);
+  thumpGain.gain.exponentialRampToValueAtTime(0.5, now + 0.07);
+  thumpGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.4);
+  thump.connect(thumpGain).connect(out);
+  thump.start(now + 0.05);
+  thump.stop(now + 0.42);
+}
+
 // A cross-document View Transition into a page that has not opted in (@view-transition, which
 // /shared/kit.css carries) logs an abort error on that page. Room pages are probed before the
 // walk-through (see probeOptIn), and the transition is skipped for any room not known to opt in.

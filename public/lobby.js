@@ -1,6 +1,6 @@
 // The corridor: one door per room from /api/games, a random trio of regulars, and the top of the ladder.
 import { entrantLabel, isOpen, numberWord, pickTrio, playersLabel, roomLight } from "/assets/lobby/house-data.js";
-import { el, getJSON, loadCast, mountHouseBar, portrait, probeOptIn, reducedMotion, sfx, swap } from "/assets/lobby/house-ui.js";
+import { doorLatch, el, getJSON, loadCast, mountHouseBar, portrait, probeOptIn, reducedMotion, sfx, swap } from "/assets/lobby/house-ui.js";
 
 const doorRow = document.querySelector("#door-row");
 const trioList = document.querySelector("#trio-list");
@@ -56,7 +56,7 @@ function door(game, index) {
 /** Push the door toward the viewer, then navigate; the cross-document View Transition carries the rest. */
 function walkThrough(event, node) {
   if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-  sfx.play("cardFlick");
+  doorLatch();
   if (reducedMotion()) return;
   event.preventDefault();
   node.querySelector(".door-frame").style.viewTransitionName = "portal";
