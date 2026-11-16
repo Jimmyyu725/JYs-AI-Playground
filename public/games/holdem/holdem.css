@@ -805,6 +805,19 @@ body[data-mode="arena"] .seat-model,
 .dealer-button[hidden] {
   display: none;
 }
+.seat.is-preview {
+  animation: preview-in 0.5s var(--ease) both;
+}
+.seat.is-preview .dealer-button,
+.seat.is-preview .seat-plate {
+  display: none;
+}
+@keyframes preview-in {
+  from {
+    opacity: 0;
+    scale: 0.9;
+  }
+}
 .seat.is-folded {
   opacity: 0.5;
   filter: saturate(0.4);
@@ -1386,6 +1399,18 @@ body[data-mode="arena"] .seat-model,
   font-family: var(--body);
 }
 
+/* With the velvet drawer open on wide screens, the table slides over so every seat stays in view. */
+@media (min-width: 821px) {
+  body:has(.kit-drawer[data-open="true"]) .salon-main {
+    grid-template-columns: minmax(0, 1fr) 0;
+    column-gap: 0;
+    padding-inline-end: calc(var(--kit-drawer-width) + 12px);
+  }
+  body:has(.kit-drawer[data-open="true"]) .ledger {
+    visibility: hidden;
+  }
+}
+
 /* ------------------------------------------------------------ medium widths */
 
 @media (max-width: 1180px) {
@@ -1679,6 +1704,7 @@ body[data-mode="arena"] .seat-model,
   }
   .card.is-dealing,
   .card.is-arriving,
+  .seat.is-preview,
   .ledger .kit-transcript-item {
     animation: none;
   }

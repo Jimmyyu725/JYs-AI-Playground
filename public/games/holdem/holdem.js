@@ -926,7 +926,24 @@ function buildSetup(characters, registry) {
       modelsHost.append(row);
     });
   };
-  const picker = characterPicker({ characters, seats: 3, onChange: () => renderModels() });
+  const picker = characterPicker({
+    characters,
+    seats: 3,
+    onChange: () => {
+      renderModels();
+      previewCast();
+    },
+  });
+  // Before the first table, the empty felt shows exactly who the setup will seat.
+  const previewCast = () => {
+    if (view.state) return;
+    const arena = form.elements.gameMode.value === "arena";
+    const guests = picker.characters.map((character, index) => ({ seat: index, name: character.name, character, aiConfig: null }));
+    const players = arena ? guests : [{ seat: 0, name: nameInput.value.trim() || "Player", isHuman: true, character: null }, ...guests.map((guest) => ({ ...guest, seat: guest.seat + 1 }))];
+    buildSeats({ players });
+    for (const seatEl of view.seatEls.values()) seatEl.classList.add("is-preview");
+  };
+  nameInput.addEventListener("input", previewCast);
   applyAll.addEventListener("click", () => {
     configs = configs.map(() => ({ ...configs[0] }));
     renderModels();
@@ -942,6 +959,7 @@ function buildSetup(characters, registry) {
     countField.querySelector("span").textContent = arena ? "Players" : "Guests";
     submit.textContent = arena ? "Open the arena" : "Take your seat";
     picker.setSeats(Number(count.value));
+    previewCast();
   };
   modes.addEventListener("change", sync);
   count.addEventListener("change", sync);
@@ -995,6 +1013,7 @@ async function boot() {
   if (state) applyState(state);
   else {
     renderActions();
+    $("community").append(...Array.from({ length: 5 }, () => el("span", "card-slot")));
     setup.open();
   }
   connect();
