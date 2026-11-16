@@ -372,6 +372,42 @@ body.mj {
   font-variant-numeric: tabular-nums;
   color: var(--mj-amber);
 }
+.mj-cheat {
+  background: var(--mj-panel);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--kit-line);
+  border-radius: 12px;
+  padding: 8px 12px;
+  font-size: 13px;
+}
+.mj-cheat summary {
+  cursor: pointer;
+  font-family: var(--font-cjk);
+  font-size: 15px;
+  color: var(--mj-amber);
+  list-style-position: inside;
+}
+.mj-cheat p {
+  margin: 8px 0;
+  color: var(--kit-muted);
+}
+.mj-cheat dl {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 10px;
+  margin: 0;
+  max-height: 34vh;
+  overflow: auto;
+}
+.mj-cheat dt {
+  color: var(--mj-ivory);
+}
+.mj-cheat dd {
+  margin: 0;
+  font-family: var(--font-num);
+  color: var(--mj-amber);
+  text-align: right;
+}
 #transcript-slot {
   flex: 1;
   min-height: 0;
