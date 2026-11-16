@@ -242,7 +242,7 @@ body {
 @keyframes hang { from { translate: 0 -16px; rotate: -4deg; opacity: 0; } }
 
 /* ------------------------------------------------------------------ stage */
-.stage { display: grid; justify-items: center; gap: 12px; container-type: inline-size; min-width: 0; }
+.stage { display: grid; grid-template-columns: minmax(0, 1fr); justify-items: center; gap: 12px; container-type: inline-size; min-width: 0; }
 
 .tape {
   position: relative;
