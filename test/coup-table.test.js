@@ -49,6 +49,18 @@ test("a pinned character takes its seat and the rest are filled at random", () =
   assert.equal(new Set(ids).size, 3);
 });
 
+test("AI reasoning summaries stay hidden from the human until the game ends", async () => {
+  const table = new CoupTable({ mode: "human-vs-ai", playerCount: 2, seed: 2 }, {
+    decide: async () => ({ output: { actionId: 1 }, reasoningSummary: "I hold the Duke.", tableTalk: "" }),
+  });
+  table.state.activeSeat = 1;
+  table.pump();
+  await settle(table);
+  assert.equal(table.insights[1].summary, "I hold the Duke.");
+  assert.equal(table.publicState().insights[1].summary, "");
+  assert.equal(JSON.stringify(table.publicState()).includes("I hold the Duke"), false);
+});
+
 test("rejects a bad player count", () => {
   assert.throws(() => new CoupTable({ playerCount: 7 }, { decide: randomDecider() }), /2-6/);
 });

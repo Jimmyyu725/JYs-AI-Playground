@@ -1,0 +1,5 @@
+{
+  "status": "live",
+  "pitch": "A candlelit Venetian masquerade: claim any role, bluff your way to power, and unmask the characters who lie.",
+  "palette": { "background": "#160C07", "surface": "#2A120A", "accent": "#3FA79A", "highlight": "#D9A046", "danger": "#E0482C" }
+}

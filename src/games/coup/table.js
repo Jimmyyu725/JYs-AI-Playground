@@ -91,7 +91,7 @@ export class CoupTable {
       character,
       aiConfig: normalizeModelConfig(GAME_ID, requested[index] ?? requested[0] ?? {}),
     }));
-    const humanName = String(config.humanName ?? "").trim().slice(0, 24) || "You";
+    const humanName = String(config.humanName ?? "").trim().slice(0, 24) || "Guest";
     const seats = mode === "arena" ? aiSeats : [{ isHuman: true, name: humanName, character: null, aiConfig: null }, ...aiSeats];
     this.mode = mode;
     this.seats = seats.map((entry, seat) => ({ seat, ...entry }));
@@ -292,7 +292,10 @@ export class CoupTable {
       paused: this.paused,
       stalemate: this.stalemate,
       over: this.isOver,
-      insights: this.insights,
+      // Reasoning summaries mention hidden cards: only spectators and finished games see them.
+      insights: reveal
+        ? this.insights
+        : Object.fromEntries(Object.entries(this.insights).map(([seat, insight]) => [seat, { ...insight, summary: "" }])),
       tableTalk: this.tableTalk,
     };
   }
